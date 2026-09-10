@@ -175,7 +175,7 @@ body.wide .hub-in{width:100%;padding:44px 20px 40px}
 .hub-in h2{font-size:19px;font-weight:600;letter-spacing:.02em;margin-bottom:5px}
 .hub-in>p{font-size:13px;color:var(--ink-dim);margin-bottom:20px;max-width:56ch;line-height:1.5}
 .cards{display:grid;gap:10px;grid-template-columns:1fr}
-@media (min-width:760px){.cards{grid-template-columns:repeat(3,1fr)}}
+body.wide .cards{grid-template-columns:repeat(3,1fr)}
 .card{position:relative;text-align:left;cursor:pointer;padding:17px 16px 15px;
   background:linear-gradient(180deg,rgba(31,24,23,.86),rgba(10,7,8,.9));
   border:1px solid var(--rule);transition:.16s;color:inherit;font:inherit;
@@ -286,6 +286,9 @@ body.wide .stage{min-height:430px}
 .hcard .t{position:absolute;top:0;left:0;font-family:var(--mono);font-size:8px;color:var(--ink-faint);
   background:rgba(0,0,0,.72);padding:1px 3px;letter-spacing:.06em;text-transform:uppercase}
 .hist-empty{font-size:12px;color:var(--ink-faint)}
+.hclear{font-family:var(--disp);font-size:11px;color:var(--ink-faint);background:none;
+  border:none;cursor:pointer;padding:0;text-decoration:underline}
+.hclear:hover{color:var(--red-hot)}
 
 /* guide */
 .spec{margin-bottom:22px}
@@ -411,7 +414,7 @@ body.wide .stage{min-height:430px}
                 </div>
               </div>
               <h3 id="p-msg">Submitting to the queue</h3>
-              <p id="p-sub">Keep this tab open.</p>
+              <p id="p-sub">Safe to close this tab. It picks back up when you return.</p>
             </div>
             <div id="stage-out" hidden style="width:100%"></div>
           </div>
@@ -517,7 +520,7 @@ body.wide .stage{min-height:430px}
 
       <!-- HISTORY -->
       <div class="hist">
-        <div class="pane-h">This session <b id="hist-spend">$0.00 spent</b></div>
+        <div class="pane-h">This session <span style="display:flex;gap:10px;align-items:baseline"><b id="hist-spend">$0.00 spent</b><button class="hclear" id="hist-clear" type="button" hidden>Clear</button></span></div>
         <div class="hist-strip" id="hist-strip"><span class="hist-empty">Renders you make will collect here. Tap one to bring it back to the stage.</span></div>
       </div>
     </div>
@@ -600,8 +603,9 @@ body.wide .stage{min-height:430px}
         <h4>Working in the console</h4>
         <div class="note">The stage <b>keeps your last result while you set up the next run</b>, so you can look at what you got while you change what you asked for.</div>
         <div class="note">Everything you make drops into the session strip. Tap one to bring it back to the stage; the small arrow sends it <b>back into the source tray</b> so you can build on it, upscale it, or use it as a video's opening frame.</div>
-        <div class="note"><b>The session strip lives in memory only.</b> A refresh loses it. Download anything you want to keep.</div>
-        <div class="note">Keep the tab open while something renders. The job keeps running on fal either way, but this page is how you get the file.</div>
+        <div class="note"><b>The session strip survives a refresh, a crash and a browser restart</b>, because it is stored on this device. It does not follow you to another device, and Clear empties it.</div>
+        <div class="note"><b>You can close the tab mid-render.</b> Come back within an hour and the rig picks the job back up where it left off, so a paid render is no longer lost by closing a tab.</div>
+        <div class="note">The passphrase is remembered for <b>four hours</b>, then the rig asks again. It spends real money, so it should not stay unlocked forever.</div>
       </div>
 
       <button class="go ghost" id="guide-close" type="button">Back to the console</button>
@@ -625,6 +629,54 @@ body.wide .stage{min-height:430px}
   var AR_IMG=[['4:5','4:5'],['16:9','16:9'],['1:1','1:1']];
 
   var pw='', type='video', dur='5', ar='16:9', res='2K', upf='2';
+
+  // Two different problems, two different stores.
+  //  - The passphrase gates SPENDING, so it expires. sessionStorage alone was not
+  //    enough: iOS Safari keeps a tab alive indefinitely, so "session" meant
+  //    forever and the rig stopped asking.
+  //  - History and the in-flight job are about NOT LOSING MONEY ALREADY SPENT, so
+  //    they use localStorage and survive a crash, a refresh or a browser restart.
+  var PW_TTL_MS = 4*60*60*1000;          // 4 hours, then type it again
+  var JOB_TTL_MS = 60*60*1000;           // a 15s video takes ~11 min; 60 is generous
+  var K_PW='rig_pw', K_HIST='rig_hist', K_JOB='rig_job', K_SPEND='rig_spend';
+
+  function savePw(v){
+    try{ sessionStorage.setItem(K_PW, JSON.stringify({v:v, ts:Date.now()})) }catch(e){}
+  }
+  function readPw(){
+    try{
+      var raw=sessionStorage.getItem(K_PW); if(!raw) return '';
+      var o=JSON.parse(raw);
+      if(!o || !o.v || !o.ts) return '';
+      if(Date.now()-o.ts > PW_TTL_MS){ sessionStorage.removeItem(K_PW); return '' }
+      return o.v;
+    }catch(e){ return '' }
+  }
+  function clearPw(){ try{ sessionStorage.removeItem(K_PW) }catch(e){} }
+
+  function saveHist(){
+    try{
+      localStorage.setItem(K_HIST, JSON.stringify(HIST.slice(0,40)));
+      localStorage.setItem(K_SPEND, String(spend));
+    }catch(e){}
+  }
+  function loadHist(){
+    try{
+      HIST=JSON.parse(localStorage.getItem(K_HIST)||'[]')||[];
+      spend=parseFloat(localStorage.getItem(K_SPEND)||'0')||0;
+    }catch(e){ HIST=[]; spend=0 }
+  }
+  function saveJob(j){
+    try{ j ? localStorage.setItem(K_JOB, JSON.stringify(j)) : localStorage.removeItem(K_JOB) }catch(e){}
+  }
+  function loadJob(){
+    try{
+      var j=JSON.parse(localStorage.getItem(K_JOB)||'null');
+      if(!j || !j.id || !j.t0) return null;
+      if(Date.now()-j.t0 > JOB_TTL_MS){ saveJob(null); return null }
+      return j;
+    }catch(e){ return null }
+  }
   var SRC=[], HIST=[], spend=0;
   var poller=null, ticker=null, t0=0, eta=0, over=false, curJob=null, lastOut=null;
 
@@ -654,14 +706,14 @@ body.wide .stage{min-height:430px}
     var af=new FormData(); af.append('action','auth'); af.append('password',v);
     fetch(BASE,{method:'POST',body:af})
       .then(function(r){
-        if(r.ok){pw=v;try{sessionStorage.setItem('rig_pw',v)}catch(e){}; enter(); return}
+        if(r.ok){pw=v;savePw(v); enter(); return}
         fail('That passphrase is not right.');
       })
       .catch(function(){fail('Could not reach the rig. Check your connection.')})
       .finally(function(){$('unlock').disabled=false;$('unlock').textContent='Unlock'});
   }
   function lockOut(){
-    pw='';try{sessionStorage.removeItem('rig_pw')}catch(e){}
+    pw='';clearPw();
     show('scr-login');chip('Locked');$('guide-btn').hidden=true;
     document.body.classList.remove('authed');
     fail('Session expired. Enter the passphrase again.');
@@ -670,6 +722,8 @@ body.wide .stage{min-height:430px}
     show('scr-hub');chip('Ready','ok');$('guide-btn').hidden=false;
     document.body.classList.add('authed');
     buildAR();buildModels();syncMode();paintCost();
+    loadHist();paintHist();
+    resumeJob();
   }
 
   /* ---------- layout ---------- */
@@ -867,6 +921,25 @@ body.wide .stage{min-height:430px}
     if(m) setTimeout(function(){ if($('gen-err').textContent===m) $('gen-err').textContent=''; },6000);
   }
 
+  function resumeJob(){
+    var j=loadJob(); if(!j) return;
+    // A paid render was in flight when the page went away. Pick it back up.
+    curJob={id:j.id,priced:j.priced,type:j.type};
+    type=j.type; t0=j.t0; eta=j.eta||85; over=false;
+    picked=true; show('scr-console');
+    [].slice.call($('seg-type').querySelectorAll('button')).forEach(function(x){
+      x.setAttribute('aria-pressed',String(x.dataset.v===j.type))});
+    syncMode(); paintCost();
+    stage('prog');
+    $('p-msg').textContent = j.type==='upscale' ? 'Enlarging' : 'Rendering';
+    $('p-sub').textContent = 'Picked this back up where it left off.';
+    chip('Rendering','busy');
+    document.body.classList.add('rendering');document.body.classList.remove('done');
+    $('submit').disabled=true;
+    startTick();
+    poll(j.id);
+  }
+
   /* ---------- submit ---------- */
   function dataUrlToBlob(u){
     var p=u.split(','),mime=(p[0].match(/:(.*?);/)||[])[1]||'image/jpeg';
@@ -918,7 +991,7 @@ body.wide .stage{min-height:430px}
     $('pct').textContent='0%';$('elapsed').textContent='00:00';
     $('arc').style.strokeDashoffset='364.4';
     $('p-msg').textContent='Submitting to the queue';
-    $('p-sub').textContent='Keep this tab open.';
+    $('p-sub').textContent='Safe to close this tab. It picks back up when you return.';
     t0=Date.now();over=false;
     eta = type==='video' ? parseInt(dur,10)*44 : (type==='upscale' ? 40 : 85);
     startTick();
@@ -933,6 +1006,7 @@ body.wide .stage{min-height:430px}
         if(!d) return;
         if(!d.jobId) throw new Error('no job id');
         curJob={id:d.jobId,priced:priced,type:type};
+        saveJob({id:d.jobId,priced:priced,type:type,t0:t0,eta:eta});
         $('p-msg').textContent = type==='upscale' ? 'Enlarging' : 'Rendering';
         chip('Rendering','busy');
         var first = type==='video' ? 280 : (type==='upscale' ? 20 : 15);
@@ -975,7 +1049,7 @@ body.wide .stage{min-height:430px}
   }
 
   function bad(m){
-    stop();document.body.classList.remove('rendering');
+    stop();saveJob(null);curJob=null;document.body.classList.remove('rendering');
     chip('Failed','err');stage('idle');genErr(m);
     $('submit').disabled=false;
   }
@@ -1002,12 +1076,18 @@ body.wide .stage{min-height:430px}
     $('submit').disabled=false;
 
     if(curJob){spend+=curJob.priced;curJob=null}
+    saveJob(null);
     HIST.unshift({url:url,gen_type:d.gen_type,filename:d.filename,w:d.width||0,h:d.height||0});
+    saveHist();
     paintHist();
   }
   function paintHist(){
     var s=$('hist-strip');
-    if(!HIST.length){s.innerHTML='<span class="hist-empty">Renders you make will collect here. Tap one to bring it back to the stage.</span>';return}
+    if(!HIST.length){
+      s.innerHTML='<span class="hist-empty">Renders you make will collect here. Tap one to bring it back to the stage.</span>';
+      $('hist-clear').hidden=true;
+      return;
+    }
     s.innerHTML='';
     HIST.forEach(function(h){
       var c=document.createElement('div');c.className='hcard';
@@ -1030,8 +1110,12 @@ body.wide .stage{min-height:430px}
       s.appendChild(c);
     });
     $('hist-spend').textContent='$'+spend.toFixed(2)+' spent';
+    $('hist-clear').hidden = !HIST.length;
   }
 
+  $('hist-clear').onclick=function(){
+    HIST=[];spend=0;saveHist();paintHist();
+  };
   $('to-src').onclick=function(){
     if(!lastOut) return;
     addUrl(lastOut.url,lastOut.w,lastOut.h);
@@ -1094,7 +1178,7 @@ body.wide .stage{min-height:430px}
   })();
 
   // resume an unlocked session
-  var saved=null; try{saved=sessionStorage.getItem('rig_pw')}catch(e){}
+  var saved=readPw();
   if(saved){pw=saved;enter()} else {setTimeout(function(){$('pw').focus()},380)}
 })();
 </script>
