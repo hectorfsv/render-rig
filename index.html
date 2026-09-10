@@ -163,6 +163,9 @@ input[type=password]{font-family:var(--mono);letter-spacing:.3em;text-align:cent
 .hub{display:none;position:relative;overflow:hidden}
 .hub.on{display:block}
 .hub-bg{position:absolute;inset:0;z-index:0;background:radial-gradient(120% 90% at 50% 40%,#160d10,#050304 72%)}
+.hub-bg video{width:100%;height:100%;object-fit:cover;display:block;opacity:.5;
+  animation:vidIn 1.6s ease both}
+@keyframes vidIn{from{opacity:0}to{opacity:.5}}
 .hub-bg::after{content:'';position:absolute;inset:0;background:
   linear-gradient(180deg,rgba(5,3,4,.72) 0%,rgba(5,3,4,.34) 34%,rgba(5,3,4,.86) 100%)}
 .hub-in{position:relative;z-index:1;padding:34px 20px 26px;max-width:1000px;margin:0 auto}
@@ -341,7 +344,9 @@ body.wide .stage{min-height:430px}
 
     <!-- HUB -->
     <div class="hub" id="scr-hub">
-      <div class="hub-bg"></div>
+      <div class="hub-bg">
+        <video id="hub-video" autoplay muted loop playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
+      </div>
       <div class="hub-in">
         <h2>What are you making?</h2>
         <p>Pick one and the console opens set up for it. You can switch at any point without coming back here.</p>
@@ -1070,6 +1075,23 @@ body.wide .stage{min-height:430px}
     for(var k=0;k<it.length;k++) if(it[k].type.indexOf('image/')===0) fs.push(it[k].getAsFile());
     if(fs.length) addFiles(fs);
   });
+
+  // Gargantua is 6.35MB at 1080p. The hub panel never exceeds 1920 CSS px, so
+  // 1080 is pixel-native on the ULTRAGEAR and 4K would only add decode heat.
+  // Load it on a real screen only - nobody pays 6MB for a background on cellular.
+  (function(){
+    var v=$('hub-video'); if(!v) return;
+    var attached=false;
+    function maybe(){
+      if(attached || !document.body.classList.contains('wide')) return;
+      attached=true;
+      v.addEventListener('error',function(){v.style.display='none'});
+      v.preload='auto'; v.src='gargantua.mp4';
+      var p=v.play(); if(p&&p.catch) p.catch(function(){});
+    }
+    maybe();
+    window.addEventListener('resize',maybe);
+  })();
 
   // resume an unlocked session
   var saved=null; try{saved=sessionStorage.getItem('rig_pw')}catch(e){}
