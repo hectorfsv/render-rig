@@ -105,7 +105,7 @@ body.done .bloom{background:radial-gradient(58% 42% at 50% 46%,rgba(63,208,122,.
 .tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
 .tbl td{padding:7px 0;border-bottom:1px solid var(--rule);color:var(--ink-dim);vertical-align:top}
 .tbl tr:last-child td{border-bottom:0}
-.tbl td:first-child{color:var(--ink);white-space:nowrap;padding-right:12px}
+.tbl td:first-child{font-family:var(--disp);font-size:12.5px;color:var(--ink);white-space:nowrap;padding-right:12px}
 .tbl td.n{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
 .tbl td.d{font-family:var(--disp);font-size:12.5px;line-height:1.5;padding-left:12px}
 .note{display:flex;gap:9px;font-size:12.5px;line-height:1.6;color:var(--ink-dim);margin-top:9px}
@@ -234,7 +234,7 @@ input[type=password]{font-family:var(--mono);text-align:center;letter-spacing:.3
   font-variant-numeric:tabular-nums;line-height:1}
 .dial-el{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);letter-spacing:.14em}
 .prog h3{font-size:14.5px;font-weight:600;letter-spacing:.03em;margin-bottom:7px;min-height:19px}
-.prog p{font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:.05em;line-height:1.6}
+.prog p{font-family:var(--disp);font-size:12.5px;color:var(--ink-faint);letter-spacing:0;line-height:1.55}
 /* tick strip */
 .ticks{display:flex;gap:2px;margin:18px 0 4px}
 .ticks i{flex:1;height:7px;background:rgba(255,255,255,.06);transition:.3s}
@@ -393,7 +393,7 @@ a.go{display:grid;place-items:center;text-decoration:none}
           <tr><td>15 sec</td><td class="n">$1.68</td><td class="d">$2.52 with audio</td></tr>
         </table>
         <div class="note"><span>Reckon on about <b>44 seconds of rendering for every 1 second of video</b>. A 10 second clip takes roughly 7 minutes.</span></div>
-        <div class="note"><span>Add a photo and the video <b>copies that photo's shape</b>. The aspect ratio buttons stop doing anything &mdash; the picture decides.</span></div>
+        <div class="note"><span>Add a photo and the video <b>copies that photo's shape</b>. The aspect ratio buttons stop doing anything; the picture decides.</span></div>
         <div class="note"><span>The sound is written from your words. If you want a specific song or a spoken line, <b>say it in the prompt</b>.</span></div>
       </div>
 
