@@ -46,7 +46,18 @@ body.done .bloom{background:radial-gradient(58% 42% at 50% 46%,rgba(63,208,122,.
 .rig{position:relative;z-index:2;width:100%;max-width:492px;margin:auto;display:flex;gap:12px;
   animation:rigIn .7s cubic-bezier(.16,1,.3,1) both}
 @keyframes rigIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-body.wide .rig{max-width:1240px}
+body.wide.authed .rig{max-width:1240px}
+@media (min-width:1700px){
+  body.wide.authed .rig{max-width:1560px}
+  body.wide .bay{grid-template-columns:230px minmax(0,1fr) 342px}
+  body.wide .stage{min-height:530px}
+}
+@media (min-width:2100px){
+  body.wide.authed .rig{max-width:1920px}
+  body.wide .bay{grid-template-columns:264px minmax(0,1fr) 380px}
+  body.wide .stage{min-height:640px}
+  .out{max-height:70vh}
+}
 
 .rail{width:22px;flex:0 0 22px;display:flex;align-items:center;justify-content:center;
   border-left:1px solid var(--rule)}
@@ -371,9 +382,8 @@ body.wide .stage{min-height:430px}
           </div>
 
           <div id="row-res" hidden>
-            <div class="lab">Resolution <span class="opt" id="res-note">1K and 2K cost the same</span></div>
+            <div class="lab">Resolution <span class="opt" id="res-note">4K costs double</span></div>
             <div class="seg" id="seg-res" role="group" aria-label="Resolution">
-              <button type="button" data-v="1K" aria-pressed="false">1K</button>
               <button type="button" data-v="2K" aria-pressed="true">2K</button>
               <button type="button" data-v="4K" aria-pressed="false">4K</button>
             </div>
@@ -446,15 +456,50 @@ body.wide .stage{min-height:430px}
 
     <!-- GUIDE -->
     <div class="screen" id="scr-guide">
+
       <div class="spec">
-        <h4>How to run it</h4>
-        <ol class="steps">
-          <li><span>Pick <b>Video</b>, <b>Image</b> or <b>Upscale</b>.</span></li>
-          <li><span>Say what you want in plain English. Don't write like a robot; Grok rewrites your line into a full brief before the model ever sees it.</span></li>
-          <li><span>Add source images if you want them. <b>Nano Banana Pro combines every source into one picture</b>, so you can hand it a face, a jacket and a room and ask for all three.</span></li>
-          <li><span>Check the price on the meter, then hit <b>Generate</b>.</span></li>
-          <li><span>Keep the tab open. The result lands on the stage and drops into the session strip below.</span></li>
-        </ol>
+        <h4>What this thing is</h4>
+        <div class="note">Three jobs, one rig. <b>Video</b> makes a clip with Kling 3.0 Pro. <b>Image</b> makes a still with Krea or Nano Banana Pro. <b>Upscale</b> enlarges a picture you already have, using Topaz.</div>
+        <div class="note">You only pay for output that actually arrives. <b>A refusal, a crash or a run you abandon costs nothing.</b> fal bills on delivery.</div>
+        <div class="note">Whatever you write gets rewritten by Grok into a fuller brief before the model sees it, so <b>plain English beats keyword soup</b>. Say what you want, not what you think a model wants to hear.</div>
+      </div>
+
+      <div class="spec">
+        <h4>Seed</h4>
+        <div class="note">Every render starts from a random number. That number is the <b>seed</b>, and it decides all the arbitrary choices the model makes: which way a face turns, where the light falls, how a crowd is arranged.</div>
+        <div class="note"><b>Same seed + same prompt = the same picture, every time.</b> Change the seed and you get a completely different take on the same description.</div>
+        <div class="note">That is what the lock is for. Run something you like, <b>lock the seed</b>, then change one word in the prompt. Whatever moves is what that word actually did. Without a lock you change a word, get a different picture, and never know whether it was your edit or the dice.</div>
+        <div class="note">The dice button rolls a new number by hand. Leave the field empty and every run rolls its own.</div>
+        <div class="note"><b>Krea ignores the seed.</b> It is a Nano Banana Pro feature only.</div>
+      </div>
+
+      <div class="spec">
+        <h4>Which image model</h4>
+        <table class="tbl">
+          <tr><td>Krea 2 Large</td><td class="n">$0.06</td><td class="d">Text only. Will draw real people, actors and copyrighted characters without complaint.</td></tr>
+          <tr><td>Nano Banana Pro</td><td class="n">$0.15</td><td class="d">Sharper, reads the source tray, obeys the seed. Refuses celebrities and anything trademarked.</td></tr>
+        </table>
+        <div class="note">The split is <b>capability, not quality tiers</b>. Krea is not the cheap option, it is the unfiltered one. Nano Banana Pro is the one that can combine your photos and repeat a look on demand.</div>
+        <div class="note">If Nano Banana Pro refuses your subject, Krea is the fallback and it costs less. If Krea gives you something soft or generic, Nano Banana Pro is the fix.</div>
+        <div class="note">Nothing unfiltered beats Krea at this price. That was measured, not assumed, so there is no better model waiting to be found.</div>
+      </div>
+
+      <div class="spec">
+        <h4>Sources</h4>
+        <div class="note">Anything in the source tray is handed to <b>Nano Banana Pro</b>, which merges every one of them into a single picture. Give it a face, a jacket and a room and ask for all three together.</div>
+        <div class="note">Order matters to the model, and the tray is numbered so you can see it. Describe them in your prompt the same way &mdash; "the man in image 1 wearing the coat from image 2".</div>
+        <div class="note"><b>Krea ignores the tray entirely.</b> The cost meter will tell you when you have sources loaded and Krea selected.</div>
+        <div class="note"><b>Video only uses the first source</b>, as the opening frame.</div>
+        <div class="note">Sources are shrunk to 1536px before they are sent, so several photos stay quick to upload. Upscale is the one exception &mdash; it sends the original untouched.</div>
+      </div>
+
+      <div class="spec">
+        <h4>Resolution</h4>
+        <table class="tbl">
+          <tr><td>2K</td><td class="n">$0.15</td><td class="d">The default, and the right answer nearly always.</td></tr>
+          <tr><td>4K</td><td class="n">$0.30</td><td class="d">Double the price. Worth it only if the picture is going to print or a big screen.</td></tr>
+        </table>
+        <div class="note">There used to be a 1K button. <b>It was removed because fal charges the same for 1K and 2K</b>, which made it a button that could only ever cost you detail for free.</div>
       </div>
 
       <div class="spec">
@@ -465,36 +510,30 @@ body.wide .stage{min-height:430px}
           <tr><td>15 sec</td><td class="n">$1.68</td><td class="d">$2.52 with audio</td></tr>
         </table>
         <div class="note">Reckon on about <b>44 seconds of rendering for every 1 second of video</b>. A 10 second clip takes roughly 7 minutes.</div>
-        <div class="note">Add a photo and the video <b>copies that photo's shape</b>. The aspect ratio buttons stop doing anything; the picture decides.</div>
-        <div class="note">The sound is written from your words. If you want a specific song or a spoken line, <b>say it in the prompt</b>.</div>
-      </div>
-
-      <div class="spec">
-        <h4>Images</h4>
-        <table class="tbl">
-          <tr><td>Krea 2 Large</td><td class="n">$0.06</td><td class="d">Will draw real people and copyrighted characters.</td></tr>
-          <tr><td>Nano Banana Pro</td><td class="n">$0.15</td><td class="d">Sharper, takes many sources at once, refuses celebrities and anything trademarked.</td></tr>
-        </table>
-        <div class="note"><b>1K and 2K cost the same</b>, so never pick 1K. 4K doubles the price to $0.30.</div>
-        <div class="note">Only Nano Banana Pro reads the source tray. Krea is text-only.</div>
+        <div class="note">Add a photo and the video <b>copies that photo's shape</b>. The aspect ratio buttons stop doing anything; the picture decides. If you want a 9:16 clip, start from a 9:16 image.</div>
+        <div class="note"><b>The sound is written from your words.</b> A prompt with no sound cues comes back nearly silent. Name the song, the line of dialogue, the room tone &mdash; whatever you want to hear, say it.</div>
+        <div class="note">Kling will sometimes ignore a camera instruction, an orbit especially. That is the model, not the rig, and it does it on every speed setting.</div>
       </div>
 
       <div class="spec">
         <h4>Upscale</h4>
         <table class="tbl">
-          <tr><td>Up to 24 MP</td><td class="n">$0.08</td><td class="d">A 2K image enlarged 2&times; lands here.</td></tr>
-          <tr><td>Up to 48 MP</td><td class="n">$0.16</td><td class="d"></td></tr>
-          <tr><td>Up to 96 MP</td><td class="n">$0.32</td><td class="d"></td></tr>
+          <tr><td>Up to 24 MP</td><td class="n">$0.08</td><td class="d">A 2K picture enlarged 2&times; lands here.</td></tr>
+          <tr><td>Up to 48 MP</td><td class="n">$0.16</td><td class="d">2K at 3&times;.</td></tr>
+          <tr><td>Up to 96 MP</td><td class="n">$0.32</td><td class="d">2K at 4&times;.</td></tr>
         </table>
-        <div class="note">Runs on <b>Topaz</b>, and the price is set by the size of what comes out, so the meter can work it out exactly rather than guess.</div>
-        <div class="note">Upscaling uses the <b>first source</b> at full resolution. It is the one place nothing gets shrunk before sending.</div>
+        <div class="note">Runs on <b>Topaz</b>. The price is set by the size of what comes out, so the meter works out the exact figure from your source instead of guessing at it.</div>
+        <div class="note">Topaz is both the cheapest and the most capable option here. The obvious alternative, Clarity, bills per megapixel and would charge about <b>$0.50</b> for the same job.</div>
+        <div class="note">Pick the model to match the source. <b>Standard</b> for photographs, <b>High Fidelity</b> when there is fine detail worth protecting, <b>Low Resolution</b> for something small or soft, <b>CGI</b> for renders and illustration, <b>Text Refine</b> for screenshots and type, <b>Recovery</b> for something damaged or heavily compressed.</div>
+        <div class="note">Faces are enhanced automatically. Upscale uses the <b>first source</b> and needs no prompt.</div>
       </div>
 
       <div class="spec">
-        <h4>Worth knowing</h4>
-        <div class="note">You only pay for output that actually arrives. <b>A refusal or a failed run costs nothing.</b></div>
-        <div class="note">Sources are shrunk to 1536px before sending so several images stay fast to upload. Upscale is the exception.</div>
-        <div class="note">Lock the <b>seed</b> and change one word to see what that word actually did.</div>
+        <h4>Working in the console</h4>
+        <div class="note">The stage <b>keeps your last result while you set up the next run</b>, so you can look at what you got while you change what you asked for.</div>
+        <div class="note">Everything you make drops into the session strip. Tap one to bring it back to the stage; the small arrow sends it <b>back into the source tray</b> so you can build on it, upscale it, or use it as a video's opening frame.</div>
+        <div class="note"><b>The session strip lives in memory only.</b> A refresh loses it. Download anything you want to keep.</div>
+        <div class="note">Keep the tab open while something renders. The job keeps running on fal either way, but this page is how you get the file.</div>
       </div>
 
       <button class="go ghost" id="guide-close" type="button">Back to the console</button>
@@ -553,10 +592,12 @@ body.wide .stage{min-height:430px}
   function lockOut(){
     pw='';try{sessionStorage.removeItem('rig_pw')}catch(e){}
     show('scr-login');chip('Locked');$('guide-btn').hidden=true;
+    document.body.classList.remove('authed');
     fail('Session expired. Enter the passphrase again.');
   }
   function enter(){
     show('scr-console');chip('Ready','ok');$('guide-btn').hidden=false;
+    document.body.classList.add('authed');
     buildAR();buildModels();syncMode();paintCost();
   }
 
