@@ -475,16 +475,13 @@ body.wide .lab{font-size:12.5px}
         <!-- CONTROLS -->
         <div class="pane stack" id="pane-ctl">
           <div>
-            <div class="seg" id="seg-type" role="group" aria-label="What to make">
+            <div class="seg seg-4" id="seg-type" role="group" aria-label="What to make">
               <button type="button" data-v="video" aria-pressed="true">Video</button>
               <button type="button" data-v="image" aria-pressed="false">Image</button>
+              <button type="button" data-v="compose" aria-pressed="false">Compose</button>
               <button type="button" data-v="upscale" aria-pressed="false">Upscale</button>
             </div>
-          </div>
-
-          <div id="row-engine">
-            <div class="lab">Engine</div>
-            <select id="model" aria-label="Engine"></select>
+            <div class="hint" id="mode-hint"></div>
           </div>
 
           <div id="row-prompt">
@@ -492,59 +489,189 @@ body.wide .lab{font-size:12.5px}
             <div class="hint" id="hint">Grok rewrites this into a full cinematic brief before it reaches the model.</div>
           </div>
 
+          <!-- shot-by-shot direction (Kling multi_prompt) -->
+          <div id="row-shots" hidden>
+            <label class="check">
+              <input type="checkbox" id="use-shots">
+              <span>Direct it shot by shot</span><b class="free">free</b>
+            </label>
+            <div class="hint">One paragraph asks the model to guess where a move happens. A shot list tells it. Durations must add up to the total.</div>
+            <div id="shots" hidden></div>
+            <button class="go ghost sm" id="add-shot" type="button" hidden style="margin-top:7px">Add a shot</button>
+            <div class="hint err-inline" id="shots-warn" hidden></div>
+          </div>
+
           <div id="row-ar">
             <div class="lab">Aspect ratio</div>
-            <div class="seg" id="seg-ar" role="group" aria-label="Aspect ratio"></div>
+            <div class="seg seg-wrap" id="seg-ar" role="group" aria-label="Aspect ratio"></div>
+            <div class="hint" id="ar-hint"></div>
           </div>
 
           <div id="row-res" hidden>
-            <div class="lab">Resolution <span class="opt" id="res-note">4K costs double</span></div>
+            <div class="lab">Resolution <span class="opt">4K costs double</span></div>
             <div class="seg" id="seg-res" role="group" aria-label="Resolution">
               <button type="button" data-v="2K" aria-pressed="true">2K</button>
               <button type="button" data-v="4K" aria-pressed="false">4K</button>
             </div>
+            <div class="hint">1K and 2K are billed the same, so 2K is the floor worth using.</div>
           </div>
 
-          <div id="row-vid">
-            <div class="lab">Duration</div>
-            <div class="seg" id="seg-dur" role="group" aria-label="Duration">
-              <button type="button" data-v="5" aria-pressed="true">5s</button>
-              <button type="button" data-v="10" aria-pressed="false">10s</button>
-              <button type="button" data-v="15" aria-pressed="false">15s</button>
-            </div>
+          <!-- VIDEO -->
+          <div id="row-vid" hidden>
+            <div class="lab">Duration <span class="opt"><b id="dur-read">5</b> seconds</span></div>
+            <input type="range" id="dur" min="3" max="15" step="1" value="5" aria-label="Duration in seconds">
+            <div class="hint">Billed per second, so this is the price dial. <b>3s is the cheapest real test at $0.34.</b></div>
             <label class="check" style="margin-top:9px">
               <input type="checkbox" id="audio">
               <span>Generate audio</span><b>+50%</b>
             </label>
-          </div>
-
-          <div id="row-ups" hidden>
-            <div class="lab">Enlarge by</div>
-            <div class="seg" id="seg-upf" role="group" aria-label="Upscale factor">
-              <button type="button" data-v="2" aria-pressed="true">2&times;</button>
-              <button type="button" data-v="3" aria-pressed="false">3&times;</button>
-              <button type="button" data-v="4" aria-pressed="false">4&times;</button>
+            <div class="hint">Kling writes the audio from your words. Name the song, the line, or the room tone or it comes back near-silent.</div>
+            <div id="row-endimg" hidden style="margin-top:11px">
+              <div class="lab">End on <span class="opt">closes the loop</span></div>
+              <select id="end-img" aria-label="End frame"></select>
+              <div class="hint">Ending on the opening frame makes a clip that loops with no cut. Free.</div>
             </div>
-            <div class="lab" style="margin-top:11px">Model</div>
-            <select id="upmodel" aria-label="Upscale model">
-              <option value="Standard V2">Standard &mdash; most photos</option>
-              <option value="High Fidelity V2">High Fidelity &mdash; keep fine detail</option>
-              <option value="Low Resolution V2">Low Resolution &mdash; small or soft source</option>
-              <option value="CGI">CGI &mdash; renders and illustration</option>
-              <option value="Text Refine">Text Refine &mdash; screenshots and type</option>
-              <option value="Recovery V2">Recovery &mdash; damaged or compressed</option>
-            </select>
-            <div class="hint" id="ups-hint">Uses the first source. Faces are enhanced automatically.</div>
           </div>
 
-          <div id="row-seed">
+          <!-- IMAGE (Krea) -->
+          <div id="row-krea" hidden>
+            <div class="lab">Creativity</div>
+            <div class="seg seg-4" id="seg-crea" role="group" aria-label="Creativity">
+              <button type="button" data-v="raw" aria-pressed="false">Raw</button>
+              <button type="button" data-v="low" aria-pressed="false">Low</button>
+              <button type="button" data-v="medium" aria-pressed="true">Medium</button>
+              <button type="button" data-v="high" aria-pressed="false">High</button>
+            </div>
+            <div class="hint">How far Krea may drift from your words. <b>Raw</b> obeys literally, <b>High</b> reinterprets. Medium is the model's own default.</div>
+            <label class="check" style="margin-top:11px">
+              <input type="checkbox" id="use-style">
+              <span>Use sources as style references</span><b>+$0.005</b>
+            </label>
+            <div class="hint">Krea cannot compose your photos together &mdash; it borrows their <b>look</b>. For combining pictures, use Compose.</div>
+            <div id="row-stylestr" hidden style="margin-top:9px">
+              <div class="lab">Style strength <span class="opt"><b id="str-read">0.5</b></span></div>
+              <input type="range" id="style-str" min="0.1" max="1" step="0.05" value="0.5" aria-label="Style strength">
+            </div>
+          </div>
+
+          <!-- COMPOSE (Nano Banana Pro) -->
+          <div id="row-nbp" hidden>
+            <div class="hint" id="nbp-count">Every source in the tray is merged into one picture. Up to 14, and the count is free.</div>
+          </div>
+
+          <div id="row-seed" hidden>
             <div class="lab">Seed <span class="opt">lock it to iterate on the same look</span></div>
             <div class="seedrow">
               <input type="text" id="seed" inputmode="numeric" placeholder="random" aria-label="Seed">
               <button class="sbtn" id="seed-lock" type="button" aria-pressed="false" title="Lock the seed" aria-label="Lock the seed"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
               <button class="sbtn" id="seed-roll" type="button" title="New random seed" aria-label="New random seed"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="4" width="16" height="16"/><circle cx="9" cy="9" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.4" fill="currentColor" stroke="none"/></svg></button>
             </div>
+            <div class="hint">Same seed and same prompt gives the same picture. Lock it, change one word, and whatever moves is what that word did.</div>
           </div>
+
+          <!-- UPSCALE (Topaz) -->
+          <div id="row-ups" hidden>
+            <div class="lab">Enlarge by <span class="opt"><b id="upf-read">2.0</b>&times;</span></div>
+            <input type="range" id="upf" min="1" max="4" step="0.1" value="2" aria-label="Upscale factor">
+            <div class="hint">Priced on the picture that comes <b>out</b>, so this is the price dial &mdash; and it is not limited to whole numbers.</div>
+            <div class="lab" style="margin-top:11px">Model</div>
+            <select id="upmodel" aria-label="Upscale model">
+              <optgroup label="Precision &mdash; rebuilds what is there">
+                <option value="Standard V2">Standard &mdash; most photos</option>
+                <option value="High Fidelity V2">High Fidelity &mdash; keep fine detail</option>
+                <option value="Low Resolution V2">Low Resolution &mdash; small or soft source</option>
+                <option value="CGI">CGI &mdash; renders and illustration</option>
+                <option value="Text Refine">Text Refine &mdash; screenshots and type</option>
+                <option value="Recovery V2">Recovery &mdash; damaged or compressed</option>
+                <option value="Standard MAX">Standard MAX &mdash; heavier Standard</option>
+              </optgroup>
+              <optgroup label="Generative &mdash; invents new detail">
+                <option value="Redefine">Redefine &mdash; takes its own prompt</option>
+                <option value="Wonder 3">Wonder 3</option>
+                <option value="Wonder">Wonder</option>
+              </optgroup>
+            </select>
+            <div class="hint" id="ups-hint">Uses the first source, at full resolution.</div>
+            <div class="note-amber" id="gen-warn" hidden>fal does not publish a price for the generative models. Treat the meter as a floor, not a quote.</div>
+
+            <div id="row-redefine" hidden style="margin-top:11px">
+              <div class="lab">What to bring back <span class="opt">Redefine only</span></div>
+              <textarea id="up-prompt" rows="2" aria-label="Upscale prompt" placeholder="e.g. restore the brickwork and the lettering on the sign"></textarea>
+              <div class="lab" style="margin-top:9px">Invention <span class="opt"><b id="upc-read">3</b> of 6</span></div>
+              <input type="range" id="up-crea" min="1" max="6" step="1" value="3" aria-label="Generative creativity">
+              <div class="lab" style="margin-top:9px">Texture <span class="opt"><b id="upt-read">3</b> of 5</span></div>
+              <input type="range" id="up-tex" min="1" max="5" step="1" value="3" aria-label="Texture">
+            </div>
+          </div>
+
+          <!-- ADVANCED -->
+          <details id="adv" class="adv">
+            <summary>Advanced</summary>
+
+            <div id="adv-vid" hidden>
+              <div class="lab">Prompt adherence <span class="opt"><b id="cfg-read">model default</b></span></div>
+              <input type="range" id="cfg" min="0" max="1" step="0.05" value="0.5" aria-label="Prompt adherence">
+              <label class="check tiny"><input type="checkbox" id="use-cfg"><span>Set it myself</span></label>
+              <div class="hint">Higher sticks closer to your words and further from the source image. <b>The untried lever for a camera move Kling keeps ignoring.</b></div>
+
+              <div class="lab" style="margin-top:11px">Keep out</div>
+              <input type="text" id="neg" aria-label="Negative prompt" placeholder="blur, distort, and low quality">
+              <div class="hint">Leave empty to use Kling's own default, which is exactly that placeholder.</div>
+
+              <div class="lab" style="margin-top:11px">Shot structure</div>
+              <div class="seg" id="seg-shot" role="group" aria-label="Shot structure">
+                <button type="button" data-v="customize" aria-pressed="true">I decide</button>
+                <button type="button" data-v="intelligent" aria-pressed="false">Model decides</button>
+              </div>
+              <div class="hint">This is about how the clip is cut into shots, <b>not</b> about camera moves.</div>
+
+              <div id="row-elements" style="margin-top:13px">
+                <label class="check"><input type="checkbox" id="use-el"><span>Name a character from the tray</span><b class="free">free</b></label>
+                <div class="hint">Build a person or object from a front-on image plus up to 3 other angles, then call it <b>@Element1</b> in the prompt. A voice id makes it speak &mdash; <b>and moves the whole clip to $0.196/s</b>.</div>
+                <div id="elements" hidden></div>
+                <button class="go ghost sm" id="add-el" type="button" hidden style="margin-top:7px">Add a character</button>
+              </div>
+            </div>
+
+            <div id="adv-nbp" hidden>
+              <div class="lab">Content filter <span class="opt"><b id="saf-read">model default (4)</b></span></div>
+              <input type="range" id="saf" min="1" max="6" step="1" value="4" aria-label="Safety tolerance">
+              <label class="check tiny"><input type="checkbox" id="use-saf"><span>Set it myself</span></label>
+              <div class="hint">1 blocks the most, 6 the least. <b>Every refusal we have ever had ran at the default 4 and it has never been tried higher.</b></div>
+
+              <div class="lab" style="margin-top:11px">Standing instruction</div>
+              <textarea id="sysp" rows="2" aria-label="System prompt" placeholder="e.g. You are a cinematographer. Prefer natural light and long lenses."></textarea>
+              <div class="hint">Steers style across the whole request, separately from the prompt.</div>
+
+              <label class="check" style="margin-top:11px"><input type="checkbox" id="websearch"><span>Let it check the web</span><b>+$0.015</b></label>
+              <div class="hint">For a real place, product or person it may not know. Costs a penny and a half.</div>
+            </div>
+
+            <div id="adv-ups" hidden>
+              <label class="check"><input type="checkbox" id="face" checked><span>Enhance faces</span></label>
+              <div class="hint">On by default in Topaz. Turn it off for a subject with no face &mdash; it will otherwise find one.</div>
+              <div id="face-rows" style="margin-top:9px">
+                <div class="lab">Face strength <span class="opt"><b id="fs-read">model default</b></span></div>
+                <input type="range" id="fstr" min="0" max="1" step="0.05" value="0.8" aria-label="Face strength">
+                <label class="check tiny"><input type="checkbox" id="use-fstr"><span>Set it myself</span></label>
+              </div>
+              <div class="lab" style="margin-top:11px">Focus on</div>
+              <div class="seg" id="seg-subj" role="group" aria-label="Subject detection">
+                <button type="button" data-v="" aria-pressed="true">All</button>
+                <button type="button" data-v="Foreground" aria-pressed="false">Foreground</button>
+                <button type="button" data-v="Background" aria-pressed="false">Background</button>
+              </div>
+              <div class="lab" style="margin-top:11px">Sharpen <span class="opt"><b id="sh-read">off</b></span></div>
+              <input type="range" id="sharp" min="0" max="1" step="0.05" value="0" aria-label="Sharpen">
+              <div class="lab" style="margin-top:9px">Denoise <span class="opt"><b id="dn-read">off</b></span></div>
+              <input type="range" id="denoise" min="0" max="1" step="0.05" value="0" aria-label="Denoise">
+              <div class="lab" style="margin-top:9px">Fix compression <span class="opt"><b id="fc-read">off</b></span></div>
+              <input type="range" id="fixc" min="0" max="1" step="0.05" value="0" aria-label="Fix compression">
+              <div class="hint">All three are off unless you move them, which leaves Topaz on its own defaults.</div>
+            </div>
+
+            <div id="adv-none" hidden><div class="hint">Nothing extra for this one. Krea's controls are all above.</div></div>
+          </details>
 
           <div>
             <div class="meter">
