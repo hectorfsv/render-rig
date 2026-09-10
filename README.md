@@ -43,3 +43,52 @@ execution ids are sequential and would otherwise be enumerable.
 Open `index.html` directly. The API calls go to the live n8n instance, so login and
 generate work from `file://` only if that origin is allowed — normally just preview the
 layout and test the real flow on the deployed URL.
+
+## The console
+
+Three panes on a wide screen, one column on a phone (controls first there, so you
+are not scrolling past an empty stage to reach anything you can touch).
+
+```
+SOURCES          STAGE                 CONTROLS
+tray of images   last result lives     mode, engine, prompt,
+you dropped or   here and stays        aspect, resolution, seed,
+promoted from    while you set up      cost meter, Generate
+a past render    the next run
+                 ------ SESSION STRIP ------
+```
+
+**Sources** feed Nano Banana Pro's `/edit`, whose `image_urls` is an array - it
+combines every source into one picture. Krea is text-only and the meter says so
+out loud when sources are loaded and Krea is selected. Video uses the first
+source only.
+
+**Upscale** runs on Topaz. Its price is set by output resolution, so the meter
+computes the exact figure from the source's dimensions rather than estimating.
+
+**Seed** can be locked, so you can change one word and see what that word did.
+
+## What each mode costs
+
+| mode | price |
+|---|---|
+| Kling 3.0 Pro video | $0.112/s, $0.168/s with audio |
+| Krea 2 Large | $0.06 |
+| Nano Banana Pro | $0.15 at 1K or 2K, $0.30 at 4K |
+| Topaz upscale | $0.08 to 24MP, $0.16 to 48MP, $0.32 to 96MP |
+
+1K and 2K cost the same on Nano Banana Pro, so 1K is never worth picking.
+
+## More notes for future edits
+
+- **Sources are downscaled to 1536px in-browser before upload.** Six full-size
+  photos would be ~20MB of base64 through the n8n webhook. Upscale is the one
+  exception - it sends the original, because upscaling a downscaled file is
+  pointless.
+- **`[hidden]` must keep its `!important`.** Any class that sets `display` beats
+  a bare `[hidden]`, which is how the result buttons once rendered with no result.
+- **`Restore Image Context` in the n8n workflow whitelists fields.** A new field
+  added to `Detect & Prepare` is silently dropped before the submit nodes unless
+  it is also listed there.
+- Prices above are measured off fal's pricing pages, not guessed. fal has no
+  per-request cost API, so re-check them there if they look wrong.
