@@ -143,6 +143,52 @@ input[type=password]{font-family:var(--mono);letter-spacing:.3em;text-align:cent
 .check input{accent-color:var(--red);width:15px;height:15px;cursor:pointer;flex:0 0 15px}
 .check span{font-size:13px;color:var(--ink-dim)}
 .check b{color:var(--amber);font-family:var(--mono);font-size:10.5px;font-weight:500;margin-left:auto;letter-spacing:.06em}
+.check b.free{color:var(--go)}
+.check.tiny{padding:7px 10px;margin-top:6px;background:transparent;border:0}
+.check.tiny span{font-size:12px}
+
+/* four modes do not fit one row of 13px labels in a 300px column */
+.seg-4{grid-auto-flow:row;grid-template-columns:1fr 1fr;grid-auto-columns:auto}
+body.wide .seg-4{grid-template-columns:1fr 1fr}
+.seg-wrap{display:flex;flex-wrap:wrap;grid-auto-flow:unset}
+.seg-wrap button{flex:1 1 62px;font-family:var(--mono);font-size:11.5px;padding:9px 4px}
+
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;
+  background:transparent;cursor:pointer;margin:2px 0}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:rgba(255,255,255,.13)}
+input[type=range]::-moz-range-track{height:3px;background:rgba(255,255,255,.13)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:15px;height:15px;margin-top:-6px;background:var(--red);border:0;
+  box-shadow:0 0 9px rgba(224,27,27,.75)}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;background:var(--red);border:0;
+  box-shadow:0 0 9px rgba(224,27,27,.75)}
+input[type=range]:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]:focus-visible{outline:2px solid var(--red-hot);outline-offset:3px}
+
+.adv{border:1px solid var(--rule);background:rgba(0,0,0,.22)}
+.adv>summary{font-family:var(--disp);font-size:12px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-faint);padding:11px 13px;cursor:pointer;list-style:none}
+.adv>summary::-webkit-details-marker{display:none}
+.adv>summary::after{content:'+';float:right;font-family:var(--mono);color:var(--red)}
+.adv[open]>summary::after{content:'\2212'}
+.adv>summary:hover{color:var(--ink)}
+.adv>div{padding:0 13px 13px}
+.adv .lab:first-child{margin-top:0}
+
+.note-amber{border-left:2px solid var(--amber);padding:3px 0 3px 10px;margin-top:9px;
+  font-size:12px;line-height:1.5;color:var(--amber)}
+.err-inline{color:var(--red-hot)}
+
+.shot,.el{display:flex;gap:6px;align-items:flex-start;margin-top:6px}
+.shot input[type=text],.el select{flex:1;min-width:0}
+.shot input.sd{flex:0 0 62px;text-align:center;font-family:var(--mono)}
+.el{flex-wrap:wrap}
+.el .lab{flex:0 0 100%;margin:0 0 2px}
+.xbtn{flex:0 0 auto;width:32px;background:rgba(0,0,0,.34);border:1px solid var(--rule);
+  color:var(--ink-faint);cursor:pointer;font-size:15px;line-height:1;padding:8px 0;transition:.16s}
+.xbtn:hover{border-color:var(--red);color:var(--red-hot)}
+.rowlab{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--red);margin-top:9px}
 
 .go{width:100%;font-family:var(--disp);font-weight:700;font-size:14px;letter-spacing:.16em;
   text-transform:uppercase;color:#fff;cursor:pointer;padding:15px;border:none;
@@ -796,12 +842,26 @@ body.wide .lab{font-size:12.5px}
   var BASE=N8N+'/webhook/kling-form';
   var DOWNLOAD=N8N+'/webhook/kling-download';
 
-  var VID=[{v:'kling-t2v',l:'Kling 3.0 Pro / text'},{v:'kling-i2v',l:'Kling 3.0 Pro / image'}];
-  var IMG=[{v:'krea',l:'Krea 2 Large / $0.06'},{v:'nbp',l:'Nano Banana Pro / $0.15'}];
   var AR_VID=[['16:9','16:9'],['9:16','9:16'],['1:1','1:1']];
-  var AR_IMG=[['4:5','4:5'],['16:9','16:9'],['1:1','1:1']];
+  // Krea's own 8, straight from the live schema. 2.35:1 is anamorphic cinema
+  // and nothing else in the rig can produce it.
+  var AR_KREA=[['1:1','1:1'],['4:5','4:5'],['2:3','2:3'],['9:16','9:16'],
+               ['4:3','4:3'],['3:2','3:2'],['16:9','16:9'],['2.35:1','2.35']];
+  var AR_NBP=[['auto','Auto'],['1:1','1:1'],['4:5','4:5'],['9:16','9:16'],['3:2','3:2'],['16:9','16:9']];
 
   var pw='', type='video', dur='5', ar='16:9', res='2K', upf='2';
+  var crea='medium', shotType='customize', subjDet='';
+  var SHOTS=[], ELS=[];
+  // The mode IS the model now, so there is no engine dropdown to read.
+  function modelFor(t){
+    if(t==='video') return SRC.length ? 'kling-i2v' : 'kling-t2v';
+    if(t==='image') return 'krea';
+    if(t==='compose') return 'nbp';
+    return 'topaz';
+  }
+  function isGenUpscale(){return ['Redefine','Wonder','Wonder 3','Standard MAX'].indexOf($('upmodel').value)>=0}
+  function hasVoice(){return ELS.some(function(e){return e.voice && e.voice.trim()})}
+  function optVal(id,useId){return $(useId).checked ? $(id).value : null}
 
   // Two different problems, two different stores.
   //  - The passphrase gates SPENDING, so it expires. sessionStorage alone was not
@@ -894,7 +954,7 @@ body.wide .lab{font-size:12.5px}
   function enter(){
     show('scr-hub');chip('Ready','ok');$('guide-btn').hidden=false;
     document.body.classList.add('authed');
-    buildAR();buildModels();syncMode();paintCost();
+    syncMode();paintCost();
     loadHist();paintHist();
     resumeJob();
   }
@@ -973,57 +1033,190 @@ body.wide .lab{font-size:12.5px}
     });
   }
   function buildAR(){
-    var list=type==='video'?AR_VID:AR_IMG;
+    // Kling i2v has NO aspect_ratio parameter - the clip inherits the start
+    // image's shape. Showing the control there would be a control that lies.
+    var i2v = type==='video' && SRC.length>0;
+    $('row-ar').hidden = (type==='upscale' || i2v);
+    if($('row-ar').hidden) return;
+    var list = type==='video' ? AR_VID : (type==='image' ? AR_KREA : AR_NBP);
+    if(type==='compose' && !SRC.length) list=list.filter(function(x){return x[0]!=='auto'});
     if(list.map(function(x){return x[0]}).indexOf(ar)<0) ar=list[0][0];
     $('seg-ar').innerHTML=list.map(function(x){
       return '<button type="button" data-v="'+x[0]+'" aria-pressed="'+(x[0]===ar)+'">'+x[1]+'</button>';
     }).join('');
+    $('ar-hint').textContent = type==='image'
+      ? '2.35:1 is anamorphic cinema. Only Krea offers it.'
+      : (type==='compose' ? 'Auto keeps the shape of your sources.' : 'Kling offers these three.');
   }
-  function buildModels(){
-    var list=type==='video'?VID:IMG;
-    $('model').innerHTML=list.map(function(m){return '<option value="'+m.v+'">'+m.l+'</option>'}).join('');
-    if(type==='video') $('model').value = SRC.length ? 'kling-i2v' : 'kling-t2v';
-  }
-  function syncHint(){
-    if(type==='video'||type==='upscale') return;
-    $('hint').textContent = $('model').value==='krea'
-      ? 'Grok expands this into a full image brief. Krea is text-only and ignores the source tray.'
-      : 'Grok expands this into a full image brief. Every source in the tray is combined into one picture.';
-  }
+  var MODE_HINT={
+    video:'Kling 3.0 Pro. Billed per second of output.',
+    image:'Krea 2 Large. Draws from words alone, and will draw anyone.',
+    compose:'Nano Banana Pro. Merges the pictures you hand it. Refuses likenesses.',
+    upscale:'Topaz. Enlarges a picture you already have. No prompt needed.'
+  };
   function syncMode(){
-    var isVid=type==='video', isUps=type==='upscale', isImg=type==='image';
-    $('row-vid').hidden=!isVid;
-    $('row-ups').hidden=!isUps;
-    $('row-engine').hidden=isUps;
-    $('row-prompt').hidden=isUps;
-    $('row-ar').hidden=isUps;
-    $('row-res').hidden=!isImg;
-    $('row-seed').hidden=isUps;
-    $('pane-src').style.display=isVid&&false?'none':'';
+    var isVid=type==='video', isUps=type==='upscale',
+        isKrea=type==='image', isNbp=type==='compose';
+    $('mode-hint').textContent=MODE_HINT[type];
+    $('row-prompt').hidden = isUps;
+    $('row-shots').hidden  = !isVid;
+    $('row-vid').hidden    = !isVid;
+    $('row-krea').hidden   = !isKrea;
+    $('row-nbp').hidden    = !isNbp;
+    $('row-res').hidden    = !isNbp;
+    $('row-seed').hidden   = !(isKrea||isNbp);
+    $('row-ups').hidden    = !isUps;
+    $('row-endimg').hidden = !(isVid && SRC.length);
+    $('row-stylestr').hidden = !(isKrea && $('use-style').checked);
+    $('row-redefine').hidden = !(isUps && $('upmodel').value==='Redefine');
+    $('gen-warn').hidden     = !(isUps && isGenUpscale());
+    $('adv-vid').hidden  = !isVid;
+    $('adv-nbp').hidden  = !isNbp;
+    $('adv-ups').hidden  = !isUps;
+    $('adv-none').hidden = !isKrea;
     $('prompt').placeholder = isVid
       ? 'Describe the shot. Camera move, subject, light, mood, sound.'
-      : 'Describe the picture. Subject, style, light, framing.';
+      : (isKrea ? 'Describe the picture. Subject, style, light, framing.'
+                : 'Say what to build out of the sources. Name them: "the man in image 1 wearing the coat from image 2".');
     $('hint').textContent = isVid
-      ? 'Grok rewrites this into a full cinematic brief before it reaches the model.'
-      : ($('model').value === 'krea'
-          ? 'Grok expands this into a full image brief. Krea is text-only and ignores the source tray.'
-          : 'Grok expands this into a full image brief. Every source in the tray is combined into one picture.');
+      ? 'Grok rewrites this into a full cinematic brief before it reaches the model. Kling writes the audio from these words too.'
+      : (isKrea ? 'Grok expands this into a full image brief. Krea draws from words only.'
+                : 'Grok expands this into a full image brief. Order matters, and the tray is numbered so you can point at each one.');
     $('tray-note').textContent = isVid
-      ? 'Video uses the first source only.'
-      : (isUps ? 'Upscale uses the first source, at full resolution.' : '');
-    $('tray-note').hidden = !isVid && !isUps;
+      ? 'Video uses the first source as its opening frame.'
+      : (isUps ? 'Upscale uses the first source, at full resolution.'
+               : (isKrea ? 'Krea borrows the look of these, it cannot combine them.' : ''));
+    $('tray-note').hidden = isNbp;
     $('submit').textContent = isUps ? 'Upscale' : 'Generate';
-    buildModels();buildAR();
+    $('nbp-count').textContent = SRC.length
+      ? SRC.length+' source'+(SRC.length>1?'s':'')+' will be merged into one picture. The count is free.'
+      : 'Every source in the tray is merged into one picture. Up to 14, and the count is free.';
+    buildEnd(); buildAR();
+  }
+
+  // the end frame is chosen by tray position, which is how n8n addresses it
+  function buildEnd(){
+    var sel=$('end-img'), cur=sel.value;
+    sel.innerHTML='<option value="">Do not set an end frame</option>'+
+      SRC.map(function(s,i){
+        return '<option value="'+i+'">Image '+(i+1)+(i===0?' &mdash; loops seamlessly':'')+'</option>';
+      }).join('');
+    if(cur && parseInt(cur,10)<SRC.length) sel.value=cur;
   }
   seg($('seg-type'),function(v){type=v;syncMode();paintCost()});
-  seg($('seg-dur'),function(v){dur=v;paintCost()});
-  seg($('seg-ar'),function(v){ar=v});
   seg($('seg-res'),function(v){res=v;paintCost()});
-  seg($('seg-upf'),function(v){upf=v;paintCost()});
+  seg($('seg-crea'),function(v){crea=v;paintCost()});
+  seg($('seg-shot'),function(v){shotType=v});
+  seg($('seg-subj'),function(v){subjDet=v});
   $('seg-ar').addEventListener('click',function(e){var b=e.target.closest('button[data-v]');if(b)ar=b.dataset.v});
+
+  // sliders: each one shows its value, and an unchecked "set it myself" means
+  // the field is never sent at all so fal keeps its own default.
+  function slider(id,readId,fmt,after){
+    var s=$(id), r=readId&&$(readId);
+    function paint(){ if(r) r.textContent=fmt(s.value); if(after) after(); }
+    s.addEventListener('input',paint); paint();
+  }
+  slider('dur','dur-read',function(v){return v},function(){dur=$('dur').value;shotsWarn()});
+  slider('upf','upf-read',function(v){return parseFloat(v).toFixed(1)},function(){upf=$('upf').value;paintCost()});
+  slider('style-str','str-read',function(v){return parseFloat(v).toFixed(2)});
+  slider('up-crea','upc-read',function(v){return v});
+  slider('up-tex','upt-read',function(v){return v});
+  slider('cfg','cfg-read',function(v){return $('use-cfg').checked?parseFloat(v).toFixed(2):'model default'});
+  slider('saf','saf-read',function(v){return $('use-saf').checked?v:'model default (4)'});
+  slider('fstr','fs-read',function(v){return $('use-fstr').checked?parseFloat(v).toFixed(2):'model default'});
+  slider('sharp','sh-read',function(v){return parseFloat(v)?parseFloat(v).toFixed(2):'off'});
+  slider('denoise','dn-read',function(v){return parseFloat(v)?parseFloat(v).toFixed(2):'off'});
+  slider('fixc','fc-read',function(v){return parseFloat(v)?parseFloat(v).toFixed(2):'off'});
+
+  function pairGate(useId, slId, readId){
+    $(useId).addEventListener('change',function(){
+      $(slId).disabled=!$(useId).checked;
+      $(slId).dispatchEvent(new Event('input'));
+    });
+    $(slId).disabled=true;
+  }
+  pairGate('use-cfg','cfg','cfg-read');
+  pairGate('use-saf','saf','saf-read');
+  pairGate('use-fstr','fstr','fs-read');
+
   $('audio').addEventListener('change',paintCost);
-  $('model').addEventListener('change',function(){syncHint();paintCost()});
-  $('upmodel').addEventListener('change',paintCost);
+  $('websearch').addEventListener('change',paintCost);
+  $('use-style').addEventListener('change',function(){syncMode();paintCost()});
+  $('face').addEventListener('change',function(){$('face-rows').hidden=!$('face').checked});
+  $('upmodel').addEventListener('change',function(){syncMode();paintCost()});
+
+  /* ---------- shot list (Kling multi_prompt) ---------- */
+  function paintShots(){
+    var box=$('shots');
+    box.innerHTML=SHOTS.map(function(s,i){
+      return '<div class="shot"><input type="text" data-i="'+i+'" data-k="prompt" value="'+
+        String(s.prompt).replace(/"/g,'&quot;')+'" placeholder="what happens in shot '+(i+1)+'" aria-label="Shot '+(i+1)+' prompt">'+
+        '<input class="sd" type="number" min="1" max="15" data-i="'+i+'" data-k="duration" value="'+s.duration+'" aria-label="Shot '+(i+1)+' seconds">'+
+        '<button class="xbtn" type="button" data-del="'+i+'" aria-label="Remove shot '+(i+1)+'">&times;</button></div>';
+    }).join('');
+    shotsWarn();
+  }
+  // Separate from paintShots on purpose: rebuilding the list's innerHTML while
+  // someone is typing in it destroys the field and the caret with it.
+  function shotsWarn(){
+    var tot=SHOTS.reduce(function(a,s){return a+(parseInt(s.duration,10)||0)},0);
+    var w=$('shots-warn');
+    w.hidden = !$('use-shots').checked || !SHOTS.length || tot===parseInt(dur,10);
+    w.textContent = 'Shots total '+tot+'s, clip is '+dur+'s. They must match.';
+    paintCost();
+  }
+  $('use-shots').addEventListener('change',function(){
+    var on=$('use-shots').checked;
+    $('shots').hidden=!on; $('add-shot').hidden=!on;
+    if(on && !SHOTS.length){ SHOTS=[{prompt:'',duration:String(dur)}]; }
+    $('shots-warn').hidden = !on;
+    paintShots();
+  });
+  $('add-shot').onclick=function(){ SHOTS.push({prompt:'',duration:'2'}); paintShots() };
+  $('shots').addEventListener('input',function(e){
+    var t=e.target; if(t.dataset.i===undefined) return;
+    SHOTS[+t.dataset.i][t.dataset.k]= String(t.value);
+    shotsWarn();   // never paintShots() here - it would eat the field being typed in
+  });
+  $('shots').addEventListener('click',function(e){
+    var b=e.target.closest('[data-del]'); if(!b) return;
+    SHOTS.splice(+b.dataset.del,1); paintShots();
+  });
+
+  /* ---------- characters (Kling elements) ---------- */
+  function trayOpts(sel,skip){
+    return SRC.map(function(s,i){
+      return '<option value="'+i+'"'+(i===sel?' selected':'')+'>Image '+(i+1)+'</option>';
+    }).join('');
+  }
+  function paintEls(){
+    $('elements').innerHTML=ELS.map(function(e,i){
+      return '<div class="el"><div class="lab">@Element'+(i+1)+'</div>'+
+        '<select data-i="'+i+'" data-k="frontal" aria-label="Front image for element '+(i+1)+'">'+trayOpts(e.frontal)+'</select>'+
+        '<input type="text" data-i="'+i+'" data-k="voice" value="'+String(e.voice||'').replace(/"/g,'&quot;')+
+          '" placeholder="voice id (optional)" aria-label="Voice id for element '+(i+1)+'">'+
+        '<button class="xbtn" type="button" data-del="'+i+'" aria-label="Remove element '+(i+1)+'">&times;</button></div>';
+    }).join('');
+    paintCost();
+  }
+  $('use-el').addEventListener('change',function(){
+    var on=$('use-el').checked;
+    $('elements').hidden=!on; $('add-el').hidden=!on;
+    if(on && !ELS.length && SRC.length) ELS=[{frontal:0,refs:[],voice:''}];
+    paintEls();
+  });
+  $('add-el').onclick=function(){ ELS.push({frontal:0,refs:[],voice:''}); paintEls() };
+  $('elements').addEventListener('input',function(e){
+    var t=e.target; if(t.dataset.i===undefined) return;
+    var el=ELS[+t.dataset.i];
+    if(t.dataset.k==='frontal') el.frontal=parseInt(t.value,10); else el.voice=t.value;
+    paintCost();
+  });
+  $('elements').addEventListener('click',function(e){
+    var b=e.target.closest('[data-del]'); if(!b) return;
+    ELS.splice(+b.dataset.del,1); paintEls();
+  });
 
   $('seed-roll').onclick=function(){$('seed').value=String(Math.floor(Math.random()*1e9))};
   $('seed-lock').onclick=function(){
@@ -1039,9 +1232,10 @@ body.wide .lab{font-size:12.5px}
     if(mp<=96) return 0.32;
     return 1.36;
   }
+  // Every figure here is quoted from fal's own model pages, not estimated.
   function cost(){
     if(type==='video'){
-      var per=$('audio').checked?0.168:0.112;
+      var per = hasVoice() ? 0.196 : ($('audio').checked ? 0.168 : 0.112);
       return +(parseInt(dur,10)*per).toFixed(3);
     }
     if(type==='upscale'){
@@ -1050,31 +1244,40 @@ body.wide .lab{font-size:12.5px}
       var f=parseFloat(upf);
       return topazTier((s.w*f*s.h*f)/1e6);
     }
-    if($('model').value==='krea') return 0.06;
-    return res==='4K'?0.30:0.15;
+    if(type==='image'){
+      // style references are the only thing that moves Krea off $0.060
+      return ($('use-style').checked && SRC.length) ? 0.065 : 0.060;
+    }
+    var c = res==='4K' ? 0.30 : 0.15;
+    if($('websearch').checked) c += 0.015;
+    return +c.toFixed(3);
   }
   function paintCost(){
     var c=cost(), el=$('cost');
-    el.textContent='$'+c.toFixed(2);
+    el.textContent=(type==='upscale'&&isGenUpscale()&&c?'from $':'$')+c.toFixed(2);
     el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick');
     var eng,det;
     if(type==='video'){
       eng='Kling 3.0 Pro';
-      det=dur+'s, '+($('audio').checked?'with audio':'no audio');
+      det = dur+'s, '+(hasVoice() ? 'voice \u2014 $0.196/s'
+                    : ($('audio').checked?'with audio':'no audio'));
+      if(SHOTS.length) det += ' \u00b7 '+SHOTS.length+' shots';
     }else if(type==='upscale'){
-      eng='Topaz';
-      var s=SRC[0];
-      if(!s){ det='add a source first'; }
-      else if(!s.w){ det='size unknown'; }
-      else {
-        var f=parseFloat(upf);
-        det=(s.w*f)+'×'+(s.h*f)+', '+(((s.w*f*s.h*f)/1e6).toFixed(1))+' MP';
-      }
+      eng='Topaz \u2014 '+$('upmodel').value;
+      var s=SRC[0], f=parseFloat(upf);
+      if(!s) det='add a source first';
+      else if(!s.w) det='size unknown';
+      else det=Math.round(s.w*f)+'\u00d7'+Math.round(s.h*f)+', '+(((s.w*f*s.h*f)/1e6).toFixed(1))+' MP';
+      if(isGenUpscale()) det += ' \u00b7 price not published';
+    }else if(type==='image'){
+      eng='Krea 2 Large';
+      det = ($('use-style').checked&&SRC.length)
+        ? SRC.length+' style ref'+(SRC.length>1?'s':'')+', '+crea
+        : crea+', draws anyone';
     }else{
-      var m=$('model').value;
-      eng = m==='krea' ? 'Krea 2 Large' : 'Nano Banana Pro';
-      if(m==='krea') det = SRC.length ? 'ignores your sources' : 'draws anyone';
-      else det = SRC.length ? (SRC.length+' source'+(SRC.length>1?'s':'')+' at '+res) : res+', refuses likenesses';
+      eng='Nano Banana Pro';
+      det = (SRC.length? SRC.length+' source'+(SRC.length>1?'s':'')+' at '+res : res+', refuses likenesses');
+      if($('websearch').checked) det += ' \u00b7 web +$0.015';
     }
     $('cost-sub').innerHTML=eng+'<br>'+det;
     var lit=Math.max(0,Math.min(12,Math.round(c/2.52*12)));
@@ -1123,34 +1326,77 @@ body.wide .lab{font-size:12.5px}
   function submit(){
     genErr('');
     if(type==='upscale' && !SRC.length){ genErr('Add a source image to upscale.'); return }
-    if(type!=='upscale' && !$('prompt').value.trim() && !SRC.length){
-      genErr('Write a prompt, or add a source image.'); return;
+    if(type==='compose' && !SRC.length && !$('prompt').value.trim()){ genErr('Write a prompt, or add sources to combine.'); return }
+    if(type==='image' && !$('prompt').value.trim()){ genErr('Krea draws from words. Write a prompt.'); return }
+    if(type==='video' && !$('prompt').value.trim() && !SRC.length && !($('use-shots').checked&&SHOTS.length)){
+      genErr('Write a prompt, add an opening frame, or write a shot list.'); return;
+    }
+    if(type==='video' && $('use-shots').checked && SHOTS.length){
+      var tot=SHOTS.reduce(function(a,s){return a+(parseInt(s.duration,10)||0)},0);
+      if(tot!==parseInt(dur,10)){ genErr('Shot durations add up to '+tot+'s but the clip is '+dur+'s.'); return }
     }
     var fd=new FormData();
+    // Omission is meaningful: a field left out becomes null upstream and is
+    // dropped from the fal body, so the model applies its OWN default. Never
+    // send a placeholder to mean "unset".
+    function put(k,v){ if(v!==null&&v!==undefined&&v!=='') fd.append(k,v) }
     fd.append('action','generate');
     fd.append('password',pw);
     fd.append('mode', type==='upscale'?'upscale':'generate');
-    fd.append('prompt',$('prompt').value.trim());
-    fd.append('aspect_ratio',ar);
-    fd.append('duration',dur);
-    fd.append('resolution',res);
-    if($('audio').checked) fd.append('generate_audio','on');
+    fd.append('model', modelFor(type));
+    if(type!=='upscale') fd.append('prompt',$('prompt').value.trim());
+    if(!$('row-ar').hidden) put('aspect_ratio',ar);
+
     if(type==='upscale'){
-      fd.append('model','nbp');
       fd.append('upscale_factor',upf);
       fd.append('upscale_model',$('upmodel').value);
+      if(!$('face').checked) fd.append('face_enhancement','off'); else fd.append('face_enhancement','on');
+      put('face_strength', optVal('fstr','use-fstr'));
+      put('subject_detection', subjDet);
+      put('sharpen',  parseFloat($('sharp').value)   ? $('sharp').value   : null);
+      put('denoise',  parseFloat($('denoise').value) ? $('denoise').value : null);
+      put('fix_compression', parseFloat($('fixc').value) ? $('fixc').value : null);
+      if($('upmodel').value==='Redefine'){
+        put('up_prompt', $('up-prompt').value.trim());
+        put('up_creativity', $('up-crea').value);
+        put('up_texture', $('up-tex').value);
+      }
       // The one place nothing is shrunk - upscaling a downscaled file is pointless.
       var s0=SRC[0];
       if(s0.file) fd.append('image_0',s0.file,s0.name);
       else fd.append('image_0',dataUrlToBlob(s0.ref),'source.jpg');
+
+    }else if(type==='video'){
+      fd.append('duration',dur);
+      if($('audio').checked||hasVoice()) fd.append('generate_audio','on');
+      put('cfg_scale', optVal('cfg','use-cfg'));
+      put('negative_prompt', $('neg').value.trim());
+      if(shotType!=='customize') fd.append('shot_type',shotType);
+      if($('use-shots').checked && SHOTS.length) fd.append('multi_prompt', JSON.stringify(SHOTS));
+      if($('end-img').value!=='') fd.append('end_image_idx', $('end-img').value);
+      if($('use-el').checked && ELS.length){
+        fd.append('elements', JSON.stringify(ELS.map(function(e){
+          return { frontal: e.frontal, refs: e.refs, voice_id: e.voice||'' };
+        })));
+      }
+      SRC.forEach(function(s,i){ fd.append('image_'+i, dataUrlToBlob(s.ref), 'src'+i+'.jpg') });
+
     }else{
-      fd.append('model',$('model').value);
-      var seedv=$('seed').value.trim();
-      if(seedv) fd.append('seed',seedv);
-      var useSrc = type==='video' ? SRC.slice(0,1) : SRC;
-      useSrc.forEach(function(s,i){
-        fd.append('image_'+i, dataUrlToBlob(s.ref), 'src'+i+'.jpg');
-      });
+      put('seed', $('seed').value.trim());
+      if(type==='image'){
+        fd.append('creativity', crea);
+        if($('use-style').checked && SRC.length){
+          fd.append('use_style_refs','on');
+          fd.append('style_strength',$('style-str').value);
+          SRC.forEach(function(s,i){ fd.append('image_'+i, dataUrlToBlob(s.ref), 'src'+i+'.jpg') });
+        }
+      }else{
+        fd.append('resolution',res);
+        put('safety_tolerance', optVal('saf','use-saf'));
+        put('system_prompt', $('sysp').value.trim());
+        if($('websearch').checked) fd.append('enable_web_search','on');
+        SRC.forEach(function(s,i){ fd.append('image_'+i, dataUrlToBlob(s.ref), 'src'+i+'.jpg') });
+      }
     }
 
     var priced=cost();
