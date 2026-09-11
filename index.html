@@ -240,9 +240,12 @@ input[type=range]:focus-visible{outline:2px solid var(--red-hot);outline-offset:
 .hub-bg{position:absolute;inset:0;z-index:0;background:radial-gradient(120% 90% at 50% 40%,#160d10,#050304 72%)}
 .hub-bg video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
   display:block;opacity:0;transition:opacity 1.1s linear}
-.hub-bg video.lead{opacity:.62}
+.hub-bg video.lead{opacity:.74}
+/* The scrim is what keeps the heading and the cards readable, so it is lifted
+   only in the middle band where the disk actually is: measured +25% luminance
+   across the video, +15% behind the heading, +10% behind the cards. */
 .hub-bg::after{content:'';position:absolute;inset:0;background:
-  linear-gradient(180deg,rgba(5,3,4,.72) 0%,rgba(5,3,4,.27) 36%,rgba(5,3,4,.86) 100%)}
+  linear-gradient(180deg,rgba(5,3,4,.70) 0%,rgba(5,3,4,.21) 36%,rgba(5,3,4,.84) 100%)}
 .hub-in{position:relative;z-index:1;padding:34px 20px 26px;max-width:1000px;margin:0 auto}
 body.wide .hub.on{min-height:clamp(560px,calc(100dvh - 140px),1240px);display:flex;align-items:stretch}
 body.wide .hub-in{width:100%;max-width:none;padding:42px 46px 40px;
@@ -948,19 +951,39 @@ body.wide .lab{font-size:12.5px}
     <div class="screen" id="scr-guide">
 
             <div class="spec">
-        <h4>What this is</h4>
-        <div class="note">Four jobs, one console. <b>Video</b> is Kling 3.0 Pro, <b>Image</b> is Krea, <b>Compose</b> is Nano Banana Pro, <b>Upscale</b> is Topaz. Picking the job picks the engine, so every control you can see belongs to the model you are actually using.</div>
-        <div class="note">You only pay for output that arrives. <b>A refusal, a crash, or a run you walk away from costs nothing.</b> fal bills on delivery.</div>
-        <div class="note">Whatever you type is rewritten by Grok into a fuller brief before the model sees it, so <b>plain English beats keyword soup</b>. Say what you want, not what you think a model wants to hear.</div>
+        <h4>Start here</h4>
+        <div class="note"><b>You describe something, and a few minutes later it exists.</b> A photo of a place that was never photographed. A short film of your dog on the moon. An old picture from a shoebox, sharp again.</div>
+        <div class="note">There are four things this can do, and you pick one before you start:</div>
+        <table class="tbl">
+          <tr><td>Video</td><td class="d">A short clip, with sound, made from a sentence.</td></tr>
+          <tr><td>Image</td><td class="d">A single picture, made from a sentence.</td></tr>
+          <tr><td>Compose</td><td class="d">Hand it several photos, get one picture with all of them in it.</td></tr>
+          <tr><td>Upscale</td><td class="d">Take a picture you already have and make it bigger and clearer.</td></tr>
+        </table>
+        <div class="note">Each one uses a different piece of software behind the scenes, and they are good at different things &mdash; but you never have to choose between them. <b>Pick what you want to make, and the right one is already loaded.</b></div>
+        <div class="note"><b>Just write like you are talking to a person.</b> Your words get expanded into a longer, more detailed brief before anything is made, so you do not need special phrasing or a list of keywords. Say what you want to see.</div>
+        <div class="note"><b>Every run costs real money</b> &mdash; a few cents for a picture, more for video. The exact price is on the button before you press it, and it is never a surprise. <b>If nothing comes back, you are not charged.</b> Refusals, crashes and runs you give up on are all free.</div>
+      </div>
+
+      <div class="spec">
+        <h4>Words you will see</h4>
+        <table class="tbl">
+          <tr><td>Prompt</td><td class="d">What you type. The description of what you want.</td></tr>
+          <tr><td>Render</td><td class="d">One attempt. You press Generate, it thinks, a picture or clip comes back.</td></tr>
+          <tr><td>Source</td><td class="d">A photo <i>you</i> supply, to be combined, enlarged, or used as a starting frame.</td></tr>
+          <tr><td>Aspect&nbsp;ratio</td><td class="d">The shape of the result. Tall like a phone, wide like a TV, or square.</td></tr>
+          <tr><td>Seed</td><td class="d">A number that decides all the small stuff. Explained properly below.</td></tr>
+        </table>
       </div>
 
       <div class="spec">
         <h4>Your first four runs</h4>
+        <div class="note">In this order. It takes about ten minutes and costs well under a dollar, and by the end you will know how the whole thing behaves.</div>
         <ol class="steps">
-          <li><span>Start on <b>Upscale</b> with a photo off your phone. <b>$0.08</b>, no prompt, back in under a minute &mdash; the cheapest way to prove the whole chain works.</span></li>
-          <li><span>Then <b>Image</b>, one honest sentence, <b>$0.06</b>. Write down the seed it comes back with.</span></li>
-          <li><span>Run it again with <b>that seed locked</b> and one word changed. Whatever moves is what that word did. This is the single most useful habit in the rig.</span></li>
-          <li><span>Then <b>Video</b> at <b>3 seconds, audio off</b> &mdash; <b>$0.336</b>, the cheapest real clip. Fifteen seconds with audio is $2.52, so learn on the short ones.</span></li>
+          <li><span>Pick <b>Upscale</b> and give it any photo from your phone. <b>$0.08</b>, nothing to write, back in under a minute. Start here because there is nothing to get wrong &mdash; it just proves everything works.</span></li>
+          <li><span>Now <b>Image</b>. One honest sentence about something you would like to see. <b>$0.06</b>. When it arrives, look at the bottom of the picture: there is a number labelled <b>seed</b>. Tap it.</span></li>
+          <li><span>Change <b>one word</b> of your sentence and run it again. Because you tapped the seed, everything else stays put &mdash; so whatever changes in the picture is what that word did. <b>This is the trick that teaches you the most, and it is the reason the seed exists.</b></span></li>
+          <li><span>Finally <b>Video</b>, set to <b>3 seconds with sound off</b> &mdash; <b>$0.336</b>, the cheapest real clip. Video is the expensive one: fifteen seconds with sound is <b>$2.52</b>, so learn on short ones first.</span></li>
         </ol>
       </div>
 
@@ -973,15 +996,17 @@ body.wide .lab{font-size:12.5px}
           <tr><td>Upscale</td><td class="n">$0.08</td><td class="d">Topaz. Enlarges something you already have. No prompt.</td></tr>
         </table>
         <div class="note">Image and Compose are <b>not a cheap and an expensive version of the same thing</b>. Krea is the one that will draw anyone; Nano Banana Pro is the one that can combine your photos. Pick on what you need, not on price.</div>
-        <div class="note">If Nano Banana Pro refuses your subject, Krea is the fallback and it costs less. Nothing unfiltered beats Krea at this price &mdash; that was measured, so there is no better model waiting to be found.</div>
+        <div class="note">If Compose refuses to draw your subject, switch to Image &mdash; it will draw almost anything, and it costs less. There is no third option hiding somewhere that does both; this pair is as good as it currently gets.</div>
       </div>
 
       <div class="spec">
         <h4>Seed</h4>
-        <div class="note">Every render starts from a random number. That number is the <b>seed</b>, and it settles everything you did not specify: which way a face turns, where the light falls, how a crowd is arranged.</div>
-        <div class="note"><b>Same seed and same prompt gives the same picture, every time.</b> Change the seed and you get a completely different take on the same description.</div>
-        <div class="note">That is what the lock is for. Run something you like, <b>lock the seed</b>, then change one word. Whatever moves is what that word actually did. Without the lock you change a word, get a different picture, and never learn which of the two caused it.</div>
-        <div class="note">The dice rolls a new number by hand; leave the field empty and every run rolls its own. <b>Image and Compose both take a seed. Video and Upscale have none.</b></div>
+        <div class="note">You will never write a sentence detailed enough to describe a whole picture. You might ask for <i>a man in a red coat on a beach</i> &mdash; but which way is he facing? Morning or evening? Is the beach empty? <b>Something has to decide all of that, and that something is a random number called the seed.</b></div>
+        <div class="note">Think of it as which shuffle of the deck you were dealt. The same words with the same seed always give the same picture. The same words with a different seed give a completely different take on the same idea &mdash; still a man in a red coat on a beach, but a new one.</div>
+        <div class="note"><b>Here is why you should care.</b> Say a picture comes back that you nearly love, and you want the coat to be blue. Change the word and you also get a new random seed &mdash; so you get a different beach, a different man, a different everything. The thing you liked is gone.</div>
+        <div class="note">So keep the seed and change the word. <b>Now the only thing that can move is the coat.</b> That is how you steer a picture instead of gambling on it, and it is the most useful habit here.</div>
+        <div class="note">In practice: when a picture arrives, its seed is shown just underneath it. <b>Tap that number</b> and it drops into the Seed box, ready for your next run. The padlock holds it there, the dice rolls a fresh one, and an empty box means a new random seed every time &mdash; which is what you want while you are still exploring.</div>
+        <div class="note">Only <b>Image</b> and <b>Compose</b> have a seed. Video and Upscale do not, so the box is not shown for those two.</div>
       </div>
 
       <div class="spec">
@@ -992,14 +1017,14 @@ body.wide .lab{font-size:12.5px}
           <tr><td>Video</td><td class="d" colspan="2">First source is the opening frame. Any source can be the last one.</td></tr>
           <tr><td>Upscale</td><td class="d" colspan="2">First source, at full resolution.</td></tr>
         </table>
-        <div class="note">Sources are shrunk to 1536px before they are sent, so several photos stay quick to upload. <b>Upscale is the exception</b> &mdash; it sends the original untouched, which is the entire point of it.</div>
+        <div class="note">Photos you add get shrunk a little before being sent, so adding several does not mean a long upload. <b>Upscale is the exception</b> and always sends your original at full size &mdash; shrinking a picture you are about to enlarge would rather defeat the point.</div>
       </div>
 
       <div class="spec">
         <h4>Image &mdash; Krea</h4>
         <div class="note"><b>Creativity</b> is how far Krea may drift from your words. <b>Raw</b> takes them literally, <b>High</b> reinterprets freely. Medium is the model's own default and the place to start.</div>
         <div class="note">Eight aspect ratios, including <b>2.35:1</b> &mdash; anamorphic cinema, the widest shape in the rig. Only Krea offers it.</div>
-        <div class="note"><b>Krea uses the seed, and it uses your sources.</b> An earlier version of this guide said it ignored both. That was wrong about the model, and the rig was not sending either one. Both are wired now.</div>
+        <div class="note"><b>Image uses the seed, and it can use your photos too</b> &mdash; though not in the way you might expect. See the next line.</div>
         <div class="note">It treats sources as <b>style references</b>, not as content &mdash; it borrows their look, it does not put them in the picture. Tick <b>Use sources as style references</b> and set the strength. That is the only thing on Krea that costs extra, and it is half a cent. <b>To actually combine photos, use Compose.</b></div>
       </div>
 
@@ -1007,8 +1032,8 @@ body.wide .lab{font-size:12.5px}
         <h4>Compose &mdash; Nano Banana Pro</h4>
         <div class="note">Every source in the tray is merged into <b>one</b> picture. Up to 14 of them, and <b>the number you put in is free</b> &mdash; you are billed per picture that comes out. Give it a face, a jacket and a room, and ask for all three together.</div>
         <div class="note">Order matters to the model and the tray is numbered, so describe them the same way: <b>the man in image 1 wearing the coat from image 2</b>.</div>
-        <div class="note"><b>2K is the floor worth using.</b> fal bills 1K and 2K the same, so there is no 1K button &mdash; it could only ever have cost you detail for free. 4K is double, and earns it only for print or a big screen.</div>
-        <div class="note">Under Advanced: <b>Content filter</b> runs 1 to 6, and every refusal we have ever had ran at the default 4. <b>It has never been tried higher.</b> <b>Standing instruction</b> steers style across the whole request, separately from the prompt. <b>Let it check the web</b> is for a real place, product or person the model may not know, and costs a penny and a half.</div>
+        <div class="note"><b>Always use 2K.</b> There is no 1K button because 1K costs exactly the same and gives you less. 4K costs double and is only worth it for printing, or a very big screen.</div>
+        <div class="note">Under Advanced: <b>Content filter</b> runs from 1 to 6 and sits at 4. Every refusal so far happened at that setting, and nobody has tried loosening it yet. <b>Standing instruction</b> steers style across the whole request, separately from the prompt. <b>Let it check the web</b> is for a real place, product or person the model may not know, and costs a penny and a half.</div>
       </div>
 
       <div class="spec">
@@ -1018,7 +1043,7 @@ body.wide .lab{font-size:12.5px}
           <tr><td>With audio</td><td class="n">$0.168</td><td class="d">Half again as much.</td></tr>
           <tr><td>With a voice</td><td class="n">$0.196</td><td class="d">Giving a named character a voice moves the whole clip to this rate.</td></tr>
         </table>
-        <div class="note">Reckon on about <b>44 seconds of rendering per second of video</b>. A 10 second clip is roughly 7 minutes.</div>
+        <div class="note">Expect about <b>44 seconds of waiting for every second of video</b>, so a 10 second clip takes roughly 7 minutes. Go and do something else &mdash; it keeps going without you, and you can even close the tab and come back.</div>
         <div class="note"><b>The sound is written from your words.</b> A prompt with no sound cues comes back nearly silent. Name the song, the line of dialogue, the room tone &mdash; whatever you want to hear, say it.</div>
         <div class="note">Start from a photo and the clip <b>copies that photo's shape</b>. The aspect ratio buttons disappear, because Kling has no such setting when it starts from an image. If you want a 9:16 clip, start from a 9:16 picture.</div>
       </div>
@@ -1028,7 +1053,7 @@ body.wide .lab{font-size:12.5px}
         <div class="note"><b>Direct it shot by shot.</b> One paragraph asks the model to guess where a move happens; a shot list tells it. The durations have to add up to the clip length and the rig will not let you submit if they do not. This is the real answer to a camera move Kling keeps ignoring.</div>
         <div class="note"><b>Name a character from the tray.</b> A front-on picture plus up to three other angles becomes <b>@Element1</b>, and you call it that in the prompt. Use it to hold the same face, or the same jacket, across a whole clip. Giving it a voice makes it speak &mdash; and moves the clip to $0.196 a second.</div>
         <div class="note"><b>End on</b> picks which source is the last frame. Ending on the opening frame gives a clip that loops with no cut, and it is free.</div>
-        <div class="note"><b>Prompt adherence</b>, under Advanced, is the lever never yet tried on the orbit problem. Higher sticks closer to your words and further from the source picture. Leave it alone and Kling uses its own default.</div>
+        <div class="note"><b>Prompt adherence</b>, under Advanced, decides how literally your words are followed. Turn it up and the clip sticks closer to what you asked for and drifts further from the starting photo. Leave it alone unless a camera move keeps getting ignored &mdash; then it is worth a try.</div>
         <div class="note">All of this is <b>free</b>. Shot lists, characters, end frames, adherence and keep-out words change the clip, never the bill.</div>
       </div>
 
