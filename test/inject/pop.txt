@@ -1,0 +1,74 @@
+<script src="build/imgs.js"></script>
+<script>
+(function(){
+  var q=new URLSearchParams(location.search),
+      mode=q.get('m')||'image', panel=q.get('p')||'pane-ctl',
+      shut=q.get('shut')==='1', full=q.get('full')==='1', scr=q.get('s')||'scr-console';
+  function $(i){return document.getElementById(i)}
+  // An honest stub: auth answers like auth, submit like submit, a poll like a
+  // poll. A fake that answers the wrong shape leaves the app half-started.
+  window.fetch=function(u,o){
+    var url=String(u);
+    if(/jobId=/.test(url)) return J({status:'done',gen_type:'image',width:1536,height:864,
+      filename:'krea-salt-flat.png',urls:[IMG.RES]});
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='generate') return J({status:'queued',jobId:'harness-1'});
+    return Promise.reject(new Error('harness: no network'));
+  };
+  function J(o){return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve(o)}})}
+  function file(dataUri,name){
+    var s=atob(dataUri.split(',')[1]), a=new Uint8Array(s.length);
+    for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);
+    return new File([a],name,{type:'image/png'});
+  }
+  addEventListener('load',function(){
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){
+      document.querySelector('.card[data-go="'+mode+'"]').click();
+      if(!full) return finish();
+      $('prompt').value='a lone figure crossing a salt flat at dusk, anamorphic, long lens, dust hanging in the air';
+      $('prompt').dispatchEvent(new Event('input',{bubbles:true}));
+      var dt=new DataTransfer();
+      [['S1','portrait.png'],['S2','jacket.png'],['S3','room.png']].forEach(function(p){
+        dt.items.add(file(IMG[p[0]],p[1])); });
+      $('file').files=dt.files;
+      $('file').dispatchEvent(new Event('change',{bubbles:true}));
+      // let the app run a whole render through its own code path
+      setTimeout(function(){ $('submit').click(); }, 500);
+      setTimeout(finish, 22000);
+    },250);
+    function finish(){
+      var c=$('scr-console');
+      if(scr!=='scr-console'){
+        ['scr-login','scr-guide'].forEach(function(i){$(i).classList.toggle('on',i===scr)});
+        $('scr-hub').classList.toggle('on',scr==='scr-hub'); c.classList.remove('on');
+      }
+      if(shut){
+        // Use the app's OWN collapse, never hand-set the attributes: doing it by
+        // hand left the tab styled as pressed and put a phantom highlight in a
+        // preview I nearly shipped as a screenshot.
+        if(!c.classList.contains('sheet-shut'))
+          document.querySelector('#sheet-tabs button[aria-pressed=true]')
+            ? document.querySelector('#sheet-tabs button[aria-pressed=true]').click()
+            : $('sheet-close').click();
+      }else{
+        c.dataset.panel=panel; c.classList.remove('sheet-shut');
+        [].forEach.call($('sheet-tabs').querySelectorAll('button[data-p]'),function(b){
+          b.setAttribute('aria-pressed',String(b.dataset.p===panel))});
+      }
+      var S=String.fromCharCode(167), R={};
+      var tabs=[].map.call($('sheet-tabs').querySelectorAll('button[data-p]'),function(b){
+        var cs=getComputedStyle(b);
+        return {t:b.textContent.trim().slice(0,7), pressed:b.getAttribute('aria-pressed'),
+                shadow:cs.boxShadow==='none'?'none':cs.boxShadow.slice(0,30),
+                borderTop:cs.borderTopColor, bg:cs.backgroundColor};});
+      R.tabs=tabs;
+      R.consoleClass=$('scr-console').className;
+      R.tabsBarBorderTop=getComputedStyle($('sheet-tabs')).borderTopColor;
+      R.fitVisible=getComputedStyle($('fitbtn')).display;
+      document.title=S+JSON.stringify(R)+S;
+    }
+  });
+})();
+</script>

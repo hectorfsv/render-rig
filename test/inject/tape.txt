@@ -1,0 +1,52 @@
+<script>
+(function(){
+  var S=String.fromCharCode(167), out=[];
+  window.fetch=function(u,o){var b=o&&o.body,a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth')return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    return Promise.reject(new Error('x'));};
+  function $(i){return document.getElementById(i)}
+  addEventListener('load',function(){
+    $('pw').value='x';$('unlock').click();
+    setTimeout(function(){
+      document.querySelector('.card[data-go="image"]').click();
+      var rail=document.querySelector('.rail'), tape=document.querySelector('.tape'), tin=document.querySelector('.tape-in');
+      var spans=tin.querySelectorAll('span');
+      var tr=rail.getBoundingClientRect(), tp=tape.getBoundingClientRect();
+      // one copy = distance between the start of span 1 and span 2
+      var a=spans[0].getBoundingClientRect(), b=spans[1].getBoundingClientRect();
+      var copy=Math.abs(b.top-a.top);
+      out.push('rail '+Math.round(tr.width)+'x'+Math.round(tr.height)+
+               '  tape height '+Math.round(tp.height)+
+               '  copies '+spans.length+'  one copy '+copy.toFixed(1));
+      out.push('tape/copies = '+(tp.height/spans.length).toFixed(1)+
+               ' vs measured copy '+copy.toFixed(1)+
+               '  -> '+(Math.abs(tp.height/spans.length-copy)<1.5?'SEAMLESS (12.5% == one copy)':'*** SEAM: translate does not equal one copy'));
+      out.push('tape longer than rail + one copy? '+
+               (tp.height > tr.height+copy ? 'yes ('+Math.round(tp.height)+' > '+Math.round(tr.height+copy)+')'
+                : '*** NO - a gap will appear ('+Math.round(tp.height)+' <= '+Math.round(tr.height+copy)+')'));
+      out.push('text: "'+spans[0].textContent.replace(/ /g,'_')+'"');
+      out.push('font-size '+getComputedStyle(tin).fontSize+
+               '  anim '+getComputedStyle(tape).animationName+
+               '  overflow '+getComputedStyle(rail).overflow+
+               '  align '+getComputedStyle(rail).alignItems);
+      // direction: sample the transform at two phases
+      function at(pct){
+        tape.style.animation='none';
+        tape.style.transform='translateY('+pct+'%)';
+        return spans[0].getBoundingClientRect().top;
+      }
+      var y0=at(0), y1=at(-12.5);
+      out.push('screen y at 0% = '+Math.round(y0)+', at -12.5% = '+Math.round(y1)+
+               '  -> moves '+(y1<y0?'UPWARD':'*** DOWNWARD'));
+      tape.style.animation=''; tape.style.transform='';
+      out.push('rail height vs panel height: '+Math.round(rail.getBoundingClientRect().height)+
+     ' vs '+Math.round(document.querySelector('.panel').getBoundingClientRect().height)+
+     (Math.abs(rail.getBoundingClientRect().height-document.querySelector('.panel').getBoundingClientRect().height)<3
+       ?'  -> rail matches the panel':'  *** rail is sized by the tape'));
+      out.push('page hscroll '+(document.documentElement.scrollWidth-innerWidth)+
+               '  vscroll '+(document.documentElement.scrollHeight-innerHeight));
+      document.title=S+out.join('\n')+S;
+    },250);
+  });
+})();
+</script>

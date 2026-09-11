@@ -1,0 +1,73 @@
+<script>
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search);
+  window.fetch=function(u,o){var b=o&&o.body,a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth')return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    return Promise.reject(new Error('no net'));};
+  function $(i){return document.getElementById(i)}
+  function vis(el){ if(!el) return false; var r=el.getBoundingClientRect();
+    return r.width>0&&r.height>0&&getComputedStyle(el).display!=='none'; }
+  function onScreen(el){ var r=el.getBoundingClientRect();
+    return r.top>=-1 && r.bottom<=innerHeight+1 && r.width>0; }
+  function hit(el){var r=el.getBoundingClientRect();
+    if(r.width<1||r.height<1)return 'zero';
+    if(r.top<0||r.bottom>innerHeight)return 'offscreen';
+    var e=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+    return e&&(el.contains(e)||e.contains(el))?'yes':'NO';}
+  function T(c,msg){ out.push((c?'PASS':'FAIL')+'  '+msg); }
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){
+      document.querySelector('.card[data-go="'+(q.get('m')||'image')+'"]').click();
+      setTimeout(function(){
+        var d=document.documentElement, con=$('scr-console');
+        T(d.scrollWidth<=innerWidth, 'no horizontal overflow ('+d.scrollWidth+'<='+innerWidth+')');
+        var mk=document.querySelector('.mark');
+        T(mk.scrollWidth<=Math.ceil(mk.getBoundingClientRect().width),
+          'header title does not paint over the buttons (needs '+mk.scrollWidth+
+          ', has '+Math.round(mk.getBoundingClientRect().width)+')');
+        T(d.scrollHeight<=innerHeight+1, 'console does not scroll the page ('+d.scrollHeight+' vs '+innerHeight+')');
+        T(onScreen($('submit')), 'Generate is on screen');
+        T(hit($('submit'))==='yes', 'Generate is tappable ('+hit($('submit'))+')');
+        T(onScreen($('cost')), 'cost meter is on screen');
+        T(vis($('pane-stage')), 'stage is visible');
+        T(vis($('sheet-tabs')), 'tab bar is visible');
+        T(vis($('pane-ctl')) && !vis($('pane-src')) && !vis(document.querySelector('.hist')),
+          'exactly one panel open (Setup)');
+        var st=$('pane-stage').getBoundingClientRect();
+        out.push('      stage box '+Math.round(st.width)+'x'+Math.round(st.height)+
+                 '  = '+Math.round(st.height/innerHeight*100)+'% of the screen');
+        // switch panels
+        document.querySelector('#sheet-tabs button[data-p="pane-src"]').click();
+        T(vis($('pane-src')) && !vis($('pane-ctl')), 'tapping Sources swaps the panel');
+        T(onScreen($('submit')), 'Generate still on screen with Sources open');
+        // collapse
+        document.querySelector('#sheet-tabs button[data-p="pane-src"]').click();
+        T(!vis($('pane-src')) && !vis($('pane-ctl')), 'tapping the open tab collapses the sheet');
+        var st2=$('pane-stage').getBoundingClientRect();
+        out.push('      stage collapsed '+Math.round(st2.width)+'x'+Math.round(st2.height)+
+                 '  = '+Math.round(st2.height/innerHeight*100)+'% of the screen');
+        // upright the stage gains height, sideways it gains width - compare area
+        var a1=st.width*st.height, a2=st2.width*st2.height;
+        T(a2>a1, 'collapsing gives the stage more room ('+
+          Math.round(st.width)+'x'+Math.round(st.height)+' -> '+
+          Math.round(st2.width)+'x'+Math.round(st2.height)+')');
+        T(onScreen($('submit')), 'Generate survives the collapse');
+        T(d.scrollHeight<=innerHeight+1, 'still no page scroll when collapsed');
+        // chevron reopens
+        $('sheet-close').click();
+        T(vis($('pane-src')), 'the chevron reopens the last panel');
+        // every control in the open Setup panel reachable by scrolling the sheet
+        document.querySelector('#sheet-tabs button[data-p="pane-ctl"]').click();
+        var p=$('pane-ctl'); p.scrollTop=p.scrollHeight;
+        T(p.scrollHeight>p.clientHeight ? p.scrollTop>0 : true,
+          'Setup panel scrolls internally ('+(p.scrollHeight-p.clientHeight)+'px)');
+        T(onScreen($('submit')), 'Generate does not move while the panel scrolls');
+        // resize to desktop: nothing from the phone layout may leak
+        document.title=S+out.join('\n')+S;
+      },200);
+    },150);
+  }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>
