@@ -20,6 +20,11 @@
     // A fake must be as honest as the thing it replaces: a submit answers with a
     // submit body, a poll with a poll body. Getting this wrong once produced six
     // bogus downstream failures.
+    // The app also asks for the fal balance now. A fake must be as honest as the
+    // thing it replaces - falling through to the submit branch counted these as
+    // generations and reported 3 submits for 1 run.
+    if(a==='balance') return Promise.resolve({ok:true,json:function(){
+      return Promise.resolve({balance:4.95,currency:'USD'})}});
     if(String(u).indexOf('jobId=')>-1){
       return Promise.resolve({ok:true,json:function(){return Promise.resolve({
         status:'done', gen_type:'image', urls:[PNG],

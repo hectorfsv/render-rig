@@ -30,7 +30,7 @@ proven structurally and for free. The cheapest real tests, in order:
 | **$0.06** | Image (Krea) | one sentence |
 | **$0.336** | Video, 3s, audio off | the cheapest real clip |
 
-**2. Verify before changing anything:** `./test/run.sh` → 759 assertions, ~2 min,
+**2. Verify before changing anything:** `./test/run.sh` → 853 assertions, ~2 min,
 read-only, nothing sent or spent.
 
 **3. Open questions, roughly in order of value**
@@ -129,6 +129,13 @@ the lip. **Landscape** splits side by side.
 - **A wait loop that exits on its cap looks exactly like one that succeeded.**
   A diagnostic here hit `++n>60`, sampled a half-built page and reported the
   stage as broken when it was fine. Always report "timed out" as its own result.
+- **The fal balance is read server-side and only the number reaches the page.**
+  `GET https://api.fal.ai/v1/account/billing?expand=credits` needs an **ADMIN**-scope
+  key (n8n credential `fal admin (billing)`), which can also deploy and manage apps
+  — so it must never be sent to the browser. Fetched on unlock and after a run
+  lands, never polled: each check is an n8n execution.
+- **A missing balance must never break the app.** The lookup fails open — no
+  number, everything else still works. Tested for reject, HTTP 500 and junk.
 - **Hector uses Safari, on the phone and the desktop.** The only automation here
   is headless Chromium. When a fix cannot be tested in Safari, remove the
   mechanism rather than tune it — no z-index or paint-order fixes.
@@ -184,11 +191,12 @@ Full narrative: `../../research/kling-render-rig-redesign.md`.
 ## Tests
 
 ```
-./test/run.sh            everything (759 assertions, ~3 min)
+./test/run.sh            everything (853 assertions, ~4 min)
 ./test/run.sh mobile     6 phone/landscape viewports x 4 modes
 ./test/run.sh desktop    5 wide viewports: console, hub, guide
 ./test/run.sh price      every figure the guide quotes vs what the meter computes
 ./test/run.sh stage      a render lands, shows its seed, and can be cleared
+./test/run.sh credit     credit left on screen, and every way the lookup fails
 ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays there)
 ./test/run.sh tape       rail marquee: pitch, seam, direction, speed
 ./test/run.sh shots      previews into test/build/

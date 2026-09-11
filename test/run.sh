@@ -6,6 +6,7 @@
 #   ./test/run.sh desktop    wide layout, hub, guide
 #   ./test/run.sh price      the guide's numbers vs what the meter computes
 #   ./test/run.sh stage      a render lands, shows its seed, and can be cleared
+#   ./test/run.sh credit     credit left on screen, and every way the lookup fails
 #   ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays)
 #   ./test/run.sh tape       the rail marquee: pitch, seam, direction, speed
 #   ./test/run.sh shots      write previews to test/build/*.png
@@ -89,6 +90,22 @@ if [ "$WHAT" = all ] || [ "$WHAT" = price ]; then
   printf '%s' "$R" | sed 's/PASS/\nPASS/g; s/FAIL/\nFAIL/g' | grep -E '^(PASS|FAIL)' | sed 's/^/  /'
   p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
   PASS=$((PASS+p)); FAIL=$((FAIL+f)); echo "  -> $p pass / $f fail"
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = credit ]; then
+  build "$INJ/credit.txt" "$B/cr.html"
+  line; echo "CREDIT  (balance on screen, and every way it can fail)"
+  cp=0; cf=0
+  for m in ok low tiny fail http junk; do
+    for v in "2026 1037" "393 852"; do set -- $v
+      R=$(title "$1" "$2" "file://$B/cr.html?bal=$m" 20000)
+      p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+      f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+      cp=$((cp+p)); cf=$((cf+f))
+      if [ "$f" != 0 ]; then echo "  bal=$m ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; fi
+    done
+  done
+  echo "  -> $cp pass / $cf fail"; PASS=$((PASS+cp)); FAIL=$((FAIL+cf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = stage ]; then

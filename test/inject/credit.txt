@@ -1,0 +1,77 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* Credit left, driven through the app's own auth -> balance path. The balance
+   is money on screen, so the failure cases matter as much as the happy one:
+   a balance that never answers must leave the app completely usable. */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search),
+      mode=q.get('bal')||'ok', calls=0;
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); document.title=S+out.join('\n')+S}
+  window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='balance'){
+      calls++;
+      if(mode==='fail')  return Promise.reject(new Error('offline'));
+      if(mode==='http')  return Promise.resolve({ok:false,status:500,json:function(){return Promise.resolve({})}});
+      if(mode==='junk')  return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:'lots'})}});
+      var v = mode==='low' ? 0.03 : (mode==='tiny' ? 0.004 : 4.95);
+      return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:v,currency:'USD'})}});
+    }
+    return Promise.reject(new Error('no net'));
+  };
+  function vis(el){ if(!el||el.hidden) return false;
+    var c=getComputedStyle(el); if(c.display==='none') return false;
+    var r=el.getBoundingClientRect(); return r.width>0&&r.height>0; }
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){
+      document.querySelector('.card[data-go="image"]').click();   // Image = $0.06
+      setTimeout(check,400);
+    },250);
+  }
+  function check(){
+    var el=$('credit');
+    T(calls===1, 'the balance is fetched once on unlock, not polled ('+calls+')');
+    if(mode==='ok'){
+      T(vis(el), 'the credit readout is showing');
+      T(/4\.95/.test(el.textContent), 'it shows the balance ('+el.textContent+')');
+      T(!el.classList.contains('low'), '$4.95 against a $0.06 run is not flagged low');
+    }
+    if(mode==='low'){
+      T(vis(el), 'still shows when the balance is short');
+      T(el.classList.contains('low'), '$0.03 against a $0.06 run IS flagged low');
+      // and it must clear when a cheaper run is selected... upscale with no source is $0
+      document.querySelector('#seg-type button[data-v="upscale"]').click();
+      T(!el.classList.contains('low'), 'the flag follows the price when the mode changes');
+    }
+    if(mode==='tiny'){
+      T(vis(el), 'a sub-cent balance still reports');
+      T(!/\$0\.00 left/.test(el.textContent), 'it never reads $0.00 while money remains ('+el.textContent+')');
+    }
+    if(mode==='fail'||mode==='http'||mode==='junk'){
+      T(!vis(el), 'no credit shown when the balance cannot be trusted ('+mode+')');
+      // THE POINT: the app must be completely usable without it
+      T(vis($('submit')), 'Generate is still there');
+      T(!$('submit').disabled, 'Generate is still enabled');
+      T($('cost').textContent==='$0.06', 'the cost meter still works ('+$('cost').textContent+')');
+      T($('scr-console').classList.contains('on'), 'the console still opened');
+    }
+    // layout, every mode
+    var d=document.documentElement;
+    T(d.scrollWidth<=innerWidth, 'no horizontal overflow ('+d.scrollWidth+'<='+innerWidth+')');
+    var row=document.querySelector('.meter-row');
+    T(row.scrollWidth<=Math.ceil(row.getBoundingClientRect().width)+1,
+      'price and credit fit on one line (needs '+row.scrollWidth+', has '+Math.round(row.getBoundingClientRect().width)+')');
+    if(!document.body.classList.contains('wide')){
+      var cm=document.querySelector('.ctl-commit').getBoundingClientRect();
+      T(cm.height<=150, 'the commit block stays compact on a phone ('+Math.round(cm.height)+'px)');
+      T(d.scrollHeight<=innerHeight+1, 'the console still does not scroll the page');
+    }
+    document.title=S+out.join('\n')+S;
+  }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>
