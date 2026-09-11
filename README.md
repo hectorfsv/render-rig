@@ -30,7 +30,7 @@ proven structurally and for free. The cheapest real tests, in order:
 | **$0.06** | Image (Krea) | one sentence |
 | **$0.336** | Video, 3s, audio off | the cheapest real clip |
 
-**2. Verify before changing anything:** `./test/run.sh` → 1009 assertions, ~2 min,
+**2. Verify before changing anything:** `./test/run.sh` → 1025 assertions, ~2 min,
 read-only, nothing sent or spent.
 
 **3. Open questions, roughly in order of value**
@@ -137,6 +137,16 @@ the lip. **Landscape** splits side by side.
   lands, never polled: each check is an n8n execution.
 - **A missing balance must never break the app.** The lookup fails open — no
   number, everything else still works. Tested for reject, HTTP 500 and junk.
+- **The gallery does not use CSS multicol, on purpose.** `columns` *balances*, and
+  Safari balanced differently from Chromium — it left a whole empty column between
+  the 2nd and 3rd picture on Hector's screen while Chromium packed six tight. The
+  columns are built in JS and items go into the shortest one, so there is no
+  balancing algorithm left to disagree about. Never more columns than pictures.
+- **Every gallery image carries `width`/`height` and an `aspect-ratio`.** Without
+  them the layout is computed against height 0 and leaves holes, and lazy-loaded
+  pictures pop the page around as they arrive. Dimensions come from `specs.w/h`;
+  `scripts/rescue-rig-history.py` measures and stores them, and the page falls back
+  to the file's real ratio on load if a row has none.
 - **The gallery shows ONLY rows flagged `gallery = true`.** Default off, and no
   script sets it. This is not tidiness: the upscales are family photos, and an
   automatic "recent generations" wall would publish them. Flag from the data
@@ -204,7 +214,7 @@ Full narrative: `../../research/kling-render-rig-redesign.md`.
 ## Tests
 
 ```
-./test/run.sh            everything (1009 assertions, ~5 min)
+./test/run.sh            everything (1025 assertions, ~5 min)
 ./test/run.sh mobile     6 phone/landscape viewports x 4 modes
 ./test/run.sh desktop    5 wide viewports: console, hub, guide
 ./test/run.sh price      every figure the guide quotes vs what the meter computes

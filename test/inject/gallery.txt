@@ -87,6 +87,23 @@
       T(vis(document.querySelector('.gal-empty')), 'a failed lookup shows the empty state, not a broken screen ('+mode+')');
       T($('scr-gallery').classList.contains('on'), 'the screen still works');
     }
+    // The bug Hector reported: Safari's multicol balancer left a whole empty
+    // column between the 2nd and 3rd picture. The columns are explicit now, so
+    // assert the two things that can never be true again.
+    if(mode==='ok'||mode==='empty'){
+      var cols=[].slice.call(document.querySelectorAll('.gal-col'));
+      var emptyCols=cols.filter(function(c){return !c.querySelector('.frame')}).length;
+      var holes=0;
+      cols.forEach(function(c){
+        var prev=null;
+        [].forEach.call(c.querySelectorAll('.frame'),function(f){
+          var r=f.getBoundingClientRect();
+          if(prev!==null && Math.round(r.top-prev)>24) holes++;
+          prev=r.bottom;});
+      });
+      T(emptyCols===0, 'no column is left empty ('+cols.length+' columns, '+emptyCols+' empty)');
+      T(holes===0, 'no hole between pictures inside a column ('+holes+')');
+    }
     // every mode
     var dd=document.documentElement;
     T(dd.scrollWidth<=innerWidth, 'no horizontal overflow ('+dd.scrollWidth+'<='+innerWidth+')');

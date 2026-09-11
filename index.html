@@ -491,14 +491,24 @@ body.wide .gal-head h2{font-size:26px}
 .gal-head p{font-size:13px;color:var(--ink-dim);line-height:1.5;max-width:58ch;margin-top:5px}
 .gal-count{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.16em;
   color:var(--ink-faint);white-space:nowrap}
-.gal-grid{columns:250px;column-gap:14px}
-body.wide .gal-grid{columns:290px;column-gap:16px}
-.frame{break-inside:avoid;-webkit-column-break-inside:avoid;margin:0 0 14px;
+/* NOT CSS multicol. `columns` BALANCES, and Safari balanced differently from
+   Chromium - it left a whole empty column between the 2nd and 3rd picture on
+   Hector's screen while Chromium packed six tight. The columns are built in JS
+   instead, so there is no balancing algorithm left to disagree about. */
+.gal-grid{display:grid;gap:14px;align-items:start}
+body.wide .gal-grid{gap:16px}
+.gal-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+body.wide .gal-col{gap:16px}
+.frame{margin:0;
   display:block;width:100%;text-align:left;background:rgba(0,0,0,.4);
   border:1px solid var(--rule);padding:0;cursor:pointer;position:relative;
   clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
 .frame:hover,.frame:focus-visible{border-color:var(--rule-hot);outline:none}
+/* The width/height attributes give every box its exact shape BEFORE the picture
+   downloads. Without them the layout is computed against height 0, which is the
+   other half of why the grid had holes. */
 .frame img{display:block;width:100%;height:auto;background:#000;
+  aspect-ratio:var(--ar,1);object-fit:cover;
   opacity:0;transition:opacity .45s ease}
 .frame img.in{opacity:1}
 .frame-cap{padding:9px 11px 10px}
@@ -2025,24 +2035,53 @@ body.wide .lab{font-size:12.5px}
         'Make something you like, and it can be the first.</p></div>';
       return;
     }
-    g.innerHTML='';
+    // Build the columns by hand and drop each picture into the shortest one.
+    // Deterministic: nothing here can balance, so nothing can leave a hole.
+    var g2=g, W=g2.getBoundingClientRect().width||innerWidth,
+        target=document.body.classList.contains('wide')?290:250, gap=14,
+        // never more columns than pictures: four pictures in six columns leaves
+        // two empty slots and makes every picture smaller for no reason
+        cols=Math.max(1,Math.min(6,Math.floor((W+gap)/(target+gap)),GAL.length));
+    g2.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';
+    var colW=(W-gap*(cols-1))/cols, boxes=[], heights=[];
+    g2.innerHTML='';
+    for(var c=0;c<cols;c++){
+      var d=document.createElement('div'); d.className='gal-col';
+      g2.appendChild(d); boxes.push(d); heights.push(0);
+    }
     GAL.forEach(function(it,i){
+      var sp=it.specs||{}, w=+sp.w||0, h=+sp.h||0, ar=(w&&h)?(w/h):1;
       var b=document.createElement('button');
       b.className='frame'; b.type='button'; b.dataset.i=i;
       b.setAttribute('aria-label','Read the prompt behind this picture');
-      b.innerHTML='<img alt="" loading="lazy" src="'+esc(it.url)+'">'+
+      b.innerHTML='<img alt="" loading="lazy" style="--ar:'+ar.toFixed(4)+'"'+
+        (w&&h ? ' width="'+w+'" height="'+h+'"' : '')+' src="'+esc(it.url)+'">'+
         '<div class="frame-cap"><div class="pr">'+esc(it.prompt||'No prompt was kept for this one')+'</div>'+
         '<div class="frame-meta"><b>'+esc(nameOf(it.model))+'</b><span>'+
         (it.price!=null ? '$'+money(it.price) : '')+'</span></div></div>';
       // fade each picture in as it actually loads - motion that answers an event,
       // not a staggered entrance on everything
       var im=b.querySelector('img');
-      im.addEventListener('load',function(){im.classList.add('in')});
+      im.addEventListener('load',function(){
+        im.classList.add('in');
+        // A picture whose shape was never recorded arrives assumed square, which
+        // would crop it. Take the real ratio from the file itself once it lands.
+        if(!(w&&h) && im.naturalWidth && im.naturalHeight)
+          im.style.setProperty('--ar',(im.naturalWidth/im.naturalHeight).toFixed(4));
+      });
       if(im.complete) im.classList.add('in');
       b.onclick=function(){ galOne(+b.dataset.i) };
-      g.appendChild(b);
+      var k=0; for(var j=1;j<heights.length;j++) if(heights[j]<heights[k]) k=j;
+      boxes[k].appendChild(b);
+      heights[k] += colW/ar + 86;     // picture + about a caption
     });
   }
+  // the column count is a function of width, so it has to be recomputed on resize
+  var galTimer=null;
+  window.addEventListener('resize',function(){
+    if(!$('scr-gallery').classList.contains('on') || !GAL || !GAL.length) return;
+    clearTimeout(galTimer); galTimer=setTimeout(paintGallery,160);
+  });
   function galOne(i){
     var it=GAL[i]; if(!it) return;
     $('gal-grid').hidden=true; $('gal-one').hidden=false;
