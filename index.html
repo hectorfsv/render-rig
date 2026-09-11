@@ -56,8 +56,9 @@ body.done .bloom{background:radial-gradient(58% 42% at 50% 46%,rgba(63,208,122,.
    Capped at 2400 so the stage cannot outgrow a sensible viewing size. */
 body.wide.authed .rig{max-width:2400px}
 
-.rail{width:22px;flex:0 0 22px;display:flex;align-items:center;justify-content:center;
+.rail{width:22px;flex:0 0 22px;display:flex;justify-content:center;overflow:hidden;
   border-left:1px solid var(--rule)}
+.rail span{margin:auto}
 .rail span{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.18em;
   text-transform:uppercase;color:var(--ink-faint);white-space:nowrap;
   writing-mode:vertical-rl;transform:rotate(180deg);
@@ -243,25 +244,27 @@ body.wide .cards{grid-template-columns:repeat(4,minmax(0,1fr));max-width:1560px}
 .hub-foot{margin-top:18px;display:flex;justify-content:center}
 
 /* ---------- THE CONSOLE ---------- */
-.console{display:none;padding:14px}
+.console{display:none;padding:14px;--chrome:calc(96px + env(safe-area-inset-top) + env(safe-area-inset-bottom))}
 .console.on{display:block}
 .bay{display:grid;gap:12px;grid-template-columns:1fr}
 body.wide .bay{grid-template-columns:clamp(186px,11.5vw,300px) minmax(0,1fr) clamp(302px,17.5vw,392px);
-  grid-template-rows:auto minmax(0,1fr);
-  grid-template-areas:"src stage ctl" "hist stage ctl";align-items:stretch}
+  grid-template-rows:auto minmax(0,1fr) auto;
+  grid-template-areas:"src stage ctl" "hist stage ctl" "hist stage commit";align-items:stretch;
+  /* The console fits the window, same as it does on the phone. Krea's controls
+     are taller than a 1037px screen, and without this cap they pushed Generate
+     below the fold instead of scrolling inside their own column. */
+  max-height:calc(100dvh - 131px)}
 body.wide #pane-src{grid-area:src;align-self:start}
 body.wide #pane-stage{grid-area:stage}
 /* a label and its value 1200px apart is not a pair; keep them together */
 body.wide #pane-stage .pane-h{justify-content:flex-start;gap:10px}
 /* full-width these become a 640px red bar shouting over Generate */
 body.wide #out-actions{max-width:520px}
-body.wide #pane-ctl{grid-area:ctl}
-/* Krea's controls are taller than the window at 1037px, which pushed Generate
-   below the fold. The column scrolls inside the console; the trigger never moves. */
-body.wide #pane-ctl{max-height:calc(100dvh - 132px)}
+body.wide #pane-ctl{grid-area:ctl;min-height:0}
+body.wide .ctl-commit{grid-area:commit;padding-top:13px}
 body.wide .ctl-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
   padding-right:8px;margin-right:-8px}
-body.wide .ctl-commit{margin-top:auto}
+body.wide #sheet-tabs{display:none}
 body.wide .hist{grid-area:hist;margin-top:0;min-height:0;display:flex;flex-direction:column}
 body.wide .hist-strip{display:grid;grid-template-columns:1fr 1fr;gap:7px;
   overflow-x:visible;overflow-y:auto;align-content:start;flex:1;min-height:0}
@@ -270,13 +273,96 @@ body.wide #pane-stage{display:flex;flex-direction:column}
 body.wide #pane-stage .stage{flex:1}
 
 .pane{min-width:0}
-#pane-ctl{order:1}
-.hist{order:4}
-#pane-src{order:2}
-#pane-stage{order:3}
 body.wide #pane-src{order:1}
 body.wide #pane-stage{order:2}
 body.wide #pane-ctl{order:3}
+
+/* The header is a fixed 189px of buttons against a title that needs 147px, in
+   293px of phone. It did not overlap - the title box was COMPRESSED and its
+   nowrap text painted straight over the buttons. The status word is redundant
+   here (the stage shows the dial, the elapsed time and the result), so the
+   chip keeps its colour and drops its label. */
+body:not(.wide) .mark i{display:none}
+body:not(.wide) .gbtn{letter-spacing:.1em;padding:5px 8px}
+body:not(.wide) .chip{padding:5px 8px;gap:0;font-size:0;letter-spacing:0}
+body:not(.wide) .chip::before{width:7px;height:7px}
+
+/* ---------- THE PHONE CONSOLE ----------
+   Stage-first. The result owns the screen and the controls come up over it as
+   a sheet, because on a phone the thing you are waiting for should never be
+   the thing you have to scroll to find. Nothing here is position:fixed - the
+   whole console is one 100dvh flex column, so iOS Safari's moving address bar
+   and the keyboard cannot break it the way a paint-order fix would. */
+body:not(.wide) .console.on{display:flex;flex-direction:column;
+  height:calc(100dvh - var(--chrome));padding:10px 10px 0;overflow:hidden}
+body:not(.wide) .bay{flex:1;min-height:0;display:flex;flex-direction:column;gap:0}
+
+body:not(.wide) #pane-stage{order:1;flex:1;min-height:0;display:flex;flex-direction:column}
+body:not(.wide) #pane-stage .stage{flex:1;min-height:0}
+body:not(.wide) .out{max-height:none;height:100%;object-fit:contain}
+
+/* the sheet: exactly one panel is open at a time, or none */
+body:not(.wide) .sheet-tabs{order:2;display:flex;gap:0;align-items:stretch;flex:0 0 auto;
+  margin:10px -10px 0;border-top:1px solid var(--rule);background:rgba(9,6,7,.94)}
+body:not(.wide) .sheet-tabs button{flex:1;min-width:0;background:none;border:none;
+  border-right:1px solid var(--rule);color:var(--ink-faint);cursor:pointer;
+  font-family:var(--disp);font-size:11.5px;font-weight:600;letter-spacing:.05em;
+  padding:11px 4px 10px;display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:.14s}
+body:not(.wide) .sheet-tabs button b{font-family:var(--mono);font-size:9.5px;font-weight:600;
+  color:var(--ink-faint);letter-spacing:.04em;max-width:9ch;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+body:not(.wide) .sheet-tabs button[aria-pressed=true]{color:var(--ink);
+  box-shadow:inset 0 2px 0 var(--red);background:rgba(224,27,27,.09)}
+body:not(.wide) .sheet-tabs button[aria-pressed=true] b{color:var(--red)}
+body:not(.wide) .sheet-x{flex:0 0 44px!important;color:var(--ink-faint);border-right:none!important}
+body:not(.wide) .sheet-x svg{transition:transform .18s}
+body:not(.wide) .console.sheet-shut .sheet-x svg{transform:rotate(180deg)}
+
+/* the open panel. 46dvh leaves the stage the larger half on every phone. */
+body:not(.wide) #pane-ctl,
+body:not(.wide) #pane-src,
+body:not(.wide) .hist{order:3;flex:0 1 auto;max-height:46dvh;overflow-y:auto;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  margin:0 -10px;padding:12px 10px 4px;border-top:1px solid var(--rule);
+  background:linear-gradient(180deg,rgba(24,17,17,.55),rgba(9,6,7,.42))}
+body:not(.wide) .hist{margin-top:0}
+/* the tab already says "Sources 3"; the panel repeating it is a label for a
+   label. The session panel's header keeps its spend total and Clear, which are
+   not duplicated anywhere. */
+body:not(.wide) #pane-src>.pane-h{display:none}
+body:not(.wide) .ctl-scroll{overflow:visible}
+
+/* The lip: cost and the trigger, always on screen whatever the sheet is doing.
+   On a phone this was 178px - a quarter of a 700px screen for a price and a
+   button - so the meter collapses to one row and the empty error slot stops
+   reserving space it is not using. */
+body:not(.wide) .ctl-commit{order:4;flex:0 0 auto;
+  padding:8px 10px calc(6px + env(safe-area-inset-bottom));margin:0 -10px;
+  border-top:1px solid var(--rule-hot);background:rgba(9,6,7,.96)}
+body:not(.wide) .ctl-commit .meter{margin-bottom:7px;border:none;background:none}
+body:not(.wide) .meter-top{padding:0 1px 6px;align-items:baseline}
+body:not(.wide) .meter-l{display:none}
+body:not(.wide) .meter-v{font-size:22px;line-height:1}
+body:not(.wide) .meter-sub{font-size:10.5px;line-height:1.3}
+body:not(.wide) .bars{padding:0 1px}
+body:not(.wide) .ctl-commit .go{padding:13px;font-size:13.5px}
+body:not(.wide) #gen-err{margin-top:0;min-height:0}
+body:not(.wide) #gen-err:empty{display:none}
+
+/* The stage must never become a sliver. It kept its floor and the sheet gives
+   way instead, so "stage-first" is true even with the controls open. */
+body:not(.wide) #pane-stage{flex:1 1 auto;min-height:clamp(108px,21dvh,240px)}
+
+/* Exactly one panel, or none. Hiding is the default and showing is the
+   exception, which is the safe direction for the display-specificity trap
+   this file has been bitten by three times. */
+body:not(.wide) #pane-ctl,
+body:not(.wide) #pane-src,
+body:not(.wide) .hist{display:none}
+body:not(.wide) .console:not(.sheet-shut)[data-panel="pane-ctl"] #pane-ctl,
+body:not(.wide) .console:not(.sheet-shut)[data-panel="pane-src"] #pane-src,
+body:not(.wide) .console:not(.sheet-shut)[data-panel="hist"] .hist{display:block}
 .pane-h{font-family:var(--disp);font-size:11px;font-weight:600;color:var(--ink-faint);
   margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .pane-h b{font-family:var(--mono);font-weight:500;font-size:10px;color:var(--ink-faint)}
@@ -484,7 +570,7 @@ body.wide .lab{font-size:12.5px}
     </div>
 
     <!-- CONSOLE -->
-    <div class="console" id="scr-console">
+    <div class="console" id="scr-console" data-panel="pane-ctl">
       <div class="bay">
 
         <!-- SOURCES -->
@@ -735,27 +821,42 @@ body.wide .lab{font-size:12.5px}
             <div id="adv-none" hidden><div class="hint">Nothing extra for this one. Krea's controls are all above.</div></div>
           </details>
           </div><!-- /.ctl-scroll -->
+        </div>
 
-          <div class="ctl-commit">
-            <div class="meter">
-              <div class="meter-top">
-                <div>
-                  <div class="meter-l">Cost this run</div>
-                  <div class="meter-v" id="cost">$0.56</div>
-                </div>
-                <div class="meter-sub" id="cost-sub">Kling 3.0 Pro<br>5s, no audio</div>
+        <!-- Cost + trigger. A sibling of the controls pane, not a child of it:
+             on a phone the controls collapse into a sheet and this stays on
+             the lip, so Generate is never more than one tap away. -->
+        <div class="ctl-commit">
+          <div class="meter">
+            <div class="meter-top">
+              <div>
+                <div class="meter-l">Cost this run</div>
+                <div class="meter-v" id="cost">$0.56</div>
               </div>
-              <div class="bars" id="bars"></div>
+              <div class="meter-sub" id="cost-sub">Kling 3.0 Pro<br>5s, no audio</div>
             </div>
-            <button class="go" id="submit">Generate</button>
-            <div class="err" id="gen-err"></div>
+            <div class="bars" id="bars"></div>
           </div>
+          <button class="go" id="submit">Generate</button>
+          <div class="err" id="gen-err"></div>
         </div>
 
       <!-- HISTORY -->
       <div class="hist">
         <div class="pane-h">This session <span style="display:flex;gap:10px;align-items:baseline"><b id="hist-spend">$0.00 spent</b><button class="hclear" id="hist-clear" type="button" hidden>Clear</button></span></div>
         <div class="hist-strip" id="hist-strip"><span class="hist-empty">Renders collect here. Tap one to put it back on the stage.</span></div>
+      </div>
+
+      <!-- Phone only. The stage owns the screen; these open over it as a sheet.
+           Tap, not drag - a drag gesture is untestable in the browser Hector
+           actually uses, and the whole point is that this works on his phone. -->
+      <div class="sheet-tabs" id="sheet-tabs">
+        <button type="button" data-p="pane-ctl" aria-pressed="true" aria-controls="pane-ctl">Setup<b id="tab-mode">Video</b></button>
+        <button type="button" data-p="pane-src" aria-pressed="false" aria-controls="pane-src">Sources<b id="tab-src">0</b></button>
+        <button type="button" data-p="hist" aria-pressed="false" aria-controls="hist">Session<b id="tab-hist">0</b></button>
+        <button type="button" class="sheet-x" id="sheet-close" aria-label="Close the panel and show the stage" title="Show the stage">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
       </div>
 
       </div>
@@ -1077,6 +1178,7 @@ body.wide .lab{font-size:12.5px}
       t.insertBefore(d,$('add-src'));
     });
     $('src-count').textContent=SRC.length;
+    paintTabs();
     $('tray-empty').style.display=SRC.length?'none':'';
   }
 
@@ -1147,7 +1249,7 @@ body.wide .lab{font-size:12.5px}
     $('nbp-count').textContent = SRC.length
       ? SRC.length+' source'+(SRC.length>1?'s':'')+' will be merged into one picture. The count is free.'
       : 'Every source in the tray is merged into one picture. Up to 14, and the count is free.';
-    buildEnd(); buildAR();
+    buildEnd(); buildAR(); paintTabs();
   }
 
   // the end frame is chosen by tray position, which is how n8n addresses it
@@ -1394,6 +1496,10 @@ body.wide .lab{font-size:12.5px}
       var tot=SHOTS.reduce(function(a,s){return a+(parseInt(s.duration,10)||0)},0);
       if(tot!==parseInt(dur,10)){ genErr('Shot durations add up to '+tot+'s but the clip is '+dur+'s.'); return }
     }
+    // On a phone the controls are covering the stage at this point. Close them:
+    // the whole reason the stage comes first is so you watch the render, not a
+    // form you have already finished with.
+    shutSheet();
     var fd=new FormData();
     // Omission is meaningful: a field left out becomes null upstream and is
     // dropped from the fal body, so the model applies its OWN default. Never
@@ -1561,6 +1667,7 @@ body.wide .lab{font-size:12.5px}
   }
   function paintHist(){
     var s=$('hist-strip');
+    paintTabs();
     if(!HIST.length){
       s.innerHTML='<span class="hist-empty">Renders collect here. Tap one to put it back on the stage.</span>';
       $('hist-clear').hidden=true;
@@ -1612,6 +1719,43 @@ body.wide .lab{font-size:12.5px}
   $('guide-close').onclick=function(){show(picked?'scr-console':'scr-hub')};
   $('hub-guide').onclick=function(){show('scr-guide')};
   $('menu-btn').onclick=function(){show('scr-hub')};
+  /* ---------- the phone sheet ----------
+     One panel open at a time, or none. Kept deliberately dumb: tap to open,
+     tap the open tab (or the chevron) to show the stage. No drag, no swipe -
+     those are untestable in Safari from here, and an untestable gesture on the
+     only device he uses is a gesture that does not work. */
+  var sheetPanel='pane-ctl';
+  function paintSheet(){
+    var shut=$('scr-console').classList.contains('sheet-shut');
+    [].forEach.call($('sheet-tabs').querySelectorAll('button[data-p]'),function(b){
+      b.setAttribute('aria-pressed', String(!shut && b.dataset.p===sheetPanel));
+    });
+    $('sheet-close').setAttribute('aria-label', shut ? 'Open the panel' : 'Close the panel and show the stage');
+  }
+  function openSheet(p){
+    if(p) sheetPanel=p;
+    // data-panel, never the hidden attribute: hidden would survive a resize to
+    // desktop and blank a column there. This only means anything under
+    // body:not(.wide), so the desktop layout cannot be affected at all.
+    var c=$('scr-console');
+    c.dataset.panel=sheetPanel;
+    c.classList.remove('sheet-shut');
+    paintSheet();
+  }
+  function shutSheet(){ $('scr-console').classList.add('sheet-shut'); paintSheet(); }
+  $('sheet-tabs').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    var c=$('scr-console');
+    if(b.id==='sheet-close'){ c.classList.contains('sheet-shut') ? openSheet() : shutSheet(); return }
+    if(!c.classList.contains('sheet-shut') && b.dataset.p===sheetPanel) shutSheet();
+    else openSheet(b.dataset.p);
+  });
+  function paintTabs(){
+    $('tab-mode').textContent = {video:'Video',image:'Image',compose:'Compose',upscale:'Upscale'}[type]||'';
+    $('tab-src').textContent  = SRC.length;
+    $('tab-hist').textContent = HIST.length;
+  }
+
   document.querySelector('.cards').addEventListener('click',function(e){
     var c=e.target.closest('.card[data-go]'); if(!c) return;
     var v=c.dataset.go;
