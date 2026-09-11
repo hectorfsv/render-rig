@@ -477,6 +477,61 @@ body.wide .out{max-height:clamp(430px,calc(100dvh - 215px),1040px)}
   font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--ink-faint);padding:8px 2px 0}
 
+/* ---------- gallery ----------
+   Masonry columns, not a card grid: these pictures are 2.35:1, 4:5 and 1:1, and
+   a uniform grid would crop that difference away. `columns` also cannot collide
+   with the hiding rules in this file, unlike anything that sets `display`.
+   Captions are always visible - hover does not exist on the device Hector uses. */
+#scr-gallery.on{display:block;padding:22px 20px 26px}
+body.wide #scr-gallery.on{padding:26px 30px 30px}
+.gal-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+  flex-wrap:wrap;margin-bottom:16px}
+.gal-head h2{font-size:19px;font-weight:600;letter-spacing:.02em}
+body.wide .gal-head h2{font-size:26px}
+.gal-head p{font-size:13px;color:var(--ink-dim);line-height:1.5;max-width:58ch;margin-top:5px}
+.gal-count{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.16em;
+  color:var(--ink-faint);white-space:nowrap}
+.gal-grid{columns:250px;column-gap:14px}
+body.wide .gal-grid{columns:290px;column-gap:16px}
+.frame{break-inside:avoid;-webkit-column-break-inside:avoid;margin:0 0 14px;
+  display:block;width:100%;text-align:left;background:rgba(0,0,0,.4);
+  border:1px solid var(--rule);padding:0;cursor:pointer;position:relative;
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.frame:hover,.frame:focus-visible{border-color:var(--rule-hot);outline:none}
+.frame img{display:block;width:100%;height:auto;background:#000;
+  opacity:0;transition:opacity .45s ease}
+.frame img.in{opacity:1}
+.frame-cap{padding:9px 11px 10px}
+.frame-cap .pr{font-family:var(--disp);font-size:13px;line-height:1.45;color:var(--ink);
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.frame-meta{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  margin-top:7px;font-family:var(--mono);font-size:9.5px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.frame-meta b{color:var(--ink-dim);font-weight:600}
+.gal-empty{border:1px dashed var(--rule);padding:34px 22px;text-align:center;max-width:48ch}
+.gal-empty h3{font-size:15px;font-weight:600;margin-bottom:7px}
+.gal-empty p{font-size:13px;color:var(--ink-faint);line-height:1.6}
+
+/* The detail view is a STATE of this screen, not an overlay - no position:fixed,
+   no z-index, so iOS cannot break it the way it broke the lock screen. */
+.gal-one{display:grid;gap:18px}
+body.wide .gal-one{grid-template-columns:minmax(0,1fr) clamp(300px,26vw,420px);
+  align-items:start;gap:26px}
+/* The frame hugs the picture. width:100% letterboxed a 4:5 image inside a wide
+   column with black bars either side, which made the shape a lie. */
+.gal-one img{display:block;width:auto;max-width:100%;height:auto;max-height:72dvh;
+  margin:0 auto;background:#000;border:1px solid var(--rule)}
+.gal-said{font-size:11px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-faint);margin-bottom:9px}
+.gal-one .pr{font-family:var(--disp);font-size:19px;line-height:1.4;color:var(--ink)}
+body.wide .gal-one .pr{font-size:23px;line-height:1.38}
+.gal-facts{margin-top:18px;border-top:1px solid var(--rule)}
+.gal-facts div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;
+  border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
+.gal-facts b{color:var(--ink);font-weight:600}
+.gal-acts{display:grid;gap:8px;margin-top:16px}
+
 /* progress inside the stage */
 .prog{text-align:center;padding:26px 18px}
 .dial{position:relative;width:132px;height:132px;margin:0 auto 16px}
@@ -649,7 +704,10 @@ body.wide .lab{font-size:12.5px}
             <div class="foot"><span class="from">$0.08</span><span class="wait">under a min</span></div>
           </button>
         </div>
-        <div class="hub-foot"><button class="go ghost sm" id="hub-guide" type="button" style="max-width:280px">Read the guide first</button></div>
+        <div class="hub-foot" style="gap:10px">
+          <button class="go ghost sm" id="hub-guide" type="button" style="max-width:280px">Read the guide first</button>
+          <button class="go ghost sm" id="hub-gallery" type="button" style="max-width:280px">See what it makes</button>
+        </div>
         </div>
       </div>
     </div>
@@ -956,6 +1014,23 @@ body.wide .lab{font-size:12.5px}
       </div>
     </div>
 
+    <!-- GALLERY -->
+    <div class="screen" id="scr-gallery">
+      <div class="gal-head">
+        <div>
+          <h2 id="gal-title">Made with this</h2>
+          <p id="gal-sub">Every one of these started as a sentence. Tap any picture to read the
+             sentence that made it, then make your own from the same starting point.</p>
+        </div>
+        <span class="gal-count" id="gal-count"></span>
+      </div>
+      <div class="gal-grid" id="gal-grid"></div>
+      <div class="gal-one" id="gal-one" hidden></div>
+      <div style="margin-top:20px;max-width:340px">
+        <button class="go ghost sm" id="gal-back" type="button">Back</button>
+      </div>
+    </div>
+
     <!-- GUIDE -->
     <div class="screen" id="scr-guide">
 
@@ -1189,7 +1264,7 @@ body.wide .lab{font-size:12.5px}
   /* ---------- screens ---------- */
   var picked=false;
   function show(id){
-    ['scr-login','scr-guide'].forEach(function(s){$(s).classList.toggle('on', s===id)});
+    ['scr-login','scr-guide','scr-gallery'].forEach(function(s){$(s).classList.toggle('on', s===id)});
     $('scr-hub').classList.toggle('on', id==='scr-hub');
     $('scr-console').classList.toggle('on', id==='scr-console');
     $('menu-btn').hidden = (id==='scr-login' || id==='scr-hub');
@@ -1922,6 +1997,93 @@ body.wide .lab{font-size:12.5px}
   $('unlock').onclick=unlock;
   $('pw').addEventListener('keydown',function(e){if(e.key==='Enter')unlock()});
   $('submit').onclick=submit;
+  /* ---------- gallery ----------
+     Only what Hector has flagged, fetched fresh each time it is opened so a
+     newly flagged render appears without a reload. */
+  var GAL=null;
+  function openGallery(){
+    show('scr-gallery'); galGrid();
+    var f=new FormData(); f.append('action','gallery'); f.append('password',pw);
+    fetch(BASE,{method:'POST',body:f})
+      .then(function(r){ return r.ok ? r.json() : null })
+      .then(function(d){ GAL=(d&&d.items)||[]; paintGallery() })
+      .catch(function(){ GAL=[]; paintGallery() });
+  }
+  function galGrid(){ $('gal-one').hidden=true; $('gal-grid').hidden=false;
+    $('gal-back').textContent='Back'; $('gal-title').textContent='Made with this';
+    $('gal-sub').hidden=false; }
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] }) }
+  function nameOf(m){ return m==='krea' ? 'Image' : (m==='nbp'||m==='nano-banana-pro'||m==='nano-banana-2') ? 'Compose'
+    : m==='topaz' ? 'Upscale' : (m||'').indexOf('kling')===0 ? 'Video' : (m||'') }
+  function paintGallery(){
+    var g=$('gal-grid');
+    $('gal-count').textContent = GAL.length ? GAL.length+(GAL.length===1?' picture':' pictures') : '';
+    if(!GAL.length){
+      g.innerHTML='<div class="gal-empty"><h3>Nothing here yet</h3>'+
+        '<p>Renders show up here once they are added to the gallery. '+
+        'Make something you like, and it can be the first.</p></div>';
+      return;
+    }
+    g.innerHTML='';
+    GAL.forEach(function(it,i){
+      var b=document.createElement('button');
+      b.className='frame'; b.type='button'; b.dataset.i=i;
+      b.setAttribute('aria-label','Read the prompt behind this picture');
+      b.innerHTML='<img alt="" loading="lazy" src="'+esc(it.url)+'">'+
+        '<div class="frame-cap"><div class="pr">'+esc(it.prompt||'No prompt was kept for this one')+'</div>'+
+        '<div class="frame-meta"><b>'+esc(nameOf(it.model))+'</b><span>'+
+        (it.price!=null ? '$'+money(it.price) : '')+'</span></div></div>';
+      // fade each picture in as it actually loads - motion that answers an event,
+      // not a staggered entrance on everything
+      var im=b.querySelector('img');
+      im.addEventListener('load',function(){im.classList.add('in')});
+      if(im.complete) im.classList.add('in');
+      b.onclick=function(){ galOne(+b.dataset.i) };
+      g.appendChild(b);
+    });
+  }
+  function galOne(i){
+    var it=GAL[i]; if(!it) return;
+    $('gal-grid').hidden=true; $('gal-one').hidden=false;
+    $('gal-back').textContent='All pictures';
+    $('gal-title').textContent='Made with this'; $('gal-sub').hidden=true;
+    var sp=it.specs||{}, facts=[];
+    facts.push(['Made with', nameOf(it.model)]);
+    if(it.price!=null) facts.push(['Cost','$'+money(it.price)]);
+    if(it.seed) facts.push(['Seed', it.seed]);
+    if(sp.aspect_ratio) facts.push(['Shape', sp.aspect_ratio]);
+    if(sp.resolution) facts.push(['Detail', sp.resolution]);
+    if(sp.creativity) facts.push(['Creativity', sp.creativity]);
+    if(it.created_at) facts.push(['Made', String(it.created_at).slice(0,10)]);
+    $('gal-one').innerHTML =
+      '<img alt="" src="'+esc(it.url)+'">'+
+      '<div><div class="gal-said">Someone typed</div>'+
+      '<div class="pr">'+esc(it.prompt||'The prompt for this one was not kept.')+'</div>'+
+      '<div class="gal-facts">'+facts.map(function(f){
+        return '<div><span>'+esc(f[0])+'</span><b>'+esc(f[1])+'</b></div>' }).join('')+'</div>'+
+      '<div class="gal-acts">'+
+        (it.prompt ? '<button class="go sm" id="gal-use" type="button">Make one like this</button>' : '')+
+      '</div></div>';
+    var u=$('gal-use');
+    if(u) u.onclick=function(){ useGalleryItem(it) };
+  }
+  /* The whole point of the gallery: it is a starting point, not a trophy case.
+     Load the prompt, the mode and the seed into the console and go there. */
+  function useGalleryItem(it){
+    var mode = it.model==='krea' ? 'image'
+             : (it.model==='nbp'||it.model==='nano-banana-pro'||it.model==='nano-banana-2') ? 'compose'
+             : (it.model||'').indexOf('kling')===0 ? 'video' : 'upscale';
+    var b=document.querySelector('#seg-type button[data-v="'+mode+'"]');
+    if(b) b.click();
+    $('prompt').value = it.prompt || '';
+    if(it.seed && $('seed')) $('seed').value = it.seed;
+    picked=true; syncMode(); paintCost(); show('scr-console');
+  }
+  $('hub-gallery').onclick=openGallery;
+  $('gal-back').onclick=function(){
+    if($('gal-one').hidden) show(picked?'scr-console':'scr-hub'); else galGrid();
+  };
   $('guide-btn').onclick=function(){show('scr-guide')};
   $('guide-close').onclick=function(){show(picked?'scr-console':'scr-hub')};
   $('hub-guide').onclick=function(){show('scr-guide')};

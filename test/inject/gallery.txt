@@ -1,0 +1,97 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* The gallery drives real money decisions (people copy a prompt and spend), and
+   it is the one screen strangers will see. Checked with the REAL payload shape
+   the n8n endpoint returns, plus the two states nobody looks at: empty, and a
+   lookup that fails. */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search),
+      mode=q.get('g')||'ok';
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); document.title=S+out.join('\n')+S}
+  window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
+  function vis(el){ if(!el||el.hidden) return false;
+    var c=getComputedStyle(el); if(c.display==='none') return false;
+    var r=el.getBoundingClientRect(); return r.width>0&&r.height>0; }
+  var PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAUCAYAAACXtf2DAAAAHElEQVQoz2NgoBQwUqifYdSAUQNGDRg1YNQAhgAABJoAAWgmWQ8AAAAASUVORK5CYII=';
+  var ITEMS=[
+    {url:PNG,gen_type:'image',model:'krea',prompt:'Ghostface doing Pilates on the beach',
+     price:0.06,seed:'166030281',created_at:'2026-09-10T23:18:19',specs:{aspect_ratio:'4:5',resolution:'2K',creativity:'medium'}},
+    {url:PNG,gen_type:'image',model:'nbp',prompt:'Karl Marx, Vladimir Lenin and Theodor Herzl',
+     price:0.15,seed:'',created_at:'2026-09-08T17:55:22',specs:{resolution:'2K'}},
+    {url:PNG,gen_type:'image',model:'nano-banana-pro',prompt:'',
+     price:null,seed:'',created_at:'2026-03-27T00:07:28',specs:{}}
+  ];
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:4.95,currency:'USD'})}});
+    if(a==='gallery'){
+      if(mode==='fail') return Promise.reject(new Error('offline'));
+      if(mode==='http') return Promise.resolve({ok:false,status:500,json:function(){return Promise.resolve({})}});
+      var items = mode==='empty' ? [] : ITEMS;
+      return Promise.resolve({ok:true,json:function(){return Promise.resolve({items:items,count:items.length})}});
+    }
+    return Promise.reject(new Error('no net'));
+  };
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){
+      T(vis($('hub-gallery')), 'the hub offers a way into the gallery');
+      $('hub-gallery').click();
+      setTimeout(check,600);
+    },250);
+  }
+  function check(){
+    T($('scr-gallery').classList.contains('on'), 'the gallery screen opened');
+    var frames=document.querySelectorAll('.frame');
+    if(mode==='ok'){
+      T(frames.length===3, 'one frame per item ('+frames.length+')');
+      T(/3 pictures/.test($('gal-count').textContent), 'the count is shown ('+$('gal-count').textContent+')');
+      var c0=frames[0].textContent;
+      T(/Ghostface doing Pilates/.test(c0), 'the prompt is on the card, not hidden behind hover');
+      T(/Image/.test(c0), 'the mode is named in plain language, not the engine ('+
+        (c0.match(/Image|Compose|krea|nbp/)||[''])[0]+')');
+      T(/\$0\.06/.test(c0), 'the price is shown');
+      T(/Compose/.test(frames[1].textContent), 'nbp is called Compose');
+      T(!/\$/.test(frames[2].textContent), 'an item with no known price shows no price, not $0.00');
+      T(/No prompt was kept/.test(frames[2].textContent), 'a promptless item says so rather than showing blank');
+      // the detail view
+      frames[0].click();
+      T(vis($('gal-one')) && !vis($('gal-grid')), 'tapping a frame opens the detail view');
+      var d=$('gal-one').textContent;
+      T(/Ghostface doing Pilates/.test(d), 'the prompt is the headline in detail');
+      T(/166030281/.test(d), 'the seed is listed');
+      T(/4:5/.test(d), 'the shape is listed');
+      T(/\$0\.06/.test(d), 'the cost is listed');
+      var img=$('gal-one').querySelector('img');
+      T(img && img.getBoundingClientRect().width<=$('gal-one').getBoundingClientRect().width+1,
+        'the detail image fits its column');
+      // THE POINT OF THE WHOLE SCREEN
+      T(!!$('gal-use'), 'there is a way to make one like it');
+      $('gal-use').click();
+      T($('scr-console').classList.contains('on'), 'it takes you to the console');
+      T($('prompt').value==='Ghostface doing Pilates on the beach', 'the prompt is loaded ('+$('prompt').value.slice(0,28)+')');
+      T($('seed').value==='166030281', 'the seed is loaded ('+$('seed').value+')');
+      T(document.querySelector('#seg-type button[data-v="image"]').getAttribute('aria-pressed')==='true',
+        'the right mode is selected');
+    }
+    if(mode==='empty'){
+      T(frames.length===0, 'no frames when nothing is flagged');
+      var e=document.querySelector('.gal-empty');
+      T(vis(e), 'an empty gallery says something');
+      T(/first/i.test(e.textContent), 'and invites you to act rather than just reporting emptiness');
+      T($('gal-count').textContent==='', 'no count is shown for an empty gallery');
+    }
+    if(mode==='fail'||mode==='http'){
+      T(vis(document.querySelector('.gal-empty')), 'a failed lookup shows the empty state, not a broken screen ('+mode+')');
+      T($('scr-gallery').classList.contains('on'), 'the screen still works');
+    }
+    // every mode
+    var dd=document.documentElement;
+    T(dd.scrollWidth<=innerWidth, 'no horizontal overflow ('+dd.scrollWidth+'<='+innerWidth+')');
+    document.title=S+out.join('\n')+S;
+  }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

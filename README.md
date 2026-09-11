@@ -30,7 +30,7 @@ proven structurally and for free. The cheapest real tests, in order:
 | **$0.06** | Image (Krea) | one sentence |
 | **$0.336** | Video, 3s, audio off | the cheapest real clip |
 
-**2. Verify before changing anything:** `./test/run.sh` → 853 assertions, ~2 min,
+**2. Verify before changing anything:** `./test/run.sh` → 1009 assertions, ~2 min,
 read-only, nothing sent or spent.
 
 **3. Open questions, roughly in order of value**
@@ -52,6 +52,7 @@ read-only, nothing sent or spent.
 ```
 lock screen  ->  hub (4 cards)  ->  console            + guide
                                     sources / stage / controls / session
+                 +-> gallery  (flagged work, and the prompt behind each picture)
 ```
 
 **The mode IS the model.** There is no engine dropdown, so no control on screen
@@ -136,6 +137,18 @@ the lip. **Landscape** splits side by side.
   lands, never polled: each check is an n8n execution.
 - **A missing balance must never break the app.** The lookup fails open — no
   number, everything else still works. Tested for reject, HTTP 500 and junk.
+- **The gallery shows ONLY rows flagged `gallery = true`.** Default off, and no
+  script sets it. This is not tidiness: the upscales are family photos, and an
+  automatic "recent generations" wall would publish them. Flag from the data
+  table; `Build Gallery` also drops anything without a `result_url`.
+- **A prompt exists in exactly one place until it is stored: the n8n execution.**
+  fal never returns it — a completed request gives you `images` and `seed`, full
+  stop — and n8n Cloud prunes executions on a rolling window of about a week.
+  Eight of the first twenty-three generations lost their prompts before anyone
+  thought to save them. `Store Job` now writes the prompt at submit time.
+- **The price in the table is the BROWSER's quote.** Fine for a gallery, which
+  only displays it. Not fine for a budget, where the person spending controls the
+  input — that needs the price computed in `Detect & Prepare`.
 - **Hector uses Safari, on the phone and the desktop.** The only automation here
   is headless Chromium. When a fix cannot be tested in Safari, remove the
   mechanism rather than tune it — no z-index or paint-order fixes.
@@ -191,12 +204,13 @@ Full narrative: `../../research/kling-render-rig-redesign.md`.
 ## Tests
 
 ```
-./test/run.sh            everything (853 assertions, ~4 min)
+./test/run.sh            everything (1009 assertions, ~5 min)
 ./test/run.sh mobile     6 phone/landscape viewports x 4 modes
 ./test/run.sh desktop    5 wide viewports: console, hub, guide
 ./test/run.sh price      every figure the guide quotes vs what the meter computes
 ./test/run.sh stage      a render lands, shows its seed, and can be cleared
 ./test/run.sh credit     credit left on screen, and every way the lookup fails
+./test/run.sh gallery    the gallery: flagged work, prompts, empty and failed states
 ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays there)
 ./test/run.sh tape       rail marquee: pitch, seam, direction, speed
 ./test/run.sh shots      previews into test/build/
