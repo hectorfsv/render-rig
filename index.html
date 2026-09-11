@@ -354,6 +354,50 @@ body:not(.wide) #gen-err:empty{display:none}
    way instead, so "stage-first" is true even with the controls open. */
 body:not(.wide) #pane-stage{flex:1 1 auto;min-height:clamp(108px,21dvh,240px)}
 
+/* A 16:9 render on a 9:19.5 phone letterboxes to about half black. With the
+   sheet closed the stage IS the screen, so it fills it; tap the picture (or
+   Fit) to see the whole frame. With the sheet open the stage is a thumbnail
+   and cropping it would hide most of the result, so it stays contained. */
+body:not(.wide) .console.sheet-shut .stage:not(.fit) .out{object-fit:cover}
+body:not(.wide) .console.sheet-shut #stage-out{height:100%}
+body:not(.wide) .console.sheet-shut .stage:not(.fit) .out{height:100%}
+body:not(.wide) .console.sheet-shut #fitbtn{display:block}
+.fitbtn{display:none;position:absolute;top:7px;right:7px;z-index:3;
+  font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink);background:rgba(0,0,0,.66);
+  border:1px solid var(--rule-hot);padding:6px 9px;cursor:pointer;backdrop-filter:blur(3px)}
+.fitbtn[aria-pressed=true]{color:var(--red-hot);border-color:var(--red)}
+
+/* A phone on its side has 852px of width and 393px of height, and stacking
+   spent the height it does not have while wasting the width it does. Side by
+   side: the stage keeps the full height, the sheet takes the right column.
+   Keyed on ORIENTATION, not on another width step - the app still has exactly
+   one width breakpoint, which is what stopped a landscape iPhone getting the
+   desktop console last time. */
+@media (orientation:landscape) and (max-height:560px){
+  /* the 492px cap is a portrait measure; sideways there is real width to use */
+  body:not(.wide) .rig{max-width:none}
+  /* sideways the grid's auto rows cannot give, so the chrome allowance has to
+     be exact rather than generous */
+  body:not(.wide) .console{--chrome:calc(106px + env(safe-area-inset-top) + env(safe-area-inset-bottom))}
+  body:not(.wide) .bay{display:grid;gap:0 10px;
+    grid-template-columns:minmax(0,1fr) minmax(268px,40%);
+    grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:"stage tabs" "stage panel" "stage commit"}
+  body:not(.wide) #pane-stage{grid-area:stage;min-height:0}
+  body:not(.wide) .sheet-tabs{grid-area:tabs;margin:0 -10px 0 0;border-top:none;
+    border-bottom:1px solid var(--rule)}
+  body:not(.wide) #pane-ctl,
+  body:not(.wide) #pane-src,
+  body:not(.wide) .hist{grid-area:panel;max-height:none;min-height:0;
+    margin:0 -10px 0 0;border-top:none}
+  body:not(.wide) .ctl-commit{grid-area:commit;margin:0 -10px 0 0}
+  /* Shut, the sheet keeps only what must stay reachable - the tabs and the
+     trigger - and the stage takes the width back. Upright it takes height
+     back; sideways, width. Same idea, different axis. */
+  body:not(.wide) .console.sheet-shut .bay{grid-template-columns:minmax(0,1fr) minmax(172px,21%)}
+}
+
 /* Exactly one panel, or none. Hiding is the default and showing is the
    exception, which is the safe direction for the display-specificity trap
    this file has been bitten by three times. */
@@ -609,6 +653,8 @@ body.wide .lab{font-size:12.5px}
               <p id="p-sub">Safe to close this tab. It picks back up when you return.</p>
             </div>
             <div id="stage-out" hidden style="width:100%"></div>
+            <button class="fitbtn" id="fitbtn" type="button" hidden
+                    aria-pressed="false" aria-label="Show the whole frame">Fit</button>
           </div>
           <div class="stage-foot">
             <span id="m-engine">&nbsp;</span><span id="m-time">&nbsp;</span>
@@ -1452,7 +1498,22 @@ body.wide .lab{font-size:12.5px}
     $('stage-prog').hidden = which!=='prog';
     $('stage-out').hidden  = which!=='out';
     $('out-actions').hidden = which!=='out';
+    $('fitbtn').hidden = which!=='out';
+    if(which!=='out') $('stage').classList.remove('fit');
   }
+  function toggleFit(){
+    var on = $('stage').classList.toggle('fit');
+    var b=$('fitbtn');
+    b.setAttribute('aria-pressed', String(on));
+    b.textContent = on ? 'Fill' : 'Fit';
+    b.setAttribute('aria-label', on ? 'Fill the screen' : 'Show the whole frame');
+  }
+  $('fitbtn').addEventListener('click',function(e){ e.stopPropagation(); toggleFit() });
+  // the picture is the bigger target, and on a phone that matters more than tidiness
+  $('stage-out').addEventListener('click',function(){
+    if(document.body.classList.contains('wide')) return;
+    if($('scr-console').classList.contains('sheet-shut')) toggleFit();
+  });
   function genErr(m){
     var e=$('gen-err');e.textContent=m||'';
     if(m) setTimeout(function(){ if($('gen-err').textContent===m) $('gen-err').textContent=''; },6000);
