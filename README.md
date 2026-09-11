@@ -30,7 +30,7 @@ proven structurally and for free. The cheapest real tests, in order:
 | **$0.06** | Image (Krea) | one sentence |
 | **$0.336** | Video, 3s, audio off | the cheapest real clip |
 
-**2. Verify before changing anything:** `./test/run.sh` → 604 assertions, ~2 min,
+**2. Verify before changing anything:** `./test/run.sh` → 759 assertions, ~2 min,
 read-only, nothing sent or spent.
 
 **3. Open questions, roughly in order of value**
@@ -111,6 +111,24 @@ the lip. **Landscape** splits side by side.
   in and clicked straight through the hub to the console, so the hub had never
   been measured on a phone — which is exactly where the zoom landed. It is
   measured now, before the card click.
+- **A second `function show()` in the same scope silently replaces the first.**
+  The screen switcher is `show(id)`; a result renderer also called `show(item)`
+  hoisted over it and every `show('scr-console')` rendered `<img src="undefined">`,
+  breaking all navigation. The renderer is `showResult()`. Grep for the name
+  before you add a function to this file.
+- **fal does not report output dimensions.** Krea sends `width`/`height` as
+  explicit nulls and Topaz sends none at all — a real 2904x3872 upscale reported
+  nothing (execs 5064/5068/5071). Read `naturalWidth`/`naturalHeight` off the
+  loaded media instead; it is the only source that cannot be wrong. Check
+  `.complete` as well as the `load` event, or a cached image never reports.
+- **A result had no exit.** `stage('idle')` was reachable only by FAILING, so a
+  delivered render sat on the stage through Menu, Guide and a cleared source
+  tray. Emptying the tray deliberately does NOT clear it — a Krea render has an
+  empty tray by definition — so the stage owns a Clear control. Clearing the
+  session clears the stage too, because that render can no longer be recalled.
+- **A wait loop that exits on its cap looks exactly like one that succeeded.**
+  A diagnostic here hit `++n>60`, sampled a half-built page and reported the
+  stage as broken when it was fine. Always report "timed out" as its own result.
 - **Hector uses Safari, on the phone and the desktop.** The only automation here
   is headless Chromium. When a fix cannot be tested in Safari, remove the
   mechanism rather than tune it — no z-index or paint-order fixes.
@@ -166,10 +184,11 @@ Full narrative: `../../research/kling-render-rig-redesign.md`.
 ## Tests
 
 ```
-./test/run.sh            everything (604 assertions, ~2 min)
+./test/run.sh            everything (759 assertions, ~3 min)
 ./test/run.sh mobile     6 phone/landscape viewports x 4 modes
 ./test/run.sh desktop    5 wide viewports: console, hub, guide
 ./test/run.sh price      every figure the guide quotes vs what the meter computes
+./test/run.sh stage      a render lands, shows its seed, and can be cleared
 ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays there)
 ./test/run.sh tape       rail marquee: pitch, seam, direction, speed
 ./test/run.sh shots      previews into test/build/

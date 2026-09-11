@@ -225,6 +225,14 @@ input[type=range]:focus-visible{outline:2px solid var(--red-hot);outline-offset:
 .go.ghost:hover{border-color:var(--rule-hot);color:var(--ink);filter:none}
 .go.sm{font-size:11px;letter-spacing:.12em;padding:10px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+/* The seed is the only handle on a look you liked, so it is a control, not a
+   label. Mono because it is a number you read back. */
+.seedbtn{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-dim);background:none;border:1px solid var(--rule);padding:3px 7px;
+  cursor:pointer;white-space:nowrap}
+.seedbtn:hover{color:var(--ink);border-color:var(--rule-hot)}
+.seedbtn.ok{color:var(--go);border-color:var(--go)}
 
 /* ---------- HUB ---------- */
 .hub{display:none;position:relative;overflow:hidden}
@@ -681,11 +689,15 @@ body.wide .lab{font-size:12.5px}
                     aria-pressed="false" aria-label="Show the whole frame">Fit</button>
           </div>
           <div class="stage-foot">
-            <span id="m-engine">&nbsp;</span><span id="m-time">&nbsp;</span>
+            <span id="m-engine">&nbsp;</span>
+            <button class="seedbtn" id="m-seed" type="button" hidden
+                    title="Put this seed in the Seed field">seed</button>
+            <span id="m-time">&nbsp;</span>
           </div>
-          <div class="row2" id="out-actions" hidden style="margin-top:8px">
+          <div class="row3" id="out-actions" hidden style="margin-top:8px">
             <a class="go sm" id="dl" href="#">Download</a>
             <button class="go sm ghost" id="to-src" type="button">Use as source</button>
+            <button class="go sm ghost" id="clear-stage" type="button">Clear</button>
           </div>
         </div>
 
@@ -1724,29 +1736,76 @@ body.wide .lab{font-size:12.5px}
   }
 
   /* ---------- result ---------- */
+  /* ONE renderer, used by land() and by a history card, so the stage can never
+     show a fresh render differently from a recalled one. NOT named show() -
+     that name is already the screen switcher above, and a second function of the
+     same name in this scope silently replaces it and breaks all navigation. */
+  function showResult(item, tail){
+    var isVid=item.gen_type==='video';
+    lastOut=item;
+    $('stage-out').innerHTML = isVid
+      ? '<video class="out" src="'+item.url+'" controls playsinline preload="metadata"></video>'
+      : '<img class="out" src="'+item.url+'" alt="">';
+    $('dl').href=DOWNLOAD+'?u='+encodeURIComponent(item.url)+'&n='+encodeURIComponent(item.filename||'render');
+    $('m-engine').textContent = isVid?'Kling 3.0 Pro':(item.gen_type==='upscale'?'Topaz':'Still');
+    $('stage-tag').textContent = item.gen_type;
+    paintSeed(item.seed);
+    paintMeta(item, tail);
+    /* fal does not report dimensions reliably - Krea sends width/height as null
+       and Topaz sends none at all (measured on execs 5064/5068/5071, where a real
+       2904x3872 file reported nothing). So ask the media itself: it is the only
+       source that cannot be wrong. A cached image can already be complete before
+       the listener attaches, hence the .complete check as well. */
+    var el=$('stage-out').firstChild;
+    function got(w,h){
+      if(!w||!h||(item.w===w&&item.h===h)) return;
+      item.w=w; item.h=h;
+      for(var i=0;i<HIST.length;i++){ if(HIST[i].url===item.url){HIST[i].w=w;HIST[i].h=h;break} }
+      saveHist(); paintMeta(item, tail);
+    }
+    if(el && isVid){ el.addEventListener('loadedmetadata',function(){got(el.videoWidth,el.videoHeight)}) }
+    else if(el){ el.addEventListener('load',function(){got(el.naturalWidth,el.naturalHeight)});
+                 if(el.complete) got(el.naturalWidth,el.naturalHeight) }
+    stage('out');
+  }
+  function paintMeta(item, tail){
+    var dims=(item.w&&item.h)?(item.w+'×'+item.h+'  '):'';
+    $('m-time').textContent = dims+(tail||'');
+  }
+  function paintSeed(seed){
+    var b=$('m-seed'), has=(seed!==undefined && seed!==null && seed!=='');
+    b.hidden=!has;
+    if(has){ b.textContent='seed '+seed; b.dataset.seed=String(seed); b.classList.remove('ok') }
+  }
+  /* There was NO way back from a result: stage('idle') was reachable only by
+     FAILING, so a delivered render sat there through Menu, Guide and a cleared
+     source tray. Emptying the tray deliberately does NOT clear it - a Krea
+     render has an empty tray by definition - so the stage gets its own control.
+     Nothing is lost: every render stays in This Session and returns on a tap. */
+  function clearStage(){
+    lastOut=null;
+    $('stage-out').innerHTML='';
+    $('stage-tag').textContent='';
+    $('m-engine').innerHTML='&nbsp;';
+    $('m-time').innerHTML='&nbsp;';
+    $('m-seed').hidden=true;
+    document.body.classList.remove('done');
+    stage('idle');
+  }
   function land(d){
     var url=(d.urls&&d.urls[0])||'';
     if(!url){bad('The run finished but returned nothing.');return}
-    var isVid=d.gen_type==='video';
-    lastOut={url:url,filename:d.filename,gen_type:d.gen_type,w:d.width||0,h:d.height||0};
-
-    $('stage-out').innerHTML = isVid
-      ? '<video class="out" src="'+url+'" controls playsinline preload="metadata"></video>'
-      : '<img class="out" src="'+url+'" alt="">';
-    $('dl').href=DOWNLOAD+'?u='+encodeURIComponent(url)+'&n='+encodeURIComponent(d.filename||'render');
-    $('m-engine').textContent = isVid?'Kling 3.0 Pro':(d.gen_type==='upscale'?'Topaz':'Still');
-    var dims=(d.width&&d.height)?(d.width+'×'+d.height+' · '):'';
-    $('m-time').textContent = dims.replace(' · ','  ')+fmt(Math.floor((Date.now()-t0)/1000))+' elapsed';
-    $('stage-tag').textContent = d.gen_type;
-
-    stage('out');
+    var item={url:url,filename:d.filename,gen_type:d.gen_type,
+              w:d.width||0,h:d.height||0,
+              seed:(d.seed===0||d.seed)?d.seed:null};
+    HIST.unshift(item);                   // before showResult(), so got() can find it
+    showResult(item, fmt(Math.floor((Date.now()-t0)/1000))+' elapsed');
     document.body.classList.remove('rendering');document.body.classList.add('done');
     chip('Delivered','ok');
     $('submit').disabled=false;
 
     if(curJob){spend+=curJob.priced;curJob=null}
     saveJob(null);
-    HIST.unshift({url:url,gen_type:d.gen_type,filename:d.filename,w:d.width||0,h:d.height||0});
     saveHist();
     paintHist();
   }
@@ -1769,13 +1828,7 @@ body.wide .lab{font-size:12.5px}
         +'<button class="up" type="button" title="Use as a source" aria-label="Use as a source">&uarr;</button>';
       c.onclick=function(e){
         if(e.target.closest('.up')){addUrl(h.url,h.w,h.h);return}
-        lastOut=h;
-        $('stage-out').innerHTML = h.gen_type==='video'
-          ? '<video class="out" src="'+h.url+'" controls playsinline preload="metadata"></video>'
-          : '<img class="out" src="'+h.url+'" alt="">';
-        $('dl').href=DOWNLOAD+'?u='+encodeURIComponent(h.url)+'&n='+encodeURIComponent(h.filename||'render');
-        $('stage-tag').textContent=h.gen_type;
-        stage('out');
+        showResult(h,'');
       };
       s.appendChild(c);
     });
@@ -1785,6 +1838,14 @@ body.wide .lab{font-size:12.5px}
 
   $('hist-clear').onclick=function(){
     HIST=[];spend=0;saveHist();paintHist();
+    clearStage();      // the stage was showing a render you just made unrecallable
+  };
+  $('clear-stage').onclick=clearStage;
+  $('m-seed').onclick=function(){
+    var v=this.dataset.seed, b=this; if(!v) return;
+    $('seed').value=v;
+    b.classList.add('ok'); b.textContent='seed '+v+' → set';
+    setTimeout(function(){ b.classList.remove('ok'); b.textContent='seed '+v },1800);
   };
   $('to-src').onclick=function(){
     if(!lastOut) return;

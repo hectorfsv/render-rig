@@ -1,0 +1,120 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* Drive the app's OWN submit -> poll -> land path, then try to get rid of the
+   result. Reading the code cannot tell you a result is unclearable; only
+   walking every exit can. */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search);
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); flush()}
+  function flush(){ try{document.title=S+out.join('\n')+S}catch(e){} }
+  window.onerror=function(m,f,l){ out.push('FAIL  JS ERROR: '+m+' @'+l); flush() };
+  function vis(el){ if(!el||el.hidden) return false;
+    var c=getComputedStyle(el); if(c.display==='none'||c.visibility==='hidden') return false;
+    var r=el.getBoundingClientRect(); return r.width>0 && r.height>0; }
+  var PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAUCAIAAAA7jDsBAAAAGElEQVR4nGM8oaHBgBsw4ZEblR6VJkkaANeKAUD7/NPBAAAAAElFTkSuQmCC';
+  var submitted=0;
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    // A fake must be as honest as the thing it replaces: a submit answers with a
+    // submit body, a poll with a poll body. Getting this wrong once produced six
+    // bogus downstream failures.
+    if(String(u).indexOf('jobId=')>-1){
+      return Promise.resolve({ok:true,json:function(){return Promise.resolve({
+        status:'done', gen_type:'image', urls:[PNG],
+        width:null, height:null,        // exactly what Krea really sends
+        seed:166030281, filename:'ai-image.png'})}});
+    }
+    submitted++;
+    return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued',jobId:'test1'})}});
+  };
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){
+      document.querySelector('.card[data-go="image"]').click();
+      setTimeout(function(){
+        $('prompt').value='a test';
+        $('submit').click();
+        // The first image poll is scheduled 15s out, so WAIT FOR THE LAND rather
+        // than guessing a delay. (Infinite CSS animations are killed below or
+        // headless virtual time never reaches 15s at all.)
+        var tries=0;
+        (function wait(){
+          if($('stage-out').innerHTML!==''){ out.push('      [landed after '+tries+' ticks]'); return check() }
+          if(++tries>120){ T(false,'TIMED OUT waiting for the render to land - '+
+            'everything below is meaningless'); document.title=S+out.join('\n')+S; return }
+          setTimeout(wait,500);
+        })();
+      },200);
+    },150);
+  }
+  function check(){
+    T(vis($('stage-out')), 'a render reaches the stage');
+    T(!vis($('stage-idle')), 'the idle card is gone while a render is up');
+    T(vis($('out-actions')), 'the result actions are showing');
+    // THE BUG: the seed, and dimensions fal never sent
+    T(vis($('m-seed')) && /166030281/.test($('m-seed').textContent),
+      'the seed is shown ('+$('m-seed').textContent+')');
+    T(/10×20/.test($('m-time').textContent),
+      'real dimensions read off the image, not from fal ('+$('m-time').textContent+')');
+    T(/\.png$/.test($('dl').href.split('n=')[1]||''), 'download keeps the real extension ('+
+      decodeURIComponent(($('dl').href.split('n=')[1]||''))+')');
+    // seed reuse
+    $('m-seed').click();
+    T($('seed').value==='166030281', 'tapping the seed fills the Seed field ('+$('seed').value+')');
+    // A third button in the result row must not spill at 360px, and the stage
+    // foot now carries a seed as well. scrollWidth vs clientWidth is the question
+    // for spilled text - comparing rects would say "no overlap" and mean nothing.
+    ['dl','to-src','clear-stage'].forEach(function(id){
+      var e=$(id), r=e.getBoundingClientRect();
+      T(e.scrollWidth<=Math.ceil(r.width)+1, id+' text fits its button (needs '+e.scrollWidth+', has '+Math.round(r.width)+')');
+      T(r.left>=-1 && r.right<=innerWidth+1, id+' is inside the viewport');
+    });
+    var foot=document.querySelector('.stage-foot');
+    T(foot.scrollWidth<=Math.ceil(foot.getBoundingClientRect().width)+1,
+      'the stage foot does not spill with a seed in it (needs '+foot.scrollWidth+
+      ', has '+Math.round(foot.getBoundingClientRect().width)+')');
+    T(document.documentElement.scrollWidth<=innerWidth, 'no horizontal page overflow with a result up');
+
+    // THE REPORTED BUG: clearing sources must not strand a result, and there must
+    // be a way out. Walk every exit Hector tried.
+    T(vis($('clear-stage')), 'there is a Clear control at all');
+    // guide + menu round trip: the two exits Hector tried
+    $('guide-btn').click();
+    setTimeout(function(){
+      var g=$('scr-guide');
+      if(g&&g.classList.contains('on')){ $('guide-close').click(); }
+      setTimeout(function(){
+        T($('scr-console').classList.contains('on'), 'guide returns to the console');
+        T(vis($('stage-out')), 'the render survives a guide round trip (it should)');
+        // and the Menu -> hub -> back route
+        $('menu-btn').click();
+        document.querySelector('.card[data-go="image"]').click();
+        T(vis($('stage-out')), 'the render survives a Menu round trip (it should)');
+        // now clear it
+        $('clear-stage').click();
+        T(!vis($('stage-out')), 'Clear removes the render from the stage');
+        T(vis($('stage-idle')), 'the idle card comes back');
+        T(!vis($('out-actions')), 'the result actions go away');
+        T(!vis($('m-seed')), 'the seed readout goes away');
+        T($('stage-out').innerHTML==='', 'the media element is released, not just hidden');
+        T(!document.body.classList.contains('done'), 'the done glow is cleared');
+        // history still has it - nothing was lost
+        T(document.querySelectorAll('.hcard').length===1, 'the render is still in This Session');
+        document.querySelector('.hcard').click();
+        T(vis($('stage-out')), 'tapping the history card brings it back');
+        T(vis($('m-seed')) && /166030281/.test($('m-seed').textContent),
+          'the recalled render still knows its seed');
+        // clearing the session clears the stage too
+        if($('hist-clear')) $('hist-clear').click();
+        T(!vis($('stage-out')), 'clearing the session also clears the stage');
+        T(document.querySelectorAll('.hcard').length===0, 'session is empty');
+        T(submitted===1, 'exactly one submit was made ('+submitted+')');
+        document.title=S+out.join('\n')+S;
+      },260);
+    },260);
+  }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

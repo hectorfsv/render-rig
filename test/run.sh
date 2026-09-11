@@ -5,6 +5,7 @@
 #   ./test/run.sh mobile     phone + landscape layout
 #   ./test/run.sh desktop    wide layout, hub, guide
 #   ./test/run.sh price      the guide's numbers vs what the meter computes
+#   ./test/run.sh stage      a render lands, shows its seed, and can be cleared
 #   ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays)
 #   ./test/run.sh tape       the rail marquee: pitch, seam, direction, speed
 #   ./test/run.sh shots      write previews to test/build/*.png
@@ -88,6 +89,20 @@ if [ "$WHAT" = all ] || [ "$WHAT" = price ]; then
   printf '%s' "$R" | sed 's/PASS/\nPASS/g; s/FAIL/\nFAIL/g' | grep -E '^(PASS|FAIL)' | sed 's/^/  /'
   p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
   PASS=$((PASS+p)); FAIL=$((FAIL+f)); echo "  -> $p pass / $f fail"
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = stage ]; then
+  build "$INJ/stage.txt" "$B/st.html"
+  line; echo "STAGE  (submit -> land -> seed -> every way out of a result)"
+  sp=0; sf=0
+  for v in "2026 1037" "1440 900" "393 852" "393 700" "852 393"; do set -- $v
+    R=$(title "$1" "$2" "file://$B/st.html" 90000)
+    p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+    f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    sp=$((sp+p)); sf=$((sf+f))
+    [ "$f" != 0 ] && { echo "  ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  done
+  echo "  -> $sp pass / $sf fail"; PASS=$((PASS+sp)); FAIL=$((FAIL+sf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = zoom ]; then
