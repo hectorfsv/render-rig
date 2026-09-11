@@ -30,7 +30,7 @@ proven structurally and for free. The cheapest real tests, in order:
 | **$0.06** | Image (Krea) | one sentence |
 | **$0.336** | Video, 3s, audio off | the cheapest real clip |
 
-**2. Verify before changing anything:** `./test/run.sh` → 476 assertions, ~2 min,
+**2. Verify before changing anything:** `./test/run.sh` → 604 assertions, ~2 min,
 read-only, nothing sent or spent.
 
 **3. Open questions, roughly in order of value**
@@ -100,6 +100,17 @@ the lip. **Landscape** splits side by side.
   failed.
 - **`git push` dies on any real asset** — `http.postBuffer` defaults to 1 MB;
   this repo is set to 500 MB + HTTP/1.1.
+- **iOS Safari zooms the whole page when a focused field computes under 16px,
+  and it does not zoom back out when the field blurs.** The 14px passphrase left
+  the hub at 1.139x (= 16/14) panned 42pt right, with the rail off-screen — it
+  looked like a layout bug and was a font size. Every text-entry control is on
+  16px now, desktop included: an iPad in landscape is `body.wide` AND iOS. Never
+  fix this with `maximum-scale` / `user-scalable=no`; `./test/run.sh zoom`
+  asserts both.
+- **A screen no test visits is a screen with no tests.** The mobile suite logged
+  in and clicked straight through the hub to the console, so the hub had never
+  been measured on a phone — which is exactly where the zoom landed. It is
+  measured now, before the card click.
 - **Hector uses Safari, on the phone and the desktop.** The only automation here
   is headless Chromium. When a fix cannot be tested in Safari, remove the
   mechanism rather than tune it — no z-index or paint-order fixes.
@@ -155,10 +166,11 @@ Full narrative: `../../research/kling-render-rig-redesign.md`.
 ## Tests
 
 ```
-./test/run.sh            everything (476 assertions, ~2 min)
+./test/run.sh            everything (604 assertions, ~2 min)
 ./test/run.sh mobile     6 phone/landscape viewports x 4 modes
 ./test/run.sh desktop    5 wide viewports: console, hub, guide
 ./test/run.sh price      every figure the guide quotes vs what the meter computes
+./test/run.sh zoom       no field under 16px (iOS zooms the page and stays there)
 ./test/run.sh tape       rail marquee: pitch, seam, direction, speed
 ./test/run.sh shots      previews into test/build/
 ```

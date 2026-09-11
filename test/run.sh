@@ -5,6 +5,7 @@
 #   ./test/run.sh mobile     phone + landscape layout
 #   ./test/run.sh desktop    wide layout, hub, guide
 #   ./test/run.sh price      the guide's numbers vs what the meter computes
+#   ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays)
 #   ./test/run.sh tape       the rail marquee: pitch, seam, direction, speed
 #   ./test/run.sh shots      write previews to test/build/*.png
 #
@@ -87,6 +88,20 @@ if [ "$WHAT" = all ] || [ "$WHAT" = price ]; then
   printf '%s' "$R" | sed 's/PASS/\nPASS/g; s/FAIL/\nFAIL/g' | grep -E '^(PASS|FAIL)' | sed 's/^/  /'
   p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
   PASS=$((PASS+p)); FAIL=$((FAIL+f)); echo "  -> $p pass / $f fail"
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = zoom ]; then
+  build "$INJ/zoom.txt" "$B/z.html"
+  line; echo "ZOOM  (no field under 16px - iOS zooms the page and stays there)"
+  zp=0; zf=0
+  for v in "393 852" "393 700" "852 393" "2026 1037"; do set -- $v
+    R=$(title "$1" "$2" "file://$B/z.html" 6000)
+    p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+    f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    zp=$((zp+p)); zf=$((zf+f))
+    [ "$f" != 0 ] && { echo "  ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  done
+  echo "  -> $zp pass / $zf fail"; PASS=$((PASS+zp)); FAIL=$((FAIL+zf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = tape ]; then
