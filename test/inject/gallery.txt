@@ -5,7 +5,7 @@
    the n8n endpoint returns, plus the two states nobody looks at: empty, and a
    lookup that fails. */
 (function(){
-  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search),
+  var S=String.fromCharCode(167), out=[], d0='', q=new URLSearchParams(location.search),
       mode=q.get('g')||'ok';
   function $(i){return document.getElementById(i)}
   function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); document.title=S+out.join('\n')+S}
@@ -15,11 +15,12 @@
     var r=el.getBoundingClientRect(); return r.width>0&&r.height>0; }
   var PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAUCAYAAACXtf2DAAAAHElEQVQoz2NgoBQwUqifYdSAUQNGDRg1YNQAhgAABJoAAWgmWQ8AAAAASUVORK5CYII=';
   var ITEMS=[
-    {url:PNG,gen_type:'image',model:'krea',prompt:'Ghostface doing Pilates on the beach',
-     price:0.06,seed:'166030281',created_at:'2026-09-10T23:18:19',specs:{aspect_ratio:'4:5',resolution:'2K',creativity:'medium'}},
-    {url:PNG,gen_type:'image',model:'nbp',prompt:'Karl Marx, Vladimir Lenin and Theodor Herzl',
-     price:0.15,seed:'',created_at:'2026-09-08T17:55:22',specs:{resolution:'2K'}},
-    {url:PNG,gen_type:'image',model:'nano-banana-pro',prompt:'',
+    {url:PNG,gen_type:'image',model:'krea',engine:'Krea 2 Large',prompt:'Ghostface doing Pilates on the beach',
+     price:0.06,seed:'166030281',created_at:'2026-09-10T23:18:19',specs:{aspect_ratio:'4:5',resolution:'2K',creativity:'medium',w:928,h:1152}},
+    // THE ROW THAT MATTERS: picked krea, actually ran on nano-banana-pro
+    {url:PNG,gen_type:'image',model:'krea',engine:'Nano Banana Pro',prompt:'make this image real',
+     price:0.15,seed:'',created_at:'2026-09-08T15:10:37',specs:{resolution:'2K',w:2080,h:2048}},
+    {url:PNG,gen_type:'image',model:'nano-banana-pro',engine:'',prompt:'',
      price:null,seed:'',created_at:'2026-03-27T00:07:28',specs:{}}
   ];
   window.fetch=function(u,o){
@@ -50,10 +51,14 @@
       T(/3 pictures/.test($('gal-count').textContent), 'the count is shown ('+$('gal-count').textContent+')');
       var c0=frames[0].textContent;
       T(/Ghostface doing Pilates/.test(c0), 'the prompt is on the card, not hidden behind hover');
-      T(/Image/.test(c0), 'the mode is named in plain language, not the engine ('+
-        (c0.match(/Image|Compose|krea|nbp/)||[''])[0]+')');
+      T(/Krea 2 Large/.test(c0), 'the card names the MODEL that made it ('+
+        (c0.match(/Krea 2 Large|Nano Banana Pro|Image|Compose/)||[''])[0]+')');
       T(/\$0\.06/.test(c0), 'the price is shown');
-      T(/Compose/.test(frames[1].textContent), 'nbp is called Compose');
+      // the bug Hector spotted: a picture made on NBP was being labelled by the
+      // mode the user picked, so it read the same as a Krea one
+      T(/Nano Banana Pro/.test(frames[1].textContent) && !/Krea/.test(frames[1].textContent),
+        'a row that ran on NBP says so, even though krea was picked');
+      T(/Krea 2 Large/.test(d0=frames[0].textContent), 'and a real Krea row still says Krea');
       T(!/\$/.test(frames[2].textContent), 'an item with no known price shows no price, not $0.00');
       T(/No prompt was kept/.test(frames[2].textContent), 'a promptless item says so rather than showing blank');
       // the detail view
@@ -75,6 +80,8 @@
       T($('seed').value==='166030281', 'the seed is loaded ('+$('seed').value+')');
       T(document.querySelector('#seg-type button[data-v="image"]').getAttribute('aria-pressed')==='true',
         'the right mode is selected');
+      // and the mislabelled one must open the engine that really made it
+      $('gal-back').click(); $('hub-gallery').click();
     }
     if(mode==='empty'){
       T(frames.length===0, 'no frames when nothing is flagged');

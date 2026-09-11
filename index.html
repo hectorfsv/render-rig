@@ -2026,6 +2026,21 @@ body.wide .lab{font-size:12.5px}
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] }) }
   function nameOf(m){ return m==='krea' ? 'Image' : (m==='nbp'||m==='nano-banana-pro'||m==='nano-banana-2') ? 'Compose'
     : m==='topaz' ? 'Upscale' : (m||'').indexOf('kling')===0 ? 'Video' : (m||'') }
+  // Name the MODEL that made the picture, not the mode it was made in. `model`
+  // records what was picked in the UI and it can disagree with what actually ran:
+  // two of these say krea and went to nano-banana-pro.
+  function engineOf(it){ return it.engine || nameOf(it.model) }
+  // and "make one like this" should open whatever engine really produced it
+  function modeOf(it){
+    var e=(it.engine||'').toLowerCase();
+    if(e.indexOf('krea')>-1) return 'image';
+    if(e.indexOf('banana')>-1) return 'compose';
+    if(e.indexOf('topaz')>-1) return 'upscale';
+    if(e.indexOf('kling')>-1) return 'video';
+    return it.model==='krea' ? 'image'
+         : (it.model==='nbp'||String(it.model).indexOf('nano-banana')===0) ? 'compose'
+         : it.model==='topaz' ? 'upscale' : 'video';
+  }
   function paintGallery(){
     var g=$('gal-grid');
     $('gal-count').textContent = GAL.length ? GAL.length+(GAL.length===1?' picture':' pictures') : '';
@@ -2057,7 +2072,7 @@ body.wide .lab{font-size:12.5px}
       b.innerHTML='<img alt="" loading="lazy" style="--ar:'+ar.toFixed(4)+'"'+
         (w&&h ? ' width="'+w+'" height="'+h+'"' : '')+' src="'+esc(it.url)+'">'+
         '<div class="frame-cap"><div class="pr">'+esc(it.prompt||'No prompt was kept for this one')+'</div>'+
-        '<div class="frame-meta"><b>'+esc(nameOf(it.model))+'</b><span>'+
+        '<div class="frame-meta"><b>'+esc(engineOf(it))+'</b><span>'+
         (it.price!=null ? '$'+money(it.price) : '')+'</span></div></div>';
       // fade each picture in as it actually loads - motion that answers an event,
       // not a staggered entrance on everything
@@ -2088,7 +2103,7 @@ body.wide .lab{font-size:12.5px}
     $('gal-back').textContent='All pictures';
     $('gal-title').textContent='Made with this'; $('gal-sub').hidden=true;
     var sp=it.specs||{}, facts=[];
-    facts.push(['Made with', nameOf(it.model)]);
+    facts.push(['Made with', engineOf(it)]);
     if(it.price!=null) facts.push(['Cost','$'+money(it.price)]);
     if(it.seed) facts.push(['Seed', it.seed]);
     if(sp.aspect_ratio) facts.push(['Shape', sp.aspect_ratio]);
@@ -2110,10 +2125,7 @@ body.wide .lab{font-size:12.5px}
   /* The whole point of the gallery: it is a starting point, not a trophy case.
      Load the prompt, the mode and the seed into the console and go there. */
   function useGalleryItem(it){
-    var mode = it.model==='krea' ? 'image'
-             : (it.model==='nbp'||it.model==='nano-banana-pro'||it.model==='nano-banana-2') ? 'compose'
-             : (it.model||'').indexOf('kling')===0 ? 'video' : 'upscale';
-    var b=document.querySelector('#seg-type button[data-v="'+mode+'"]');
+    var b=document.querySelector('#seg-type button[data-v="'+modeOf(it)+'"]');
     if(b) b.click();
     $('prompt').value = it.prompt || '';
     if(it.seed && $('seed')) $('seed').value = it.seed;

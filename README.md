@@ -30,7 +30,7 @@ proven structurally and for free. The cheapest real tests, in order:
 | **$0.06** | Image (Krea) | one sentence |
 | **$0.336** | Video, 3s, audio off | the cheapest real clip |
 
-**2. Verify before changing anything:** `./test/run.sh` → 1025 assertions, ~2 min,
+**2. Verify before changing anything:** `./test/run.sh` → 1029 assertions, ~2 min,
 read-only, nothing sent or spent.
 
 **3. Open questions, roughly in order of value**
@@ -147,6 +147,15 @@ the lip. **Landscape** splits side by side.
   pictures pop the page around as they arrive. Dimensions come from `specs.w/h`;
   `scripts/rescue-rig-history.py` measures and stores them, and the page falls back
   to the file's real ratio on load if a row has none.
+- **`model` is what was PICKED; `engine` is what fal actually RAN, and they
+  disagree on real rows.** Two rows say `krea` and went to `nano-banana-pro` (the
+  era when all image-to-image did), so labelling by `model` printed "Image $0.06"
+  over a $0.15 Nano Banana Pro picture. The gallery labels by `engine`, resolved
+  from the endpoint in `response_url` — `scripts/set-rig-engines.py` backfills it
+  and re-derives the price from the same fact.
+- **Krea 2 Medium is $0.030** ($0.035 with style references). It is a retired
+  tier that older Esquiffis runs used, and its price was recorded nowhere here
+  until 2026-09-11 — five gallery pictures were priceless because of it.
 - **The gallery shows ONLY rows flagged `gallery = true`.** Default off, and no
   script sets it. This is not tidiness: the upscales are family photos, and an
   automatic "recent generations" wall would publish them. Flag from the data
@@ -214,7 +223,7 @@ Full narrative: `../../research/kling-render-rig-redesign.md`.
 ## Tests
 
 ```
-./test/run.sh            everything (1025 assertions, ~5 min)
+./test/run.sh            everything (1029 assertions, ~5 min)
 ./test/run.sh mobile     6 phone/landscape viewports x 4 modes
 ./test/run.sh desktop    5 wide viewports: console, hub, guide
 ./test/run.sh price      every figure the guide quotes vs what the meter computes
