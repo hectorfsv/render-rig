@@ -190,6 +190,16 @@ if [ "$WHAT" = all ] || [ "$WHAT" = promote ]; then
   echo "  -> $pp pass / $pf fail"; PASS=$((PASS+pp)); FAIL=$((FAIL+pf))
 fi
 
+if [ "$WHAT" = all ] || [ "$WHAT" = framing ]; then
+  build "$INJ/framing.txt" "$B/fr.html"
+  line; echo "FRAMING  (Hector sets the frame, not a blind model guessing from his caption)"
+  R=$(title 1440 900 "file://$B/fr.html" 90000)
+  fp=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+  ff=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+  [ "$ff" != 0 ] && { printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  echo "  -> $fp pass / $ff fail"; PASS=$((PASS+fp)); FAIL=$((FAIL+ff))
+fi
+
 if [ "$WHAT" = all ] || [ "$WHAT" = tape ]; then
   build "$INJ/tape.txt" "$B/tp.html"; build "$INJ/speed.txt" "$B/sp.html"
   line; echo "TAPE  (rail marquee)"

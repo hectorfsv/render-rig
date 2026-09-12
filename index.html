@@ -823,6 +823,15 @@ body.wide .lab{font-size:12.5px}
             <div class="hint">1K and 2K are billed the same, so 2K is the floor worth using.</div>
           </div>
 
+          <div id="row-framing" hidden>
+            <div class="lab">Framing</div>
+            <label class="check">
+              <input type="checkbox" id="keep-framing" checked>
+              <span>Keep the original framing</span>
+            </label>
+            <div class="hint" id="framing-hint"></div>
+          </div>
+
           <!-- VIDEO -->
           <div id="row-vid" hidden>
             <div class="lab">Duration <span class="opt"><b id="dur-read">5</b> seconds</span></div>
@@ -1441,6 +1450,11 @@ body.wide .lab{font-size:12.5px}
     $('src-count').textContent=SRC.length;
     paintTabs();
     $('tray-empty').style.display=SRC.length?'none':'';
+    // Several rows are keyed on SRC.length - the end-frame picker, the aspect
+    // ratio (i2v has none), the source count, the framing toggle. They all live
+    // in syncMode, which the tray never called, so they went stale until a mode
+    // change happened to rebuild them.
+    if(typeof syncMode==='function') syncMode();
   }
 
   /* ---------- controls ---------- */
@@ -1483,6 +1497,11 @@ body.wide .lab{font-size:12.5px}
     $('row-krea').hidden   = !isKrea;
     $('row-nbp').hidden    = !isNbp;
     $('row-res').hidden    = !isNbp;
+    // Only meaningful with exactly ONE source. With none there is no frame to
+    // keep, and with two or more the frame is always released or the newcomers
+    // have nowhere to stand. Used to be a judgement the blind enhancer made.
+    $('row-framing').hidden = !(isNbp && SRC.length===1);
+    paintFraming();
     $('row-seed').hidden   = !(isKrea||isNbp);
     $('row-ups').hidden    = !isUps;
     $('row-endimg').hidden = !(isVid && SRC.length);
@@ -1514,6 +1533,12 @@ body.wide .lab{font-size:12.5px}
   }
 
   // the end frame is chosen by tray position, which is how n8n addresses it
+  function paintFraming(){
+    $('framing-hint').textContent = $('keep-framing').checked
+      ? 'Your photo keeps its shape, and anything you did not ask about is left exactly as it was. Right for a costume, a look, a transformation.'
+      : 'The picture may be widened or re-framed to fit. Turn this off when you are ADDING somebody, or moving the subject somewhere new \u2014 a locked frame with something new in it makes the model paint over what was already there.';
+  }
+
   function buildEnd(){
     var sel=$('end-img'), cur=sel.value;
     sel.innerHTML='<option value="">Do not set an end frame</option>'+
@@ -1567,6 +1592,7 @@ body.wide .lab{font-size:12.5px}
   $('audio').addEventListener('change',paintCost);
   $('websearch').addEventListener('change',paintCost);
   $('use-style').addEventListener('change',function(){syncMode();paintCost()});
+  $('keep-framing').addEventListener('change',paintFraming);
   $('face').addEventListener('change',function(){$('face-rows').hidden=!$('face').checked});
   $('upmodel').addEventListener('change',function(){syncMode();paintCost()});
 
@@ -1867,6 +1893,8 @@ body.wide .lab{font-size:12.5px}
         }
       }else{
         fd.append('resolution',res);
+        // Only one source has a framing question. n8n defaults it ON when absent.
+        if(SRC.length===1) fd.append('keep_framing', $('keep-framing').checked?'on':'off');
         put('safety_tolerance', optVal('saf','use-saf'));
         put('system_prompt', $('sysp').value.trim());
         if($('websearch').checked) fd.append('enable_web_search','on');
