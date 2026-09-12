@@ -41,7 +41,25 @@ claim is settled for free.
 **2. Verify before changing anything:** `./test/run.sh` -> 1257 assertions, ~6 min,
 read-only, nothing sent or spent. Pair it with `../webkit-check/` for Safari.
 
-**3. Open questions, roughly in order of value**
+**3. Where the last session left off (2026-09-12)** — seven paid composes and one
+unwanted video, **$1.40**, balance about **$3.55**. Every image bug was in the
+prompt enhancer, not the model; full narrative in
+`../../research/kling-render-rig-redesign.md` §2026-09-12. What to pick up:
+
+- **4K on Nano Banana Pro has never been tried, not once.** `resolution` is the
+  only parameter NBP has that touches detail, and every run ever recorded was 2K.
+  $0.30, and it is the open question behind "the faces still change a little".
+- **A seed typed in BEFORE the run** is the only way to keep a composition you
+  like — fal never returns the one it used, so re-rolling is currently the only
+  option and about one run in six drops a person.
+- **`price` is never recorded on a live run** (the browser sends no `price`
+  field), so every new gallery row is priceless.
+- **The credit figure on screen is often one run behind** — fal posts charges
+  with a lag and the app refetches the moment a render lands.
+- **Teach the caption, not the recipe**: the enhancer is blind, so "keep the neon
+  on their faces" has to come from Hector's own words.
+
+**4. Open questions, roughly in order of value**
 - **Per-person codes — spec'd, prepared, and blocked on Hector alone** (how many
   people, which codes). `../../research/render-rig-per-person-codes.md`;
   Version A is ~20 minutes. **The trap: there are TWO hardcoded gates**, submit
