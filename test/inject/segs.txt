@@ -1,0 +1,81 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* Every segmented control must show the choice the INSTANT it is clicked.
+   Aspect ratio had its own handler that set the variable and never moved
+   aria-pressed, so the highlight only caught up when syncMode() happened to
+   rebuild the row - it looked like the click had not registered.
+   This checks the whole class, and then proves the choice reaches the payload. */
+(function(){
+  var S=String.fromCharCode(167), out=[], sent=null;
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); document.title=S+out.join('\n')+S}
+  window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:4.95,currency:'USD'})}});
+    if(a==='gallery') return Promise.resolve({ok:true,json:function(){return Promise.resolve({items:[],count:0})}});
+    if(b&&b.get){ sent=b; return new Promise(function(){}); }   // capture, never resolve
+    return Promise.reject(new Error('no net'));
+  };
+  function vis(el){ if(!el||el.hidden) return false;
+    var c=getComputedStyle(el); if(c.display==='none') return false;
+    var r=el.getBoundingClientRect(); return r.width>0&&r.height>0; }
+  var SEGS=['seg-type','seg-ar','seg-res','seg-crea','seg-shot','seg-subj'];
+  function checkGroup(id,mode){
+    var el=$(id); if(!el||!vis(el)) return 0;
+    var btns=[].slice.call(el.querySelectorAll('button[data-v]'));
+    if(btns.length<2) return 0;
+    var checked=0;
+    btns.forEach(function(b){
+      if(id==='seg-type') return;                 // switching mode rebuilds everything
+      b.click();                                  // no resize, no reflow, no waiting
+      var pressed=btns.filter(function(x){return x.getAttribute('aria-pressed')==='true'});
+      T(b.getAttribute('aria-pressed')==='true',
+        mode+' / '+id+': clicking "'+b.textContent.trim()+'" selects it straight away');
+      T(pressed.length===1, mode+' / '+id+': exactly one option stays selected ('+pressed.length+')');
+      checked++;
+    });
+    return checked;
+  }
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    // unlock lands on the hub; the controls live in the console
+    setTimeout(function(){
+      document.querySelector('.card[data-go="video"]').click();
+      setTimeout(function(){ step(0) },250);
+    },250);
+  }
+  var MODES=['video','image','compose','upscale'], n=0;
+  function step(i){
+    if(i>=MODES.length) return finish();
+    var m=MODES[i];
+    document.querySelector('#seg-type button[data-v="'+m+'"]').click();
+    setTimeout(function(){
+      SEGS.forEach(function(id){ n+=checkGroup(id,m) });
+      step(i+1);
+    },140);
+  }
+  function finish(){
+    T(n>0, 'the sweep actually reached some controls ('+n+' buttons clicked)');
+    // and the choice must reach the request, not just the pixels
+    document.querySelector('#seg-type button[data-v="image"]').click();
+    setTimeout(function(){
+      var btns=[].slice.call($('seg-ar').querySelectorAll('button[data-v]'));
+      var pick=btns[btns.length-1];               // the least likely default
+      var want=pick.dataset.v;
+      pick.click();
+      $('prompt').value='x';
+      $('submit').click();
+      setTimeout(function(){
+        T(!!sent, 'the run was submitted');
+        if(sent) T(sent.get('aspect_ratio')===want,
+          'the shape you picked is the shape that gets sent (wanted '+want+
+          ', sent '+sent.get('aspect_ratio')+')');
+        document.title=S+out.join('\n')+S;
+      },260);
+    },160);
+  }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

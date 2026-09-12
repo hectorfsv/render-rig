@@ -1492,7 +1492,12 @@ body.wide .lab{font-size:12.5px}
   seg($('seg-crea'),function(v){crea=v;paintCost()});
   seg($('seg-shot'),function(v){shotType=v});
   seg($('seg-subj'),function(v){subjDet=v});
-  $('seg-ar').addEventListener('click',function(e){var b=e.target.closest('button[data-v]');if(b)ar=b.dataset.v});
+  // Aspect ratio goes through seg() like every other segmented control. It used
+  // to have its own handler that set the variable and never touched
+  // aria-pressed, so the highlight did not move until syncMode() happened to
+  // rebuild the row. seg() delegates from the container, so it keeps working
+  // even though buildAR() replaces these buttons on every mode change.
+  seg($('seg-ar'),function(v){ar=v});
 
   // sliders: each one shows its value, and an unchecked "set it myself" means
   // the field is never sent at all so fal keeps its own default.

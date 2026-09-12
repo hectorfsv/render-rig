@@ -30,7 +30,7 @@ proven structurally and for free. The cheapest real tests, in order:
 | **$0.06** | Image (Krea) | one sentence |
 | **$0.336** | Video, 3s, audio off | the cheapest real clip |
 
-**2. Verify before changing anything:** `./test/run.sh` → 1029 assertions, ~2 min,
+**2. Verify before changing anything:** `./test/run.sh` → 1257 assertions, ~2 min,
 read-only, nothing sent or spent.
 
 **3. Open questions, roughly in order of value**
@@ -147,6 +147,12 @@ the lip. **Landscape** splits side by side.
   pictures pop the page around as they arrive. Dimensions come from `specs.w/h`;
   `scripts/rescue-rig-history.py` measures and stores them, and the page falls back
   to the file's real ratio on load if a row has none.
+- **Every segmented control must go through `seg()`.** Aspect ratio had its own
+  handler that set the variable and never touched `aria-pressed`, so the highlight
+  did not move until `syncMode()` happened to rebuild the row — it looked like the
+  click had not registered at all. `seg()` delegates from the container, so it
+  survives `buildAR()` replacing the buttons. `./test/run.sh segs` clicks every
+  option in every mode and was proven to fail (13x) against the old handler.
 - **`model` is what was PICKED; `engine` is what fal actually RAN, and they
   disagree on real rows.** Two rows say `krea` and went to `nano-banana-pro` (the
   era when all image-to-image did), so labelling by `model` printed "Image $0.06"
@@ -223,13 +229,14 @@ Full narrative: `../../research/kling-render-rig-redesign.md`.
 ## Tests
 
 ```
-./test/run.sh            everything (1029 assertions, ~5 min)
+./test/run.sh            everything (1257 assertions, ~6 min)
 ./test/run.sh mobile     6 phone/landscape viewports x 4 modes
 ./test/run.sh desktop    5 wide viewports: console, hub, guide
 ./test/run.sh price      every figure the guide quotes vs what the meter computes
 ./test/run.sh stage      a render lands, shows its seed, and can be cleared
 ./test/run.sh credit     credit left on screen, and every way the lookup fails
 ./test/run.sh gallery    the gallery: flagged work, prompts, empty and failed states
+./test/run.sh segs       every segmented control reacts to the click that made it
 ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays there)
 ./test/run.sh tape       rail marquee: pitch, seam, direction, speed
 ./test/run.sh shots      previews into test/build/
