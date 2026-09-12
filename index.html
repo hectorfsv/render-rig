@@ -1347,7 +1347,18 @@ body.wide .lab{font-size:12.5px}
   window.addEventListener('resize',measure);measure();
 
   /* ---------- sources ---------- */
-  var MAXEDGE=1536;
+  // 1536 was chosen to keep six photos under ~3MB through the webhook, before
+  // Compose existed. For a composition the sources ARE the identity: Hector's
+  // selfie reached fal at 839x1536 and NBP had nothing finer to rebuild his face
+  // from (exec 5145). 2048 is 1.78x the pixels for ~2x the bytes, and SUBMIT_CAP
+  // below refuses a payload that would be too big rather than failing silently.
+  var MAXEDGE=2048;
+  // 9MB is a GUESS, not a measured ceiling: n8n Cloud's own payload limit and
+  // fal's request-body limit are both undocumented here. The wire carries the
+  // sources as binary multipart (~3/4 of this figure); it is the base64 that
+  // `Detect & Prepare` rebuilds server-side that actually reaches fal, which is
+  // why the cap is measured on the base64 length. Conservative on purpose.
+  var SUBMIT_CAP=9e6;
   function readImage(file){
     return new Promise(function(res,rej){
       var fr=new FileReader();
@@ -1368,7 +1379,7 @@ body.wide .lab{font-size:12.5px}
     var cw=Math.max(1,Math.round(w*s)),ch=Math.max(1,Math.round(h*s));
     var c=document.createElement('canvas');c.width=cw;c.height=ch;
     c.getContext('2d').drawImage(im,0,0,cw,ch);
-    return c.toDataURL('image/jpeg',0.86);
+    return c.toDataURL('image/jpeg',0.9);
   }
   function addFiles(list){
     var files=[].slice.call(list).filter(function(f){return f && /^image\//.test(f.type)});
@@ -1742,6 +1753,17 @@ body.wide .lab{font-size:12.5px}
     if(type==='video' && $('use-shots').checked && SHOTS.length){
       var tot=SHOTS.reduce(function(a,s){return a+(parseInt(s.duration,10)||0)},0);
       if(tot!==parseInt(dur,10)){ genErr('Shot durations add up to '+tot+'s but the clip is '+dur+'s.'); return }
+    }
+    // Sources ride the webhook as base64. Upscale sends the original file and is
+    // exempt. A payload that is too big fails somewhere downstream with nothing
+    // useful on screen, so refuse it here where we can say what to do about it.
+    if(type!=='upscale' && SRC.length){
+      var bytes=SRC.reduce(function(a,s){return a+(s.ref?s.ref.length:0)},0);
+      if(bytes>SUBMIT_CAP){
+        genErr('Those '+SRC.length+' sources are too large to send together ('+
+               (bytes/1e6).toFixed(1)+'MB). Remove one and try again.');
+        return;
+      }
     }
     // On a phone the controls are covering the stage at this point. Close them:
     // the whole reason the stage comes first is so you watch the render, not a

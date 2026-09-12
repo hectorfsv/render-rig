@@ -21,29 +21,54 @@ too — n8n execution ids are sequential and would otherwise be enumerable.
 
 ## START HERE NEXT SESSION
 
-**1. Nothing has ever been paid for through this console.** Every part is
-proven structurally and for free. The cheapest real tests, in order:
+**1. The chain is proven with real money — three paid runs, 2026-09-11, zero
+errors, $0.22 total.** Krea t2i (exec 5062, $0.06, 4:5 honoured) and two Topaz
+upscales (5067 Recovery V2, 5070 Standard V2, $0.08 each, 1452x1936 -> 2904x3872).
+The gate proved itself on the same traffic: execs 5059/5060 hit `Respond Denied`
+for $0.00. **Nothing has been spent since.** Balance **$4.95** (read live
+2026-09-12, exec 5139); every reading since 2026-09-11 11:07 is the same number.
 
-| | | |
-|---|---|---|
-| **$0.08** | Upscale | no prompt, under a minute — **proves the whole chain end to end** |
-| **$0.06** | Image (Krea) | one sentence |
-| **$0.336** | Video, 3s, audio off | the cheapest real clip |
+Still never paid for: **Video (Kling)** and **Compose (NBP)**. Cheapest first
+runs — $0.336 for a 3s audio-off clip, $0.15 for one NBP compose.
 
-**2. Verify before changing anything:** `./test/run.sh` → 1257 assertions, ~2 min,
-read-only, nothing sent or spent.
+**A balance delta has never actually been measured across a run.** The first
+balance read (exec 5080) is four hours *after* the last paid submit, so
+"true cost = balance delta" is still a claim, not a measurement — and it is the
+only way to price the four Topaz generative models fal publishes no price for.
+**Read the balance immediately before and after the next paid run** and the
+claim is settled for free.
+
+**2. Verify before changing anything:** `./test/run.sh` -> 1257 assertions, ~6 min,
+read-only, nothing sent or spent. Pair it with `../webkit-check/` for Safari.
 
 **3. Open questions, roughly in order of value**
+- **Per-person codes — spec'd, prepared, and blocked on Hector alone** (how many
+  people, which codes). `../../research/render-rig-per-person-codes.md`;
+  Version A is ~20 minutes. **The trap: there are TWO hardcoded gates**, submit
+  (`Detect & Prepare`, Code) and poll (`Route by Job ID`, IF) — a code that
+  clears one and not the other can generate and never see its own result.
+- **Server-side pricing.** `Store Job` records the BROWSER's quoted price. Fine
+  for the gallery, which only displays it; wrong the moment anyone but Hector has
+  a code, and a hard prerequisite for budgets. Compute it in `Detect & Prepare`.
 - `cfg_scale` on the ignored 360° orbit — the one untried lever. ~$0.34 at 3s.
 - NBP `safety_tolerance` above 4 — every IP refusal so far ran at the default.
 - Frame interpolation (`fal-ai/film` / `rife` / `amt-interpolation`) or Kling's
   free `end_image_url` for a seamless Gargantua loop. Hector accepted the
   cross-dissolve for now.
+- Per-task prompt help — Hector's idea, half-built, the strongest unbuilt part
+  of the teaching surface.
+- **The waiting screen is boring — Hector, 2026-09-12.** A render is 53-79s for an
+  image and 350s+ for a clip, and right now that time shows a dial and a timer.
+  His words: *"WE HAVE to add something to the waiting screen, it's SO BORING!"*
+  Whatever goes there must not touch the in-flight job state: a refresh mid-render
+  already resumes from `localStorage`, and that is the thing protecting a paid
+  render from a backgrounded tab. Decoration only, nothing load-bearing.
 - Krea `styles` / `moodboards` — parked, needs a catalog of opaque ids the
   schema does not provide.
 - `[TEMP] Rig Field Probe` (`sAouEujoMPiayzcL`) is deactivated but **not
   deleted** — needs Hector's explicit OK.
 - `GOYIM` is short and guessable on a public endpoint with no rate limiting.
+  It matters more once it is not the only code.
 
 ---
 
@@ -153,6 +178,70 @@ the lip. **Landscape** splits side by side.
   click had not registered at all. `seg()` delegates from the container, so it
   survives `buildAR()` replacing the buttons. `./test/run.sh segs` clicks every
   option in every mode and was proven to fail (13x) against the old handler.
+- **The prompt enhancer had TWO recipes for FOUR modes, and Compose got the wrong
+  one.** It branched on `hasImage` alone: no image -> the 8-slot "build a picture"
+  recipe, any image -> a **single-photo portrait-EDIT** recipe whose mandatory
+  closing line is *"leave everything else in the image exactly as it is"*. Compose
+  attaches images, so a three-source composition was rewritten as an edit of image
+  1 with the framing pinned. Five men do not fit a pinned frame, so the model
+  **painted over one of the originals** (exec 5140: Lenin replaced by the man from
+  image 3). His caption was fine and was translated faithfully — the damage was
+  entirely in the clause the recipe appends afterwards. **Krea + style references
+  hit the same branch** and had the same bug latent, never fired.
+  Fixed 2026-09-12: four branches, chosen by `image_count` as well as `hasImage` —
+  generate / style-reference / single-image edit / compose. **The preserve clause
+  is now CONDITIONAL on what he asked for**, not on whether an image exists: a
+  caption that changes the setting or adds anyone gets a face-and-identity clause
+  instead. The compose recipe forbids the preserve clause outright, names every
+  source by its number, says the shot **may be widened or re-framed**, and closes
+  with a **roll call** of who is in the finished picture — an enumeration is what
+  stops the model quietly leaving someone out. Verified through the DEPLOYED
+  expression on six cases via `[TEMP] Enhancer Recipe Probe` (`rTuM3awsZe8Drka9`,
+  now deactivated). Rollback:
+  `../../workflows/kling-3-video-generator-PRE-COMPOSERECIPE-20260912.json`.
+- **The sources ARE the identity in a Compose, and we were throwing half of it
+  away.** `shrink()` capped every source at a 1536px long edge — a number picked
+  to keep six photos small, before Compose existed. Hector's selfie therefore
+  reached fal at **839x1536** and Nano Banana Pro had nothing finer to rebuild
+  his face from (exec 5145, and he said so unprompted). Cap raised to **2048**
+  (1.78x the pixels) at jpeg quality 0.90, with a **`SUBMIT_CAP` of 9MB of
+  base64 that REFUSES rather than sends** — a payload too big for the webhook
+  dies downstream with nothing useful on screen. Upscale is exempt from both; it
+  has always sent the original file. `./test/run.sh sources` drives the real
+  file input and was proven to fail on every one of these before it passed.
+- **PNG output was considered and REJECTED on a measurement.** `output_format`
+  is hard-coded `'jpeg'` while NBP's own default is `png`, which looks like a
+  quality bug. It is not: the delivered 2752x1536 jpeg is **0.320 bytes/pixel**
+  — a high-quality encode — and the same picture as PNG is **4.4x the bytes**
+  (1.35MB -> 5.90MB). That is 4.4x through the download proxy, the phone stage
+  and a 21-picture gallery, for a difference that is not visible. **The loss is
+  at the 1536px input and the 4.2MP output, not in the encoder.** Do not
+  "fix" this without re-measuring.
+- **Nano Banana Pro has no quality setting.** Its whole input schema is `prompt`,
+  `image_urls`, `resolution`, `aspect_ratio`, `num_images`, `safety_tolerance`,
+  `system_prompt`, `enable_web_search`, `output_format`, `limit_generations`.
+  No steps, no guidance, no strength. **`resolution` is the only parameter that
+  touches detail**, and across all 39 rows of the job table every run that
+  recorded one was 2K — **4K has never been tried**.
+- **fal posts a charge with a LAG, and the app reads the balance at exactly the
+  wrong moment.** It refetches when a render lands: exec 5147 read $4.79 fifty
+  seconds after a $0.15 run, and the true $4.64 only appeared minutes later. So
+  the credit figure on screen is often one run behind — which matters, because
+  it is the number that is supposed to stop an overspend. (The delta itself is
+  exact: 4.95 -> 4.79 -> 4.64 for $0.165 and $0.150.)
+- **A mode can exist in the UI, in `Detect & Prepare` and in the submit body and
+  still not exist in the enhancer.** The four-mode split shipped everywhere except
+  the node that writes the actual prompt. When you add a mode, grep for every
+  place that branches on `hasImage` — that flag is not the same question as
+  "which job is this".
+- **`price` is never recorded on a live run.** `Store Job` maps it from
+  `Detect & Prepare.quoted_price`, which reads `body.price` — and the browser
+  sends no `price` field at all. Every row since the column was added reads null.
+  The gallery shows those pictures priceless.
+- **Nano Banana Pro returns no seed**, so "lock it to iterate" only works with a
+  seed you typed yourself. Its `description` — the model's own account of what it
+  made — IS returned and is thrown away in `Parse Result`. Free, and the cheapest
+  way to find out why a render came back wrong.
 - **`model` is what was PICKED; `engine` is what fal actually RAN, and they
   disagree on real rows.** Two rows say `krea` and went to `nano-banana-pro` (the
   era when all image-to-image did), so labelling by `model` printed "Image $0.06"
@@ -174,9 +263,32 @@ the lip. **Landscape** splits side by side.
 - **The price in the table is the BROWSER's quote.** Fine for a gallery, which
   only displays it. Not fine for a budget, where the person spending controls the
   input — that needs the price computed in `Detect & Prepare`.
-- **Hector uses Safari, on the phone and the desktop.** The only automation here
-  is headless Chromium. When a fix cannot be tested in Safari, remove the
-  mechanism rather than tune it — no z-index or paint-order fixes.
+- **Hector uses Safari, on the phone and the desktop — and since 2026-09-11 it
+  can actually be tested.** `../webkit-check/` (`node check.js <url|file>`) runs
+  Playwright **WebKit 18.4** headless; his Safari is **18.6**, a one-minor-version
+  match rather than a different engine. Run it alongside `test/run.sh` (Chromium)
+  on any layout change — `--chromium` renders both and diffs the findings, which
+  is how you catch an engine divergence instead of discovering it on his phone.
+  **The install is version-locked:** this Mac is Intel Ventura, and Playwright
+  stopped shipping macOS-13 WebKit builds after rev 2140 = `playwright@1.51.0`.
+  `npx playwright install webkit` on a newer Playwright 400s. See
+  `../webkit-check/README.md`.
+- **WebKit is still not Mobile Safari.** iOS *chrome* behaviour — the <16px input
+  zoom firing, `env(safe-area-inset-*)`, the address bar changing `dvh` — needs a
+  real iPhone or an iOS Simulator (Xcode, not installed). For those, still remove
+  the mechanism rather than tune it — no z-index or paint-order fixes.
+- **The first WebKit run flagged a leak at landscape 852x393. IT WAS A FALSE
+  POSITIVE — the page is fine.** The check said "page scrolls 836px" and `.rail`
+  measured 1189px tall with `offsetParent` non-null, which looked like a fourth
+  `display`-beats-hiding leak. It is not: that rail IS the intended running tape,
+  and a pixel diff of top-of-scroll vs bottom-of-scroll shows **max channel
+  difference 17/255, zero pixels over 32** — scrolling reveals nothing.
+  **`scrollHeight > clientHeight` is not "the page scrolls."** The tape is
+  `position:absolute` and 2293px tall inside a masked rail, so it inflates
+  `scrollHeight` by 836px and moves nothing. `webkit-check` now scrolls to the
+  bottom and asserts whether real content elements move, reporting phantom
+  overflow as a note rather than a failure. Hector caught this by looking at the
+  screen while I was reading a number.
 
 ## More notes for future edits
 
@@ -238,6 +350,7 @@ Full narrative: `../../research/kling-render-rig-redesign.md`.
 ./test/run.sh gallery    the gallery: flagged work, prompts, empty and failed states
 ./test/run.sh segs       every segmented control reacts to the click that made it
 ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays there)
+./test/run.sh sources    the 2048 source cap and the payload guard that refuses
 ./test/run.sh tape       rail marquee: pitch, seam, direction, speed
 ./test/run.sh shots      previews into test/build/
 ```

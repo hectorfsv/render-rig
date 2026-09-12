@@ -168,6 +168,18 @@ if [ "$WHAT" = all ] || [ "$WHAT" = zoom ]; then
   echo "  -> $zp pass / $zf fail"; PASS=$((PASS+zp)); FAIL=$((FAIL+zf))
 fi
 
+if [ "$WHAT" = all ] || [ "$WHAT" = sources ]; then
+  build "$INJ/sources.txt" "$B/src.html"
+  line; echo "SOURCES  (the 2048 cap, and the payload guard that refuses)"
+  # Decoding three 4MB photos is the slowest thing in this suite; the harness
+  # polls rather than guessing a delay, so the budget only has to be generous.
+  R=$(title 1440 900 "file://$B/src.html" 180000)
+  sp=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+  sf=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+  [ "$sf" != 0 ] && { printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  echo "  -> $sp pass / $sf fail"; PASS=$((PASS+sp)); FAIL=$((FAIL+sf))
+fi
+
 if [ "$WHAT" = all ] || [ "$WHAT" = tape ]; then
   build "$INJ/tape.txt" "$B/tp.html"; build "$INJ/speed.txt" "$B/sp.html"
   line; echo "TAPE  (rail marquee)"
