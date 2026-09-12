@@ -246,6 +246,29 @@ the lip. **Landscape** splits side by side.
   and relaxed at their sides"), or a hand stays curled around the object that is
   gone. Rollback:
   `../../workflows/kling-3-video-generator-PRE-RELIGHT-20260912.json`.
+- **Offered a choice, the model always takes the soft one.** The integration beat
+  said relight to match the scene's "hardness or softness" and the enhancer wrote
+  *"direction, colour and softness"* every time — flattening a neon rooftop at
+  dusk into grey ambient. Hector: *"it softened the picture too much."* Fixed by
+  BANNING the vocabulary: soft / softly / softened / diffused / even / gentle /
+  muted are forbidden in that beat unless he used them, and the beat now says the
+  scene's **contrast and hardness are matched and KEPT**. Matched rendering says
+  explicitly that matching is not smoothing. **The enhancer cannot see the
+  image**, so it must never assert how soft a scene is — a two-option menu is an
+  invitation to guess, and it guesses soft.
+- **"Say what takes its place" over-applied and disarmed someone.** The removal
+  rule produced *"no microphones; their hands are empty and relaxed at their
+  sides"* — and the model took **Kratos's axe** on a request about microphones.
+  It now names only the object asked about, says what the freed hands do, and
+  states that everything else anyone is holding is unchanged. **Removing one
+  named thing must never disarm anyone else.**
+- **The practical-lights line cannot fire on its own.** The beat asks for neon,
+  signs and lamps to spill onto the people nearest them *if the scene has them* —
+  but the enhancer is blind, so it never knows. Naming the light in the caption
+  ("keep the neon on their faces") is the only way to reach it, and that is a
+  thing to teach rather than a thing to fix: the alternative is letting the
+  enhancer guess what is in the picture, which is the bug the whole recipe exists
+  to prevent.
 - **The roll call REDUCES the dropped person, it does not eliminate it.** Before
   the compose recipe it was structural - the frame was pinned, so someone had to
   go. After it, one run in six still dropped a man (exec 5160) **while its own
