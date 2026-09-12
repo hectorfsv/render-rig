@@ -229,6 +229,33 @@ the lip. **Landscape** splits side by side.
   the credit figure on screen is often one run behind — which matters, because
   it is the number that is supposed to stop an overspend. (The delta itself is
   exact: 4.95 -> 4.79 -> 4.64 for $0.165 and $0.150.)
+- **A composite reads as cut-and-paste because every source arrives carrying the
+  light of its OWN photo.** The first compose recipe said "keep each person's
+  face and identity from their own source image" and then said nothing about
+  light, so Kratos landed on a dusk rooftop still lit by his overcast mountain,
+  with hard edges and no shadow on the ground. Hector's words: *"it looks like
+  kratos and I we were just copy/paste there."* Fixed 2026-09-12 with an
+  INTEGRATION beat: the destination scene's light applied to everyone (direction,
+  colour, hardness, time of day, faces and clothing **relit**), contact shadows
+  under every person falling the way the scene's shadows fall, ONE camera - a
+  single eye level, lens and ground plane - and matched focus, grain and colour
+  grade with no one sharper than the scene. **Light, shadow, lens, grain and
+  focus are explicitly exempted from "never invent a noun he did not use"**, or
+  the model treats describing them as forbidden. Same pass taught it REMOVALS:
+  say what goes AND what takes its place ("no microphones; their hands are empty
+  and relaxed at their sides"), or a hand stays curled around the object that is
+  gone. Rollback:
+  `../../workflows/kling-3-video-generator-PRE-RELIGHT-20260912.json`.
+- **The roll call REDUCES the dropped person, it does not eliminate it.** Before
+  the compose recipe it was structural - the frame was pinned, so someone had to
+  go. After it, one run in six still dropped a man (exec 5160) **while its own
+  prompt said "all five men together"**. More prompt will not fix that; it is
+  generation variance, and the only real control is a seed typed in BEFORE the
+  run, because fal does not return the one it used.
+- **Aspect ratio does NOT determine whether everyone gets the front row.** That
+  was claimed here from a sample of one run each way and the very next pair
+  contradicted it: a 4:5 run stacked two men into a back row, the next 4:5 run
+  put all five on the front line. It is variance. Do not re-derive this rule.
 - **A mode can exist in the UI, in `Detect & Prepare` and in the submit body and
   still not exist in the enhancer.** The four-mode split shipped everywhere except
   the node that writes the actual prompt. When you add a mode, grep for every
