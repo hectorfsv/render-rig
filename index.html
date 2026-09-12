@@ -1397,8 +1397,32 @@ body.wide .lab{font-size:12.5px}
     });
   }
   function addUrl(url,w,h){
-    SRC.push({id:'s'+Math.random().toString(36).slice(2,9),url:url,ref:url,w:w||0,h:h||0,name:'result'});
+    // A promoted render arrives as a fal URL. EVERY other source in the tray is
+    // a File plus a shrunk data-URL `ref`, and submit() calls
+    // dataUrlToBlob(ref) - so storing an https URL there made atob() throw,
+    // submit() died on the spot and Generate did NOTHING, with no error on
+    // screen. Fetch it once and make it look exactly like a dropped file.
+    // fal serves `access-control-allow-origin: *`, so this is allowed.
+    var id='s'+Math.random().toString(36).slice(2,9);
+    SRC.push({id:id,url:url,ref:'',w:w||0,h:h||0,name:'result',loading:true});
     paintTray();paintCost();
+    fetch(url).then(function(r){
+      if(!r.ok) throw new Error('Could not load that render back as a source ('+r.status+').');
+      return r.blob();
+    }).then(function(b){
+      var f=new File([b],'result.jpg',{type:b.type||'image/jpeg'});
+      return readImage(f).then(function(res){
+        var s=SRC.filter(function(x){return x.id===id})[0];
+        if(!s) return;                      // removed while it was loading
+        s.file=f; s.ref=shrink(res.im); s.loading=false;
+        s.w=res.im.naturalWidth; s.h=res.im.naturalHeight;
+        paintTray();paintCost();
+      });
+    }).catch(function(e){
+      SRC=SRC.filter(function(x){return x.id!==id});
+      paintTray();paintCost();
+      genErr(e.message||'Could not load that render back as a source.');
+    });
   }
   function paintTray(){
     var t=$('tray');
@@ -1406,7 +1430,7 @@ body.wide .lab{font-size:12.5px}
     SRC.forEach(function(s,i){
       var d=document.createElement('div');d.className='slot';
       var dims=(s.w&&s.h)?(s.w+'×'+s.h):'';
-      d.innerHTML='<img alt="" src="'+s.ref+'"><span class="n">'+(i+1)+'</span>'+
+      d.innerHTML='<img alt="" src="'+(s.ref||s.url||'')+'"><span class="n">'+(i+1)+'</span>'+
                   '<button class="x" type="button" aria-label="Remove source '+(i+1)+'">&times;</button>'+
                   (dims?'<span class="d">'+dims+'</span>':'');
       d.querySelector('.x').onclick=function(){
@@ -1663,7 +1687,11 @@ body.wide .lab{font-size:12.5px}
     var eng,det;
     if(type==='video'){
       eng='Kling 3.0 Pro';
-      det = dur+'s, '+(hasVoice() ? 'voice \u2014 $0.196/s'
+      // Say WHICH KIND of video this is. Text-to-video and image-to-video cost
+      // the same and produce completely different things, and the only thing
+      // that decides it is whether the tray is empty - which is easy to miss.
+      det = dur+'s, '+(SRC.length ? 'from your first source' : 'from words alone \u2014 no source')
+          + ', ' + (hasVoice() ? 'voice \u2014 $0.196/s'
                     : ($('audio').checked?'with audio':'no audio'));
       if(SHOTS.length) det += ' \u00b7 '+SHOTS.length+' shots';
     }else if(type==='upscale'){
@@ -1742,8 +1770,21 @@ body.wide .lab{font-size:12.5px}
     while(n--) arr[n]=bin.charCodeAt(n);
     return new Blob([arr],{type:mime});
   }
+  // Generate must never be a no-op. A throw anywhere in here used to leave the
+  // button looking dead with nothing on screen, which is how a video got made
+  // with no source: the real click did nothing, the source was removed to try
+  // again, and the next click bought a different kind of render.
   function submit(){
+    try{ submitInner() }
+    catch(e){
+      genErr('Something went wrong preparing that request: '+((e&&e.message)||e));
+      $('submit').disabled=false;
+    }
+  }
+  function submitInner(){
     genErr('');
+    if(SRC.some(function(s){return s.loading})){
+      genErr('A source is still loading. Give it a second and press Generate again.'); return }
     if(type==='upscale' && !SRC.length){ genErr('Add a source image to upscale.'); return }
     if(type==='compose' && !SRC.length && !$('prompt').value.trim()){ genErr('Write a prompt, or add sources to combine.'); return }
     if(type==='image' && !$('prompt').value.trim()){ genErr('Krea draws from words. Write a prompt.'); return }
