@@ -2370,6 +2370,16 @@ body.wide .lab{font-size:12.5px}
     if(b) b.click();
     $('prompt').value = it.prompt || '';
     if(it.seed && $('seed')) $('seed').value = it.seed;
+    /* A Design row's words live in specs, not in the caption, and the recipe
+       branches on them: with the Words box empty it is TOLD to state that the
+       artwork carries no text. Restoring the caption alone would reproduce the
+       flyer as a wordless picture. Always assign, so a previous pick cannot
+       leave its text behind. */
+    var sp=it.specs||{};
+    if($('exact-text')) $('exact-text').value = sp.exact_text || '';
+    /* The canvas shape is part of what made it look like that - the enhancer
+       now writes the layout for the shape it is given. */
+    if(sp.aspect_ratio) ar = sp.aspect_ratio;
     picked=true; syncMode(); paintCost(); show('scr-console');
   }
   $('hub-gallery').onclick=openGallery;

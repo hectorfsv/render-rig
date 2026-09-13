@@ -21,7 +21,14 @@
     {url:PNG,gen_type:'image',model:'krea',engine:'Nano Banana Pro',prompt:'make this image real',
      price:0.15,seed:'',created_at:'2026-09-08T15:10:37',specs:{resolution:'2K',w:2080,h:2048}},
     {url:PNG,gen_type:'image',model:'nano-banana-pro',engine:'',prompt:'',
-     price:null,seed:'',created_at:'2026-03-27T00:07:28',specs:{}}
+     price:null,seed:'',created_at:'2026-03-27T00:07:28',specs:{}},
+    // A DESIGN ROW. Its words live in specs, not in the caption - exec 5238's
+    // real shape, straight out of the jobs table.
+    {url:PNG,gen_type:'image',model:'grok',engine:'Grok Imagine 2.0',
+     prompt:'a flyer for a halloween party, bloody with some neon touches',
+     price:0.08,seed:'',created_at:'2026-09-13T03:23:55',
+     specs:{aspect_ratio:'4:3',resolution:'2K',quality:'medium',w:2368,h:1776,
+            exact_text:'Halloween Fest'+String.fromCharCode(10)+'Saturday October 24th'}}
   ];
   window.fetch=function(u,o){
     var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
@@ -47,8 +54,9 @@
     T($('scr-gallery').classList.contains('on'), 'the gallery screen opened');
     var frames=document.querySelectorAll('.frame');
     if(mode==='ok'){
-      T(frames.length===3, 'one frame per item ('+frames.length+')');
-      T(/3 pictures/.test($('gal-count').textContent), 'the count is shown ('+$('gal-count').textContent+')');
+      T(frames.length===ITEMS.length, 'one frame per item ('+frames.length+' of '+ITEMS.length+')');
+      T($('gal-count').textContent.indexOf(ITEMS.length+' picture')===0,
+        'the count is shown ('+$('gal-count').textContent+')');
       var c0=frames[0].textContent;
       T(/Ghostface doing Pilates/.test(c0), 'the prompt is on the card, not hidden behind hover');
       T(/Krea 2 Large/.test(c0), 'the card names the MODEL that made it ('+
@@ -80,6 +88,30 @@
       T($('seed').value==='166030281', 'the seed is loaded ('+$('seed').value+')');
       T(document.querySelector('#seg-type button[data-v="image"]').getAttribute('aria-pressed')==='true',
         'the right mode is selected');
+      // A DESIGN ROW CARRIES ITS WORDS IN specs, NOT IN THE CAPTION.
+      // Restoring only the caption reopens Design with the Words box empty, and
+      // the recipe then branches to "the artwork carries NO text" - so the copy
+      // of a flyer would come back as a wordless picture at $0.08 a go.
+      $('gal-back').click();
+      var dsn=document.querySelectorAll('.frame')[3];
+      T(!!dsn, 'the design row has a frame');
+      dsn.click();
+      T(!!$('gal-use'), 'the design row can be copied');
+      $('gal-use').click();
+      T(document.querySelector('#seg-type button[data-v="design"]').getAttribute('aria-pressed')==='true',
+        'a Grok row opens Design');
+      T($('exact-text').value.indexOf('Halloween Fest')===0,
+        'the WORDS come back too ('+JSON.stringify($('exact-text').value.slice(0,22))+')');
+      T($('exact-text').value.indexOf('Saturday October 24th')>0, 'every line of them, not just the first');
+      T(document.querySelector('#seg-ar button[data-v="4:3"]').getAttribute('aria-pressed')==='true',
+        'and the canvas shape it was designed for');
+      // and it must not leave its text behind on the next pick
+      $('menu-btn').click(); $('hub-gallery').click();
+      setTimeout(function(){
+        document.querySelectorAll('.frame')[0].click(); $('gal-use').click();
+        T($('exact-text').value==='', 'copying a non-design row clears the previous words');
+        T($('prompt').value==='Ghostface doing Pilates on the beach', 'and loads its own prompt');
+      },300);
       // and the mislabelled one must open the engine that really made it
       $('gal-back').click(); $('hub-gallery').click();
     }
