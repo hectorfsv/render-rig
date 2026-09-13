@@ -545,6 +545,36 @@ body.wide .gal-one .pr{font-size:23px;line-height:1.38}
 .gal-acts{display:grid;gap:8px;margin-top:16px}
 
 /* progress inside the stage */
+/* THE LONGEST SCREEN IN THE PRODUCT. A render is 1-8 minutes, and it used to be
+   a dial on a flat rectangle. Now YOUR OWN SOURCES drift behind it - the only
+   thing we can honestly put there that is about THIS render, and it needs no new
+   assets. TRANSFORM AND OPACITY ONLY: this runs for minutes on a 2017 Intel Mac
+   and on a phone, so no blur, no canvas, no requestAnimationFrame. The fade is
+   driven off the 1s ticker that already exists, so there is no second timer to
+   leak - stop() clears it. */
+.prog-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.prog-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;transform:scale(1.05);transition:opacity 1.6s linear,transform 9s linear}
+.prog-bg img.on{opacity:.42;transform:scale(1.16)}
+/* One source cannot cross-fade, so it breathes instead of freezing after 9s. */
+.prog-bg.solo img.on{animation:pbBreathe 22s ease-in-out infinite alternate}
+@keyframes pbBreathe{from{transform:scale(1.06)}to{transform:scale(1.19)}}
+/* No sources at all - Krea, text-to-video, a resumed job with an empty tray. */
+.prog-bg.empty::before{content:"";position:absolute;inset:-30%;
+  background:radial-gradient(38% 38% at 30% 35%,rgba(224,27,27,.20),transparent 70%),
+             radial-gradient(34% 34% at 72% 62%,rgba(224,27,27,.12),transparent 70%);
+  animation:pbDrift 19s ease-in-out infinite alternate}
+@keyframes pbDrift{from{transform:translate3d(-4%,-3%,0) scale(1)}
+                   to{transform:translate3d(5%,4%,0) scale(1.14)}}
+/* Painted last, so it sits over the pictures and the dial stays readable. */
+.prog-bg::after{content:"";position:absolute;inset:0;background:radial-gradient(
+  115% 85% at 50% 42%,rgba(8,8,10,.52) 0%,rgba(8,8,10,.86) 60%,rgba(8,8,10,.95) 100%)}
+#stage-prog{position:relative;z-index:1}
+@media (prefers-reduced-motion:reduce){
+  .prog-bg img{transition:opacity .01s linear}
+  .prog-bg img.on{transform:none;animation:none}
+  .prog-bg.empty::before{animation:none}
+}
 .prog{text-align:center;padding:26px 18px}
 .dial{position:relative;width:132px;height:132px;margin:0 auto 16px}
 .dial svg{transform:rotate(-90deg)}
@@ -753,6 +783,7 @@ body.wide .lab{font-size:12.5px}
               <h3>Nothing rendered yet</h3>
               <p>Whatever you make lands here, and stays here while you set up the next one.</p>
             </div>
+            <div class="prog-bg" id="prog-bg" aria-hidden="true" hidden></div>
             <div class="prog" id="stage-prog" hidden>
               <div class="dial">
                 <svg width="132" height="132" viewBox="0 0 132 132">
@@ -1812,7 +1843,34 @@ body.wide .lab{font-size:12.5px}
   }
 
   /* ---------- stage ---------- */
+  // Up to 6 - past that nobody sees the seventh before the render lands.
+  var PB_SLOT=6, pbI=0, pbN=0;
+  function progBg(on){
+    var el=$('prog-bg');
+    el.hidden=!on; el.innerHTML=''; el.className='prog-bg';
+    pbI=0; pbN=0;
+    if(!on) return;
+    var srcs=SRC.filter(function(s){return s.ref}).slice(0,6);
+    if(!srcs.length){ el.classList.add('empty'); return }
+    srcs.forEach(function(s,i){
+      var im=document.createElement('img');
+      im.alt=''; im.src=s.ref; if(i===0) im.className='on';
+      el.appendChild(im);
+    });
+    pbN=srcs.length;
+    if(pbN===1) el.classList.add('solo');
+  }
+  function progBgTick(sec){
+    if(pbN<2) return;
+    var want=Math.floor(sec/PB_SLOT)%pbN;
+    if(want===pbI) return;
+    var ims=$('prog-bg').children;
+    if(ims[pbI]) ims[pbI].classList.remove('on');
+    if(ims[want]) ims[want].classList.add('on');
+    pbI=want;
+  }
   function stage(which){
+    progBg(which==='prog');
     $('stage-idle').hidden = which!=='idle';
     $('stage-prog').hidden = which!=='prog';
     $('stage-out').hidden  = which!=='out';
@@ -2020,6 +2078,7 @@ body.wide .lab{font-size:12.5px}
     ticker=setInterval(function(){
       var s=Math.floor((Date.now()-t0)/1000);
       $('elapsed').textContent=fmt(s);
+      progBgTick(s);
       // Asymptotic: approaches but never reaches 100, so a slow run never looks dead.
       var p=100*(1-Math.exp(-1.9*(s/Math.max(1,eta))));
       p=Math.min(99,p);

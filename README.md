@@ -38,26 +38,38 @@ only way to price the four Topaz generative models fal publishes no price for.
 **Read the balance immediately before and after the next paid run** and the
 claim is settled for free.
 
-**2. Verify before changing anything:** `./test/run.sh` -> 1257 assertions, ~6 min,
+**2. Verify before changing anything:** `./test/run.sh` -> 1481 assertions, ~6 min,
 read-only, nothing sent or spent. Pair it with `../webkit-check/` for Safari.
 
-**3. Where the last session left off (2026-09-12)** — seven paid composes and one
-unwanted video, **$1.40**, balance about **$3.55**. Every image bug was in the
-prompt enhancer, not the model; full narrative in
-`../../research/kling-render-rig-redesign.md` §2026-09-12. What to pick up:
+**3. Where the last session left off (2026-09-13)** — balance **$2.72**.
+Full narrative: `../../research/kling-render-rig-redesign.md` §2026-09-13.
+**Read that before touching the enhancer.**
 
-- **4K on Nano Banana Pro has never been tried, not once.** `resolution` is the
-  only parameter NBP has that touches detail, and every run ever recorded was 2K.
-  $0.30, and it is the open question behind "the faces still change a little".
-- **A seed typed in BEFORE the run** is the only way to keep a composition you
-  like — fal never returns the one it used, so re-rolling is currently the only
-  option and about one run in six drops a person.
-- **`price` is never recorded on a live run** (the browser sends no `price`
-  field), so every new gallery row is priceless.
-- **The credit figure on screen is often one run behind** — fal posts charges
-  with a lag and the app refetches the moment a render lands.
-- **Teach the caption, not the recipe**: the enhancer is blind, so "keep the neon
-  on their faces" has to come from Hector's own words.
+What happened: the relighting beat we added on 09-12 to fix "looks like
+copy/paste" **crowded out the one line asking to keep each face**, and a
+three-source compose came back as four strangers in the right clothes. Fixed —
+identity is the first instruction and the last now — and **verified on real
+money: exec 5211 is the best composition the rig has produced.**
+**Design (Grok Imagine) shipped** as the fifth mode. Suite **1481 assertions**.
+
+What to pick up, in order:
+
+- **The mascot.** Three hand-drawn SVG attempts were rejected and removed —
+  geometry is not illustration. The plan: **let the rig draw its own mascot in
+  Design mode**, then overlay the animated ember and smoke in CSS on the real
+  artwork. First attempt (exec 5217, $0.08) was **refused by the content
+  checker**, and Grok bills for refusals. Try a Vader-*like* helmet without
+  naming him, or use Krea, which has never refused a subject.
+- **The 4K question, properly.** Same seed, same sources, same caption: 2K
+  twice (that gives you the variance floor), then 4K. **NBP does have a seed** —
+  the 09-12 note saying otherwise was wrong and `Submit Image I2I` already
+  sends it, so a controlled A/B is possible for the first time.
+- **Send originals instead of data URIs.** fal says data URIs are "not
+  recommended for files larger than a few KB" and we push megabytes;
+  `POST /storage/upload/initiate?storage_type=fal-cdn-v3` hands back a
+  presigned URL the browser can PUT to with no key. Risk: CORS is unverified.
+- **The waiting screen** now drifts your sources behind the dial. It is subtle
+  by design; the mascot is what will actually carry it.
 
 **4. Open questions, roughly in order of value**
 - **Per-person codes — spec'd, prepared, and blocked on Hector alone** (how many
@@ -409,7 +421,7 @@ Full narrative: `../../research/kling-render-rig-redesign.md`.
 ## Tests
 
 ```
-./test/run.sh            everything (1257 assertions, ~6 min)
+./test/run.sh            everything (1481 assertions, ~6 min)
 ./test/run.sh mobile     6 phone/landscape viewports x 4 modes
 ./test/run.sh desktop    5 wide viewports: console, hub, guide
 ./test/run.sh price      every figure the guide quotes vs what the meter computes
