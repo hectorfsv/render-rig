@@ -43,7 +43,7 @@ if [ "$WHAT" = all ] || [ "$WHAT" = mobile ]; then
   build "$INJ/mob.txt" "$B/m.html"
   line; echo "MOBILE  (6 viewports x 4 modes)"
   for v in "393 852" "393 700" "360 780" "852 393" "430 900" "932 430"; do
-    for m in video image compose upscale; do set -- $v
+    for m in video image compose design upscale; do set -- $v
       R=$(title "$1" "$2" "file://$B/m.html?m=$m")
       p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
       f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
@@ -59,7 +59,7 @@ if [ "$WHAT" = all ] || [ "$WHAT" = desktop ]; then
   line; echo "DESKTOP  (5 viewports: console x4 modes, hub, guide)"
   dp=0; df=0
   for v in "2560 1400" "2026 1037" "1440 900" "1180 820" "1040 800"; do set -- $v
-    for m in video image compose upscale; do
+    for m in video image compose design upscale; do
       E=$(title "$1" "$2" "file://$B/h.html?s=scr-console&m=$m" 3500 | python3 -c "
 import json,sys
 r=json.load(sys.stdin); bad=[]
@@ -77,7 +77,7 @@ import json,sys
 r=json.load(sys.stdin); bad=[]
 if r['hscroll']>0: bad.append('horizontal overflow')
 if r.get('noteW',0)>620: bad.append('guide measure %dpx (cap 620)'%r['noteW'])
-if r.get('cards') is not None and (r['cards']!=4 or 'NO' in r.get('hit','')): bad.append('hub cards %s %s'%(r['cards'],r.get('hit')))
+if r.get('cards') is not None and (r['cards']!=r.get('modes') or 'NO' in r.get('hit','')): bad.append('hub cards %s vs %s modes, hit=%s'%(r['cards'],r.get('modes'),r.get('hit')))
 print('|'.join(bad))")
       [ -z "$E" ] && dp=$((dp+1)) || { df=$((df+1)); echo "  FAIL ${1}x${2} $s: $E"; }
     done
@@ -188,6 +188,16 @@ if [ "$WHAT" = all ] || [ "$WHAT" = promote ]; then
   pf=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
   [ "$pf" != 0 ] && { printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
   echo "  -> $pp pass / $pf fail"; PASS=$((PASS+pp)); FAIL=$((FAIL+pf))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = design ]; then
+  build "$INJ/design.txt" "$B/dz.html"
+  line; echo "DESIGN  (Grok Imagine: the words, the price grid, and the 3-source cap)"
+  R=$(title 1440 900 "file://$B/dz.html" 120000)
+  dp=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+  df=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+  [ "$df" != 0 ] && { printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  echo "  -> $dp pass / $df fail"; PASS=$((PASS+dp)); FAIL=$((FAIL+df))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = framing ]; then

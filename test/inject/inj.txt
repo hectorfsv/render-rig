@@ -65,6 +65,9 @@
     if(scr==='scr-hub'){
       var cards=[].slice.call(document.querySelectorAll('.card'));
       R.cards=cards.length; R.hit=cards.map(hit).join(',');
+      // Report the mode count so the checker can compare the two instead of
+      // hard-coding a number that goes stale the day a mode is added.
+      R.modes=document.querySelectorAll('#seg-type button').length;
       R.cardH=cards.map(function(c){return Math.round(c.getBoundingClientRect().height)}).join(',');
       R.lastCardBottom=Math.round(cards[cards.length-1].getBoundingClientRect().bottom);
     }

@@ -49,9 +49,26 @@
       mode('video');  var kl=[].map.call(document.querySelectorAll('#seg-ar button'),function(b){return b.dataset.v});
       out.push((kr.length===8&&kr.indexOf('2.35:1')>=0&&nb.indexOf('2.35:1')<0&&kl.indexOf('2.35:1')<0?'PASS':'FAIL')+
         '  eight Krea ratios incl 2.35:1, and only Krea  krea='+kr.length+' nbp='+nb.length+' kling='+kl.length);
-      // guide: "there is no 1K button"
-      var res=[].map.call(document.querySelectorAll('#seg-res button'),function(b){return b.dataset.v});
-      out.push((res.indexOf('1K')<0?'PASS':'FAIL')+'  no 1K button anywhere  ['+res.join(',')+']');
+      // The guide says "there is no 1K button" - true on Nano Banana Pro, where 1K
+      // and 2K are billed identically. It is NOT true in Design: Grok charges less
+      // for 1K, so hiding it there would hide a real saving. The rung list is now
+      // per engine, so the assertion is per engine too.
+      function rungs(){ return [].filter.call(document.querySelectorAll('#seg-res button'),
+        function(b){return !b.hidden}).map(function(b){return b.dataset.v}) }
+      function mode(m){ var b=document.querySelector('#seg-type button[data-v="'+m+'"]'); if(b) b.click() }
+      mode('compose');
+      var rc=rungs();
+      out.push((rc.join(',')==='2K,4K'?'PASS':'FAIL')+'  Compose offers 2K and 4K, no 1K  ['+rc.join(',')+']');
+      mode('design');
+      var rd=rungs();
+      out.push((rd.join(',')==='1K,2K'?'PASS':'FAIL')+'  Design offers 1K and 2K, no 4K  ['+rd.join(',')+']');
+      // and switching back must not leave 1K selected on an engine that cannot use it
+      mode('design');
+      var b1=document.querySelector('#seg-res button[data-v="1K"]'); if(b1) b1.click();
+      mode('compose');
+      var sel=[].filter.call(document.querySelectorAll('#seg-res button'),
+        function(b){return b.getAttribute('aria-pressed')==='true'}).map(function(b){return b.dataset.v});
+      out.push((sel.join(',')==='2K'?'PASS':'FAIL')+'  leaving Design clamps 1K back to 2K  ['+sel.join(',')+']');
       document.title=S+out.join('\n')+S;
     },200);
   }

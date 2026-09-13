@@ -173,7 +173,9 @@ input[type=password]{font-family:var(--mono);letter-spacing:.3em;text-align:cent
 
 /* four modes do not fit one row of 13px labels in a 300px column */
 .seg-4{grid-auto-flow:row;grid-template-columns:1fr 1fr;grid-auto-columns:auto}
+.seg-5{grid-auto-flow:row;grid-template-columns:1fr 1fr 1fr;grid-auto-columns:auto}
 body.wide .seg-4{grid-template-columns:1fr 1fr}
+body.wide .seg-5{grid-template-columns:1fr 1fr 1fr}
 .seg-wrap{display:flex;flex-wrap:wrap;grid-auto-flow:unset}
 .seg-wrap button{flex:1 1 62px;font-family:var(--mono);font-size:11.5px;padding:9px 4px}
 
@@ -707,6 +709,12 @@ body.wide .lab{font-size:12.5px}
             <p>Hand it photos and it merges them into one picture &mdash; a face, a jacket and a room, together. Extra sources are free.</p>
             <div class="foot"><span class="from">$0.15</span><span class="wait">under 2 min</span></div>
           </button>
+          <button class="card" type="button" data-go="design">
+            <h3>Design</h3>
+            <div class="eng">Grok Imagine</div>
+            <p>Flyers, posters, invitations, memes &mdash; artwork with your words set into it. Draws anyone and anything, and it is the cheapest thing here.</p>
+            <div class="foot"><span class="from">$0.04</span><span class="wait">under a min</span></div>
+          </button>
           <button class="card" type="button" data-go="upscale">
             <h3>Upscale</h3>
             <div class="eng">Topaz</div>
@@ -782,10 +790,11 @@ body.wide .lab{font-size:12.5px}
         <div class="pane" id="pane-ctl">
           <div class="stack ctl-scroll">
           <div>
-            <div class="seg seg-4" id="seg-type" role="group" aria-label="What to make">
+            <div class="seg seg-5" id="seg-type" role="group" aria-label="What to make">
               <button type="button" data-v="video" aria-pressed="true">Video</button>
               <button type="button" data-v="image" aria-pressed="false">Image</button>
               <button type="button" data-v="compose" aria-pressed="false">Compose</button>
+              <button type="button" data-v="design" aria-pressed="false">Design</button>
               <button type="button" data-v="upscale" aria-pressed="false">Upscale</button>
             </div>
             <div class="hint" id="mode-hint"></div>
@@ -814,13 +823,26 @@ body.wide .lab{font-size:12.5px}
             <div class="hint" id="ar-hint"></div>
           </div>
 
-          <div id="row-res" hidden>
-            <div class="lab">Resolution <span class="opt">4K costs double</span></div>
-            <div class="seg" id="seg-res" role="group" aria-label="Resolution">
-              <button type="button" data-v="2K" aria-pressed="true">2K</button>
-              <button type="button" data-v="4K" aria-pressed="false">4K</button>
+          <div id="row-design" hidden>
+            <div class="lab">Words on it <span class="opt">one line each</span></div>
+            <textarea id="exact-text" rows="3" placeholder="SUMMER JAM&#10;Friday 9pm&#10;free entry"></textarea>
+            <div class="hint">These go to the model <b>exactly as typed</b> &mdash; they are added after the rewrite, so nothing paraphrases them. Leave it empty for artwork with no text.</div>
+            <div class="lab" style="margin-top:9px">Quality</div>
+            <div class="seg" id="seg-quality" role="group" aria-label="Quality">
+              <button type="button" data-v="low" aria-pressed="false">Low</button>
+              <button type="button" data-v="medium" aria-pressed="true">Medium</button>
             </div>
-            <div class="hint">1K and 2K are billed the same, so 2K is the floor worth using.</div>
+            <div class="hint">Low is a third cheaper and fine while you are trying layouts.</div>
+          </div>
+
+          <div id="row-res" hidden>
+            <div class="lab">Resolution <span class="opt" id="res-opt">4K costs double</span></div>
+            <div class="seg" id="seg-res" role="group" aria-label="Resolution">
+              <button type="button" data-v="1K" aria-pressed="false" id="btn-1k" hidden>1K</button>
+              <button type="button" data-v="2K" aria-pressed="true">2K</button>
+              <button type="button" data-v="4K" aria-pressed="false" id="btn-4k">4K</button>
+            </div>
+            <div class="hint" id="res-hint">1K and 2K are billed the same, so 2K is the floor worth using.</div>
           </div>
 
           <div id="row-framing" hidden>
@@ -1061,6 +1083,7 @@ body.wide .lab{font-size:12.5px}
           <tr><td>Video</td><td class="d">A short clip, with sound, made from a sentence.</td></tr>
           <tr><td>Image</td><td class="d">A single picture, made from a sentence.</td></tr>
           <tr><td>Compose</td><td class="d">Hand it several photos, get one picture with all of them in it.</td></tr>
+          <tr><td>Design</td><td class="d">Artwork with your words set into it &mdash; a flyer, a poster, an invitation, a meme.</td></tr>
           <tr><td>Upscale</td><td class="d">Take a picture you already have and make it bigger and clearer.</td></tr>
         </table>
         <div class="note">Each one uses a different piece of software behind the scenes, and they are good at different things &mdash; but you never have to choose between them. <b>Pick what you want to make, and the right one is already loaded.</b></div>
@@ -1096,6 +1119,7 @@ body.wide .lab{font-size:12.5px}
           <tr><td>Video</td><td class="n">$0.336+</td><td class="d">Kling 3.0 Pro. 3 to 15 seconds, billed per second. Sound written from your words.</td></tr>
           <tr><td>Image</td><td class="n">$0.06</td><td class="d">Krea 2 Large. Words to picture. Draws real people and copyrighted characters without complaint.</td></tr>
           <tr><td>Compose</td><td class="n">$0.15</td><td class="d">Nano Banana Pro. Merges the photos you hand it into one picture. Refuses likenesses.</td></tr>
+          <tr><td>Design</td><td class="n">$0.04</td><td class="d">Grok Imagine. Flyers, posters and memes with real lettering. Refuses nothing &mdash; but bills you even when it does. Up to 3 sources, $0.01 each.</td></tr>
           <tr><td>Upscale</td><td class="n">$0.08</td><td class="d">Topaz. Enlarges something you already have. No prompt.</td></tr>
         </table>
         <div class="note">Image and Compose are <b>not a cheap and an expensive version of the same thing</b>. Krea is the one that will draw anyone; Nano Banana Pro is the one that can combine your photos. Pick on what you need, not on price.</div>
@@ -1116,6 +1140,7 @@ body.wide .lab{font-size:12.5px}
         <h4>What each job does with the tray</h4>
         <table class="tbl">
           <tr><td>Compose</td><td class="d" colspan="2">Merges every source into a single picture.</td></tr>
+          <tr><td>Design</td><td class="d" colspan="2">Builds the artwork around them, up to three. Your words sit in space left clear for them.</td></tr>
           <tr><td>Image</td><td class="d" colspan="2">Borrows their look, if you tick style references. Never copies them in.</td></tr>
           <tr><td>Video</td><td class="d" colspan="2">First source is the opening frame. Any source can be the last one.</td></tr>
           <tr><td>Upscale</td><td class="d" colspan="2">First source, at full resolution.</td></tr>
@@ -1135,7 +1160,7 @@ body.wide .lab{font-size:12.5px}
         <h4>Compose &mdash; Nano Banana Pro</h4>
         <div class="note">Every source in the tray is merged into <b>one</b> picture. Up to 14 of them, and <b>the number you put in is free</b> &mdash; you are billed per picture that comes out. Give it a face, a jacket and a room, and ask for all three together.</div>
         <div class="note">Order matters to the model and the tray is numbered, so describe them the same way: <b>the man in image 1 wearing the coat from image 2</b>.</div>
-        <div class="note"><b>Always use 2K.</b> There is no 1K button because 1K costs exactly the same and gives you less. 4K costs double and is only worth it for printing, or a very big screen.</div>
+        <div class="note"><b>In Compose, always use 2K.</b> There is no 1K button there because Nano Banana Pro bills 1K and 2K identically, so 1K would just give you less for the same money. 4K costs double. <b>Design is the exception</b> &mdash; Grok really does charge less at 1K ($0.04 against $0.06), so draft your layout at 1K and finish at 2K.</div>
         <div class="note">Under Advanced: <b>Content filter</b> runs from 1 to 6 and sits at 4. Every refusal so far happened at that setting, and nobody has tried loosening it yet. <b>Standing instruction</b> steers style across the whole request, separately from the prompt. <b>Let it check the web</b> is for a real place, product or person the model may not know, and costs a penny and a half.</div>
       </div>
 
@@ -1180,7 +1205,7 @@ body.wide .lab{font-size:12.5px}
           <tr><td>A character voice</td><td class="n">+75%</td><td class="d">$0.196 a second, for the whole clip.</td></tr>
           <tr><td>Style references</td><td class="n">+$0.005</td><td class="d">Image only.</td></tr>
           <tr><td>Web search</td><td class="n">+$0.015</td><td class="d">Compose only.</td></tr>
-          <tr><td>4K</td><td class="n">&times;2</td><td class="d">Compose only. $0.15 becomes $0.30.</td></tr>
+          <tr><td>4K</td><td class="n">&times;2</td><td class="d">Compose only. $0.15 becomes $0.30. Design tops out at 2K.</td></tr>
         </table>
         <div class="note"><b>Everything else is free.</b> Shot lists, characters without a voice, end frames, prompt adherence, keep-out words, seeds, aspect ratios, creativity, the content filter, a standing instruction &mdash; none of them move the price.</div>
         <div class="note">And <b>more sources never costs more</b>. You are billed for pictures that come out, not pictures you put in.</div>
@@ -1224,6 +1249,7 @@ body.wide .lab{font-size:12.5px}
     if(t==='video') return SRC.length ? 'kling-i2v' : 'kling-t2v';
     if(t==='image') return 'krea';
     if(t==='compose') return 'nbp';
+    if(t==='design') return 'grok';
     return 'topaz';
   }
   function isGenUpscale(){return ['Redefine','Wonder','Wonder 3','Standard MAX'].indexOf($('upmodel').value)>=0}
@@ -1471,37 +1497,59 @@ body.wide .lab{font-size:12.5px}
     var i2v = type==='video' && SRC.length>0;
     $('row-ar').hidden = (type==='upscale' || i2v);
     if($('row-ar').hidden) return;
-    var list = type==='video' ? AR_VID : (type==='image' ? AR_KREA : AR_NBP);
-    if(type==='compose' && !SRC.length) list=list.filter(function(x){return x[0]!=='auto'});
+    var list = type==='video' ? AR_VID : (type==='image' ? AR_KREA
+             : (type==='design' ? AR_DESIGN : AR_NBP));
+    if((type==='compose'||type==='design') && !SRC.length) list=list.filter(function(x){return x[0]!=='auto'});
     if(list.map(function(x){return x[0]}).indexOf(ar)<0) ar=list[0][0];
     $('seg-ar').innerHTML=list.map(function(x){
       return '<button type="button" data-v="'+x[0]+'" aria-pressed="'+(x[0]===ar)+'">'+x[1]+'</button>';
     }).join('');
     $('ar-hint').textContent = type==='image'
       ? '2.35:1 is anamorphic cinema. Only Krea offers it.'
-      : (type==='compose' ? 'Auto keeps the shape of your sources.' : 'Kling offers these three.');
+      : (type==='compose' ? 'Auto keeps the shape of your sources.'
+      : (type==='design' ? '2:3 is a postcard, 1:1 is a meme, 9:16 is a story.' : 'Kling offers these three.'));
   }
+  // Grok's edit endpoint takes a MAXIMUM OF 3 sources. n8n slices to 3 as well,
+  // so a stale page can never make fal 422 - but the tray says so up front.
+  var DESIGN_MAX_SRC=3;
+  var AR_DESIGN=[['auto','Auto'],['2:3','2:3'],['3:4','3:4'],['1:1','1:1'],['4:3','4:3'],['16:9','16:9'],['9:16','9:16']];
+  var quality='medium';
   var MODE_HINT={
     video:'Kling 3.0 Pro. Billed per second of output.',
     image:'Krea 2 Large. Draws from words alone, and will draw anyone.',
     compose:'Nano Banana Pro. Merges the pictures you hand it. Refuses likenesses.',
+    design:'Grok Imagine. Flyers, posters and memes with your words in them. Refuses nothing \u2014 and charges even when it does.',
     upscale:'Topaz. Enlarges a picture you already have. No prompt needed.'
   };
   function syncMode(){
+    // The two engines that use this row do not offer the same rungs. Grok has no
+    // 4K; Nano Banana Pro bills 1K and 2K identically, so 1K there is strictly
+    // dominated. Clamp to 2K rather than send a resolution the engine cannot serve.
+    if((type==='design' && res==='4K') || (type!=='design' && res==='1K')){ res='2K';
+      [].slice.call($('seg-res').querySelectorAll('button')).forEach(function(x){
+        x.setAttribute('aria-pressed',String(x.dataset.v==='2K'))}); }
     var isVid=type==='video', isUps=type==='upscale',
-        isKrea=type==='image', isNbp=type==='compose';
+        isKrea=type==='image', isNbp=type==='compose', isDes=type==='design';
     $('mode-hint').textContent=MODE_HINT[type];
     $('row-prompt').hidden = isUps;
+    $('row-design').hidden = !isDes;
     $('row-shots').hidden  = !isVid;
     $('row-vid').hidden    = !isVid;
     $('row-krea').hidden   = !isKrea;
     $('row-nbp').hidden    = !isNbp;
-    $('row-res').hidden    = !isNbp;
+    $('row-res').hidden    = !(isNbp || isDes);
+    $('btn-4k').hidden = isDes;
+    $('btn-1k').hidden = !isDes;
+    $('res-opt').textContent = isDes ? '1K is cheaper' : '4K costs double';
+    $('res-hint').textContent = isDes
+      ? 'Grok tops out at 2K, and 1K genuinely costs less \u2014 draft at 1K, finish at 2K.'
+      : '1K and 2K are billed the same, so 2K is the floor worth using.';
     // Only meaningful with exactly ONE source. With none there is no frame to
     // keep, and with two or more the frame is always released or the newcomers
     // have nowhere to stand. Used to be a judgement the blind enhancer made.
     $('row-framing').hidden = !(isNbp && SRC.length===1);
     paintFraming();
+    // Grok Imagine has no seed at all - showing the box would be a control that lies.
     $('row-seed').hidden   = !(isKrea||isNbp);
     $('row-ups').hidden    = !isUps;
     $('row-endimg').hidden = !(isVid && SRC.length);
@@ -1511,19 +1559,22 @@ body.wide .lab{font-size:12.5px}
     $('adv-vid').hidden  = !isVid;
     $('adv-nbp').hidden  = !isNbp;
     $('adv-ups').hidden  = !isUps;
-    $('adv-none').hidden = !isKrea;
+    $('adv-none').hidden = !(isKrea||isDes);
     $('prompt').placeholder = isVid
       ? 'Describe the shot. Camera move, subject, light, mood, sound.'
       : (isKrea ? 'Describe the picture. Subject, style, light, framing.'
-                : 'Say what to build out of the sources. Name them: "the man in image 1 wearing the coat from image 2".');
+      : (isDes ? 'Describe the piece. What it is for, the look, the layout \u2014 the words go in the box below.'
+                : 'Say what to build out of the sources. Name them: "the man in image 1 wearing the coat from image 2".'));
     $('hint').textContent = isVid
       ? 'Grok rewrites this into a full cinematic brief before it reaches the model. Kling writes the audio from these words too.'
       : (isKrea ? 'Grok expands this into a full image brief. Krea draws from words only.'
-                : 'Grok expands this into a full image brief. Order matters, and the tray is numbered so you can point at each one.');
+      : (isDes ? 'Grok expands this into a layout brief. Your words in the box below are added afterwards, untouched.'
+                : 'Grok expands this into a full image brief. Order matters, and the tray is numbered so you can point at each one.'));
     $('tray-note').textContent = isVid
       ? 'Video uses the first source as its opening frame.'
       : (isUps ? 'Upscale uses the first source, at full resolution.'
-               : (isKrea ? 'Krea borrows the look of these, it cannot combine them.' : ''));
+               : (isKrea ? 'Krea borrows the look of these, it cannot combine them.'
+               : (isDes ? 'Up to '+DESIGN_MAX_SRC+' sources. Anything past that is ignored.' : '')));
     $('tray-note').hidden = isNbp;
     $('submit').textContent = isUps ? 'Upscale' : 'Generate';
     $('nbp-count').textContent = SRC.length
@@ -1593,6 +1644,8 @@ body.wide .lab{font-size:12.5px}
   $('websearch').addEventListener('change',paintCost);
   $('use-style').addEventListener('change',function(){syncMode();paintCost()});
   $('keep-framing').addEventListener('change',paintFraming);
+  seg($('seg-quality'),function(v){quality=v;paintCost()});
+  $('exact-text').addEventListener('input',paintCost);
   $('face').addEventListener('change',function(){$('face-rows').hidden=!$('face').checked});
   $('upmodel').addEventListener('change',function(){syncMode();paintCost()});
 
@@ -1698,6 +1751,14 @@ body.wide .lab{font-size:12.5px}
       // style references are the only thing that moves Krea off $0.060
       return ($('use-style').checked && SRC.length) ? 0.065 : 0.060;
     }
+    if(type==='design'){
+      // Grok Imagine: $0.04 low/1k, $0.06 medium/1k, $0.06 low/2k, $0.08 medium/2k,
+      // plus $0.01 for every input image.
+      var base = (res==='1K')
+        ? (quality==='low' ? 0.04 : 0.06)
+        : (quality==='low' ? 0.06 : 0.08);
+      return +(base + 0.01*Math.min(SRC.length, DESIGN_MAX_SRC)).toFixed(3);
+    }
     var c = res==='4K' ? 0.30 : 0.15;
     if($('websearch').checked) c += 0.015;
     return +c.toFixed(3);
@@ -1732,6 +1793,13 @@ body.wide .lab{font-size:12.5px}
       det = ($('use-style').checked&&SRC.length)
         ? SRC.length+' style ref'+(SRC.length>1?'s':'')+', '+crea
         : crea+', draws anyone';
+    }else if(type==='design'){
+      eng='Grok Imagine 2.0';
+      var used=Math.min(SRC.length, DESIGN_MAX_SRC);
+      det = res+' '+quality+(used? ', '+used+' source'+(used>1?'s':'')+' \u00b7 +$'+(0.01*used).toFixed(2) : ', from words alone')
+          + ($('exact-text').value.trim() ? '' : ' \u00b7 no text');
+      // It bills for a refusal. Nothing else here does, so say it every time.
+      det += '<br>Charged even if it refuses.';
     }else{
       eng='Nano Banana Pro';
       det = (SRC.length? SRC.length+' source'+(SRC.length>1?'s':'')+' at '+res : res+', refuses likenesses');
@@ -1814,6 +1882,8 @@ body.wide .lab{font-size:12.5px}
     if(type==='upscale' && !SRC.length){ genErr('Add a source image to upscale.'); return }
     if(type==='compose' && !SRC.length && !$('prompt').value.trim()){ genErr('Write a prompt, or add sources to combine.'); return }
     if(type==='image' && !$('prompt').value.trim()){ genErr('Krea draws from words. Write a prompt.'); return }
+    if(type==='design' && !$('prompt').value.trim() && !$('exact-text').value.trim() && !SRC.length){
+      genErr('Describe the piece, type the words that go on it, or add a source.'); return }
     if(type==='video' && !$('prompt').value.trim() && !SRC.length && !($('use-shots').checked&&SHOTS.length)){
       genErr('Write a prompt, add an opening frame, or write a shot list.'); return;
     }
@@ -1843,7 +1913,9 @@ body.wide .lab{font-size:12.5px}
     function put(k,v){ if(v!==null&&v!==undefined&&v!=='') fd.append(k,v) }
     fd.append('action','generate');
     fd.append('password',pw);
-    fd.append('mode', type==='upscale'?'upscale':'generate');
+    // Design is a JOB, not an engine. The enhancer branches on this, so a second
+    // engine later cannot silently turn a flyer back into a photograph.
+    fd.append('mode', type==='upscale'?'upscale':(type==='design'?'design':'generate'));
     fd.append('model', modelFor(type));
     if(type!=='upscale') fd.append('prompt',$('prompt').value.trim());
     if(!$('row-ar').hidden) put('aspect_ratio',ar);
@@ -1891,6 +1963,12 @@ body.wide .lab{font-size:12.5px}
           fd.append('style_strength',$('style-str').value);
           SRC.forEach(function(s,i){ fd.append('image_'+i, dataUrlToBlob(s.ref), 'src'+i+'.jpg') });
         }
+      }else if(type==='design'){
+        fd.append('resolution',res);
+        fd.append('quality',quality);
+        put('exact_text', $('exact-text').value.trim());
+        // Grok's edit takes 3. Send 3, so the request matches the quoted price.
+        SRC.slice(0,DESIGN_MAX_SRC).forEach(function(s,i){ fd.append('image_'+i, dataUrlToBlob(s.ref), 'src'+i+'.jpg') });
       }else{
         fd.append('resolution',res);
         // Only one source has a framing question. n8n defaults it ON when absent.
@@ -2133,6 +2211,8 @@ body.wide .lab{font-size:12.5px}
     if(e.indexOf('banana')>-1) return 'compose';
     if(e.indexOf('topaz')>-1) return 'upscale';
     if(e.indexOf('kling')>-1) return 'video';
+    if(e.indexOf('grok')>-1) return 'design';
+    if(it.model==='grok') return 'design';
     return it.model==='krea' ? 'image'
          : (it.model==='nbp'||String(it.model).indexOf('nano-banana')===0) ? 'compose'
          : it.model==='topaz' ? 'upscale' : 'video';

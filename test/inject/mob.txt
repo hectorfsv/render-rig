@@ -25,7 +25,10 @@
       T(d0.scrollWidth<=innerWidth, 'hub: no horizontal overflow ('+d0.scrollWidth+'<='+innerWidth+')');
       T(rr.left>=0 && rr.right<=innerWidth+1 && rr.width>0,
         'hub: the rail is on screen (x '+Math.round(rr.left)+'-'+Math.round(rr.right)+' of '+innerWidth+')');
-      T(cards.length===4, 'hub: four cards, one per mode ('+cards.length+')');
+      // Derived, not hard-coded: the hub must carry exactly one card per mode.
+      // The literal 4 went stale the day Design was added, in 24 places at once.
+      var modes=document.querySelectorAll('#seg-type button').length;
+      T(cards.length===modes, 'hub: one card per mode ('+cards.length+' cards, '+modes+' modes)');
       T(cards.every(function(c){var r=c.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1}),
         'hub: no card is clipped sideways');
       document.querySelector('.card[data-go="'+(q.get('m')||'image')+'"]').click();
