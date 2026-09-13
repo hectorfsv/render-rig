@@ -1544,12 +1544,12 @@ body.wide .lab{font-size:12.5px}
     $('ar-hint').textContent = type==='image'
       ? '2.35:1 is anamorphic cinema. Only Krea offers it.'
       : (type==='compose' ? 'Auto keeps the shape of your sources.'
-      : (type==='design' ? '2:3 is a postcard, 1:1 is a meme, 9:16 is a story.' : 'Kling offers these three.'));
+      : (type==='design' ? '3:4 is a letter-size flyer, 2:3 a classic poster, 1:1 a meme, 9:16 a story.' : 'Kling offers these three.'));
   }
   // Grok's edit endpoint takes a MAXIMUM OF 3 sources. n8n slices to 3 as well,
   // so a stale page can never make fal 422 - but the tray says so up front.
   var DESIGN_MAX_SRC=3;
-  var AR_DESIGN=[['auto','Auto'],['2:3','2:3'],['3:4','3:4'],['1:1','1:1'],['4:3','4:3'],['16:9','16:9'],['9:16','9:16']];
+  var AR_DESIGN=[['3:4','3:4'],['auto','Auto'],['2:3','2:3'],['1:1','1:1'],['4:3','4:3'],['16:9','16:9'],['9:16','9:16']];
   var quality='medium';
   var MODE_HINT={
     video:'Kling 3.0 Pro. Billed per second of output.',
@@ -1883,6 +1883,10 @@ body.wide .lab{font-size:12.5px}
     $('out-actions').hidden = which!=='out';
     $('fitbtn').hidden = which!=='out';
     if(which!=='out') $('stage').classList.remove('fit');
+    // Looking at an older render while a new one is running is fine - but the
+    // button that leaves it must say where it goes.
+    $('clear-stage').textContent = (which==='out' && document.body.classList.contains('rendering'))
+      ? 'Back to render' : 'Clear';
   }
   function toggleFit(){
     var on = $('stage').classList.toggle('fit');
@@ -2167,6 +2171,11 @@ body.wide .lab{font-size:12.5px}
      render has an empty tray by definition - so the stage gets its own control.
      Nothing is lost: every render stays in This Session and returns on a tap. */
   function clearStage(){
+    /* Hector, 2026-09-13: with a render running he opened something else, pressed
+       Clear to get back, and the render screen vanished - Clear always went to the
+       EMPTY stage, even while a paid job was still polling underneath. While a
+       render is in flight, the rendering screen IS the empty state. */
+    var busy=document.body.classList.contains('rendering');
     lastOut=null;
     $('stage-out').innerHTML='';
     $('stage-tag').textContent='';
@@ -2174,7 +2183,7 @@ body.wide .lab{font-size:12.5px}
     $('m-time').innerHTML='&nbsp;';
     $('m-seed').hidden=true;
     document.body.classList.remove('done');
-    stage('idle');
+    stage(busy?'prog':'idle');
   }
   function land(d){
     var url=(d.urls&&d.urls[0])||'';
@@ -2183,8 +2192,11 @@ body.wide .lab{font-size:12.5px}
               w:d.width||0,h:d.height||0,
               seed:(d.seed===0||d.seed)?d.seed:null};
     HIST.unshift(item);                   // before showResult(), so got() can find it
-    showResult(item, fmt(Math.floor((Date.now()-t0)/1000))+' elapsed');
+    // The render is over the moment it lands - drop the flag BEFORE drawing, or
+    // stage() still sees a render in flight and labels the fresh result's Clear
+    // button "Back to render" (caught by ./test/run.sh stage, not by eye).
     document.body.classList.remove('rendering');document.body.classList.add('done');
+    showResult(item, fmt(Math.floor((Date.now()-t0)/1000))+' elapsed');
     chip('Delivered','ok');
     $('submit').disabled=false;
 

@@ -13,7 +13,7 @@
     var c=getComputedStyle(el); if(c.display==='none'||c.visibility==='hidden') return false;
     var r=el.getBoundingClientRect(); return r.width>0 && r.height>0; }
   var PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAUCAIAAAA7jDsBAAAAGElEQVR4nGM8oaHBgBsw4ZEblR6VJkkaANeKAUD7/NPBAAAAAElFTkSuQmCC';
-  var submitted=0;
+  var submitted=0, holdPoll=false;
   window.fetch=function(u,o){
     var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
     if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
@@ -26,6 +26,7 @@
     if(a==='balance') return Promise.resolve({ok:true,json:function(){
       return Promise.resolve({balance:4.95,currency:'USD'})}});
     if(String(u).indexOf('jobId=')>-1){
+      if(holdPoll) return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'pending'})}});
       return Promise.resolve({ok:true,json:function(){return Promise.resolve({
         status:'done', gen_type:'image', urls:[PNG],
         width:null, height:null,        // exactly what Krea really sends
@@ -111,14 +112,54 @@
         T(vis($('stage-out')), 'tapping the history card brings it back');
         T(vis($('m-seed')) && /166030281/.test($('m-seed').textContent),
           'the recalled render still knows its seed');
-        // clearing the session clears the stage too
-        if($('hist-clear')) $('hist-clear').click();
-        T(!vis($('stage-out')), 'clearing the session also clears the stage');
-        T(document.querySelectorAll('.hcard').length===0, 'session is empty');
-        T(submitted===1, 'exactly one submit was made ('+submitted+')');
-        document.title=S+out.join('\n')+S;
+        midFlight();
       },260);
     },260);
+  }
+  /* HECTOR, 2026-09-13: with a render running he went to look at something else,
+     pressed Clear to get back, and the rendering screen vanished. While a paid job
+     is in flight the rendering screen IS the stage's resting state. */
+  function midFlight(){
+    holdPoll=true;
+    $('prompt').value='a second test';
+    $('submit').click();
+    T(document.body.classList.contains('rendering'), 'a second render is in flight');
+    T(vis($('stage-prog')), 'the stage shows the rendering screen while it runs');
+    document.querySelector('.hcard').click();
+    T(vis($('stage-out')) && !vis($('stage-prog')), 'an older render can still be looked at mid-flight');
+    T($('clear-stage').textContent==='Back to render',
+      'the way out of it says where it goes ('+$('clear-stage').textContent+')');
+    $('clear-stage').click();
+    T(vis($('stage-prog')), 'THE REPORTED BUG: Clear brings the rendering screen back');
+    T(!vis($('stage-idle')), 'the empty stage never shows while a render runs');
+    T(!vis($('stage-out')), 'the older render is off the stage');
+    T(document.body.classList.contains('rendering'), 'and the render is still running underneath');
+    $('menu-btn').click();
+    document.querySelector('.card[data-go="image"]').click();
+    T(vis($('stage-prog')), 'the rendering screen survives a Menu round trip');
+    // clearing the SESSION mid-flight must not blank the render either
+    if($('hist-clear')) $('hist-clear').click();
+    T(vis($('stage-prog')), 'clearing the session mid-flight keeps the rendering screen');
+    holdPoll=false;
+    var tries=0;
+    (function wait(){
+      if($('stage-out').innerHTML!=='' && !document.body.classList.contains('rendering')) return afterLand();
+      if(++tries>120){ T(false,'TIMED OUT waiting for the second render to land'); document.title=S+out.join('\n')+S; return }
+      setTimeout(wait,500);
+    })();
+  }
+  function afterLand(){
+    T(vis($('stage-out')), 'the second render lands on the stage');
+    T($('clear-stage').textContent==='Clear', 'with nothing running the button is plain Clear again');
+    $('clear-stage').click();
+    T(vis($('stage-idle')) && !vis($('stage-prog')), 'with nothing running, Clear goes to the empty stage');
+    // clearing the session clears the stage too
+    document.querySelector('.hcard').click();
+    if($('hist-clear')) $('hist-clear').click();
+    T(!vis($('stage-out')), 'clearing the session also clears the stage');
+    T(document.querySelectorAll('.hcard').length===0, 'session is empty');
+    T(submitted===2, 'exactly two submits were made ('+submitted+')');
+    document.title=S+out.join('\n')+S;
   }
   if(document.readyState==='complete')go();else addEventListener('load',go);
 })();
