@@ -52,6 +52,12 @@ identity is the first instruction and the last now — and **verified on real
 money: exec 5211 is the best composition the rig has produced.**
 **Design (Grok Imagine) shipped** as the fifth mode. Suite **1481 assertions**.
 
+**Design is working as of exec 5234.** The first flyer looked like MS Paint
+because `Enhance Image Prompt`'s human message was `={{ $json.prompt }}` — the
+caption only — so the enhancer never saw the Words box and wrote *"no text of
+any kind"*, then the words got appended after it. **Same shape as the shot-list
+bug: when you fix "the model cannot see X", grep for every other X.**
+
 What to pick up, in order:
 
 - **The mascot.** Three hand-drawn SVG attempts were rejected and removed —
