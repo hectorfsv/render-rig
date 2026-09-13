@@ -38,6 +38,33 @@
     });
     return checked;
   }
+  /* "16:9" makes you do arithmetic to know which way it points. Each ratio
+     button draws its own shape at the real proportion, and the label line
+     names the chosen one - without making the row any taller or wider. */
+  function checkMarks(mode){
+    var el=$('seg-ar'); if(!vis(el)) return;
+    var lab=$('row-ar').querySelector('.lab'), h0=lab.getBoundingClientRect().height;
+    [].slice.call(el.querySelectorAll('button[data-v]')).forEach(function(b){
+      var v=b.dataset.v, mk=b.querySelector('.ar-mark'), want=1, got, word, expect;
+      T(!!mk, mode+' / aspect '+v+': the button draws its shape');
+      if(!mk) return;
+      var r=mk.getBoundingClientRect();
+      if(v==='auto'){
+        T(Math.abs(r.width-r.height)<0.6, mode+' / aspect auto: a neutral square mark');
+        expect='sources';
+      } else {
+        var p=v.split(':'); want=p[0]/p[1]; got=r.width/r.height;
+        T(Math.abs(got-want)/want<0.12, mode+' / aspect '+v+': the mark is drawn at that proportion (want '+
+          want.toFixed(2)+', drew '+got.toFixed(2)+')');
+        expect=want>1.01?'Horizontal':(want<0.99?'Vertical':'Square');
+      }
+      T(b.scrollWidth<=b.clientWidth+1, mode+' / aspect '+v+': mark and number fit inside the button');
+      b.click();
+      word=($('ar-shape')||{}).textContent||'';
+      T(word.indexOf(expect)>=0, mode+' / aspect '+v+': the label names the shape (wanted '+expect+', says "'+word+'")');
+    });
+    T(Math.abs(lab.getBoundingClientRect().height-h0)<1, mode+' / aspect: naming the shape does not grow the label line');
+  }
   function go(){
     $('pw').value='x'; $('unlock').click();
     // unlock lands on the hub; the controls live in the console
@@ -46,12 +73,13 @@
       setTimeout(function(){ step(0) },250);
     },250);
   }
-  var MODES=['video','image','compose','upscale'], n=0;
+  var MODES=['video','image','compose','design','upscale'], n=0;
   function step(i){
     if(i>=MODES.length) return finish();
     var m=MODES[i];
     document.querySelector('#seg-type button[data-v="'+m+'"]').click();
     setTimeout(function(){
+      checkMarks(m);
       SEGS.forEach(function(id){ n+=checkGroup(id,m) });
       step(i+1);
     },140);

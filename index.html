@@ -178,6 +178,14 @@ body.wide .seg-4{grid-template-columns:1fr 1fr}
 body.wide .seg-5{grid-template-columns:1fr 1fr 1fr}
 .seg-wrap{display:flex;flex-wrap:wrap;grid-auto-flow:unset}
 .seg-wrap button{flex:1 1 62px;font-family:var(--mono);font-size:11.5px;padding:9px 4px}
+/* "16:9" makes you do arithmetic to know which way it points. Each ratio button
+   draws its shape at the real proportion inside the space it already had (14px
+   on the long side fits one line of 11.5px mono), and the chosen shape's name
+   sits on the label line, which was empty - so the row gets no wider or taller. */
+#seg-ar button{display:inline-flex;align-items:center;justify-content:center;gap:5px}
+.ar-mark{flex:none;box-sizing:border-box;border:1.5px solid currentColor;border-radius:1.5px;opacity:.6}
+.ar-mark.auto{border-style:dashed}
+#seg-ar button[aria-pressed=true] .ar-mark{opacity:1}
 
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;
   background:transparent;cursor:pointer;margin:2px 0}
@@ -853,7 +861,7 @@ body.wide .lab{font-size:12.5px}
           </div>
 
           <div id="row-ar">
-            <div class="lab">Aspect ratio</div>
+            <div class="lab">Aspect ratio <span class="opt" id="ar-shape"></span></div>
             <div class="seg seg-wrap" id="seg-ar" role="group" aria-label="Aspect ratio"></div>
             <div class="hint" id="ar-hint"></div>
           </div>
@@ -1528,6 +1536,15 @@ body.wide .lab{font-size:12.5px}
       cb(b.dataset.v);
     });
   }
+  // The mark each ratio button draws (14px on the long side, a slightly smaller
+  // square so it does not read as the biggest) and the word the label line shows.
+  function arShape(v){
+    if(v==='auto') return {w:11,h:11,word:'Matches your sources'};
+    var p=String(v).split(':'), a=parseFloat(p[0])/parseFloat(p[1]||1), L=14;
+    if(Math.abs(a-1)<0.01) return {w:12,h:12,word:'Square'};
+    return a>1 ? {w:L,h:Math.round(L/a*2)/2,word:'Horizontal'}
+               : {w:Math.round(L*a*2)/2,h:L,word:'Vertical'};
+  }
   function buildAR(){
     // Kling i2v has NO aspect_ratio parameter - the clip inherits the start
     // image's shape. Showing the control there would be a control that lies.
@@ -1539,8 +1556,11 @@ body.wide .lab{font-size:12.5px}
     if((type==='compose'||type==='design') && !SRC.length) list=list.filter(function(x){return x[0]!=='auto'});
     if(list.map(function(x){return x[0]}).indexOf(ar)<0) ar=list[0][0];
     $('seg-ar').innerHTML=list.map(function(x){
-      return '<button type="button" data-v="'+x[0]+'" aria-pressed="'+(x[0]===ar)+'">'+x[1]+'</button>';
+      var s=arShape(x[0]);
+      return '<button type="button" data-v="'+x[0]+'" aria-pressed="'+(x[0]===ar)+'" aria-label="'+x[1]+', '+s.word+'">'+
+        '<i class="ar-mark'+(x[0]==='auto'?' auto':'')+'" style="width:'+s.w+'px;height:'+s.h+'px" aria-hidden="true"></i>'+x[1]+'</button>';
     }).join('');
+    $('ar-shape').textContent=arShape(ar).word;
     $('ar-hint').textContent = type==='image'
       ? '2.35:1 is anamorphic cinema. Only Krea offers it.'
       : (type==='compose' ? 'Auto keeps the shape of your sources.'
@@ -1645,7 +1665,7 @@ body.wide .lab{font-size:12.5px}
   // aria-pressed, so the highlight did not move until syncMode() happened to
   // rebuild the row. seg() delegates from the container, so it keeps working
   // even though buildAR() replaces these buttons on every mode change.
-  seg($('seg-ar'),function(v){ar=v});
+  seg($('seg-ar'),function(v){ar=v; $('ar-shape').textContent=arShape(v).word});
 
   // sliders: each one shows its value, and an unchecked "set it myself" means
   // the field is never sent at all so fal keeps its own default.
