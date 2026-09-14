@@ -6,6 +6,7 @@
 #   ./test/run.sh desktop    wide layout, hub, guide
 #   ./test/run.sh price      the guide's numbers vs what the meter computes
 #   ./test/run.sh stage      a render lands, shows its seed, and can be cleared
+#   ./test/run.sh mascot     the duel rides the render, cameos only in empty space, never over a click
 #   ./test/run.sh credit     credit left on screen, and every way the lookup fails
 #   ./test/run.sh gallery    the gallery: flagged work, prompts, empty and failed states
 #   ./test/run.sh segs       every segmented control reacts to the click that made it
@@ -152,6 +153,21 @@ if [ "$WHAT" = all ] || [ "$WHAT" = stage ]; then
     [ "$f" != 0 ] && { echo "  ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
   done
   echo "  -> $sp pass / $sf fail"; PASS=$((PASS+sp)); FAIL=$((FAIL+sf))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = mascot ]; then
+  build "$INJ/mascot.txt" "$B/mc.html"
+  line; echo "MASCOT  (duel rides the render, cameos in empty space only, never over a click)"
+  mp=0; mf=0
+  for v in "2026 1037" "1440 900" "393 700"; do set -- $v
+    R=$(title "$1" "$2" "file://$B/mc.html" 90000)
+    p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+    f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    [ "$p" = 0 ] && { f=$((f+1)); R="${R}FAIL  no result at all"; }
+    mp=$((mp+p)); mf=$((mf+f))
+    [ "$f" != 0 ] && { echo "  ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  done
+  echo "  -> $mp pass / $mf fail"; PASS=$((PASS+mp)); FAIL=$((FAIL+mf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = zoom ]; then

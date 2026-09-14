@@ -1,0 +1,164 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* THE MASCOT. Vader Clawd rides the render (duel on the rendering screen, sabers
+   out the moment it is done) and cameos wander through EMPTY space only - the hub
+   strip beside "See what it makes" and an empty stage, desktop only. Driven through
+   the app's own submit -> poll -> land path. What must never happen: a sprite over a
+   delivered render, a canvas taking a click, a cameo on a phone, the dial buried. */
+(function(){
+  var S=String.fromCharCode(167), out=[];
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); document.title=S+out.join('\n')+S}
+  window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
+  function vis(el){ if(!el||el.hidden) return false;
+    var c=getComputedStyle(el); if(c.display==='none'||c.visibility==='hidden') return false;
+    var r=el.getBoundingClientRect(); return r.width>0 && r.height>0; }
+  function later(ms,fn){setTimeout(fn,ms)}
+  // how much of the canvas is painted: a detector that can fire, not a flag we set
+  function inked(){var c=window.RigMascot&&RigMascot.canvas; if(!c||!c.width||!c.height) return 0;
+    var d=c.getContext('2d').getImageData(0,0,c.width,c.height).data,n=0;
+    for(var i=3;i<d.length;i+=16) if(d[i]>0) n++; return n;}
+  function hits(el){var r=el.getBoundingClientRect(),e=document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2);
+    return e===el||el.contains(e);}
+  var PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAUCAIAAAA7jDsBAAAAGElEQVR4nGM8oaHBgBsw4ZEblR6VJkkaANeKAUD7/NPBAAAAAElFTkSuQmCC';
+  /* HARNESS, NOT PRODUCT: chrome-headless-shell under --virtual-time-budget NEVER
+     fires requestAnimationFrame (measured 2026-09-14: every "paints" check read 0
+     and both blades stayed at 0, while real WebKit at the same moment reported
+     blades [1,1] and a running duel). Timers do advance in virtual time, so rAF is
+     driven by one here. The real rAF path is covered by the WebKit look. */
+  window.requestAnimationFrame=function(cb){return setTimeout(function(){cb(performance.now())},16)};
+  var submitted=0, holdPoll=true, sheathes=0, bladesAfter=null;
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:4.95,currency:'USD'})}});
+    if(String(u).indexOf('jobId=')>-1){
+      if(holdPoll) return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'pending'})}});
+      return Promise.resolve({ok:true,json:function(){return Promise.resolve({
+        status:'done',gen_type:'image',urls:[PNG],width:null,height:null,seed:1,filename:'ai-image.png'})}});
+    }
+    submitted++;
+    return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued',jobId:'m1'})}});
+  };
+  function waitLand(then){
+    var tries=0;(function w(){
+      if($('stage-out').innerHTML!==''&&!document.body.classList.contains('rendering')) return then();
+      if(++tries>160){T(false,'TIMED OUT waiting for the render to land'); return}
+      setTimeout(w,250);})();
+  }
+  function go(){
+    T(!!window.RigMascot,'the mascot module loaded');
+    if(!window.RigMascot) return;
+    var orig=RigMascot.sheathe;
+    RigMascot.sheathe=function(){ sheathes++; var r=orig.apply(this,arguments);
+      setTimeout(function(){bladesAfter=RigMascot.state().blades},340); return r; };
+    $('pw').value='x'; $('unlock').click();
+    later(300,function(){
+      var st=RigMascot.state();
+      T(!st.reduce,'motion is not reduced in this run (otherwise nothing below means anything)');
+      T(st.started&&st.booked,'the cameo clock starts on unlock');
+      T(st.scene==='','nothing plays by itself at unlock');
+      if(document.body.classList.contains('wide')) hubStrip(); else phone();
+    });
+  }
+
+  /* ---- desktop ---- */
+  function hubStrip(){
+    T(RigMascot.play('parade')===true,'a cameo can play in the hub strip');
+    var s=$('hub-strip'),r=s.getBoundingClientRect(),g=$('hub-gallery').getBoundingClientRect(),
+        c=document.querySelector('#scr-hub .cards').getBoundingClientRect(),h=$('scr-hub').getBoundingClientRect();
+    T(vis(s),'the strip shows');
+    T(r.left>=g.right+8,'it starts right of "See what it makes" ('+Math.round(r.left)+' vs button end '+Math.round(g.right)+')');
+    T(r.top>=c.bottom-1,'it starts below the cards ('+Math.round(r.top)+' vs '+Math.round(c.bottom)+')');
+    T(r.bottom<=h.bottom+1,'it ends inside the hub ('+Math.round(r.bottom)+' vs '+Math.round(h.bottom)+')');
+    T(r.right<=c.right+1,'it ends at the edge of the cards');
+    T(r.height>=60,'it is tall enough for a sprite ('+Math.round(r.height)+'px)');
+    T(hits($('hub-gallery')),'"See what it makes" still takes the click');
+    T(hits(document.querySelector('.card[data-go="video"]')),'the cards still take the click');
+    later(2500,function(){
+      var n=inked(),st=RigMascot.state();
+      T(n>0,'the strip cameo paints ('+n+')');
+      T(st.S<=3,'hub sprites stay small (S='+st.S+')');
+      document.querySelector('.card[data-go="image"]').click();
+      later(400,function(){
+        T(RigMascot.state().scene==='','leaving the hub ends the strip cameo');
+        T(!vis($('hub-strip')),'and hides the strip');
+        T(RigMascot.state().booked,'and the next cameo is booked');
+        stageCameo();
+      });
+    });
+  }
+  function stageCameo(){
+    T(RigMascot.play('rampage')===true,'a cameo can play on the empty stage');
+    var m=$('stage-mascot'),r=m.getBoundingClientRect(),st=$('stage').getBoundingClientRect();
+    T(vis(m)&&Math.abs(r.width-st.width)<3&&Math.abs(r.height-st.height)<3,'it covers the stage exactly');
+    T(hits($('submit')),'Generate still takes the click');
+    var e=document.elementFromPoint(st.left+st.width/2,st.top+st.height*.85);
+    T(!(e&&e.tagName==='CANVAS'),'the canvas never takes a click ('+(e&&e.tagName)+')');
+    later(2500,function(){
+      var n=inked();
+      T(n>0,'the stage cameo paints ('+n+')');
+      T(RigMascot.state().S<=5,'stage sprites stay small to medium (S='+RigMascot.state().S+')');
+      render(desktopLanded);
+    });
+  }
+  function render(after){
+    $('prompt').value='a test'; $('submit').click();
+    T(document.body.classList.contains('rendering'),'a render starts');
+    T(RigMascot.state().scene==='duel','the duel takes the stage the moment a render starts');
+    T(vis($('stage-mascot'))&&vis($('stage-prog')),'the duel and the dial share the stage');
+    later(2500,function(){
+      var s=RigMascot.state(),n=inked();
+      T(s.blades.length===2&&s.blades[0]>.9&&s.blades[1]>.9,'both sabers are lit mid-render ('+s.blades+')');
+      T(n>0,'the duel paints ('+n+')');
+      T((+getComputedStyle($('stage-mascot')).zIndex)<(+getComputedStyle($('stage-prog')).zIndex),'the dial paints above the duel');
+      T(hits($('menu-btn'))||$('menu-btn').hidden,'Menu still takes the click mid-render');
+      holdPoll=false;
+      waitLand(after);
+    });
+  }
+  function common(){
+    T(sheathes===1,'the sabers are put away when the render is done ('+sheathes+')');
+    T(!!bladesAfter&&bladesAfter.length===2&&bladesAfter.every(function(b){return b<.2}),
+      'and they really go out before the result shows ('+bladesAfter+')');
+    var s=RigMascot.state();
+    T(s.scene==='','the duel ends when the render lands');
+    T(!vis($('stage-mascot')),'nothing covers the delivered render');
+    T(vis($('stage-out')),'the render is on the stage');
+  }
+  function desktopLanded(){
+    common();
+    T(RigMascot.play('ambush')===false,'no cameo can walk over a render on the stage');
+    $('clear-stage').click();
+    T(RigMascot.play('ambush')===true,'after Clear, the empty stage is fair game again');
+    $('stage-out').innerHTML!=='' || T(true,'stage is empty');
+    finish();
+  }
+
+  /* ---- phone ---- */
+  function phone(){
+    T(RigMascot.play('parade')===false,'a phone gets no cameos - it has no empty space');
+    T(!vis($('hub-strip')),'and the hub strip never shows on a phone');
+    document.querySelector('.card[data-go="image"]').click();
+    later(300,function(){
+      T(RigMascot.play('rampage')===false,'not even on the phone stage');
+      $('prompt').value='a test'; $('submit').click();
+      T(RigMascot.state().scene==='duel','the duel still rides the render on a phone');
+      later(2500,function(){
+        var s=RigMascot.state(),n=inked();
+        T(s.W>0&&s.H>0,'on a real stage ('+s.W+'x'+s.H+', S='+s.S+')');
+        T(n>0,'and paints ('+n+')');
+        T(s.W/s.S>=110,'the fight fits the stage width ('+Math.round(s.W/s.S)+' sprite px)');
+        holdPoll=false;
+        waitLand(function(){ common(); finish(); });
+      });
+    });
+  }
+  function finish(){
+    T(document.documentElement.scrollWidth<=innerWidth,'no horizontal overflow ('+document.documentElement.scrollWidth+'<='+innerWidth+')');
+    T(submitted===1,'exactly one submit ('+submitted+')');
+    T(RigMascot.state().booked||RigMascot.state().scene!=='','the cameo clock is still running');
+  }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>
