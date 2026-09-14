@@ -52,18 +52,47 @@
     var orig=RigMascot.sheathe;
     RigMascot.sheathe=function(){ sheathes++; var r=orig.apply(this,arguments);
       setTimeout(function(){bladesAfter=RigMascot.state().blades},340); return r; };
+    later(900,function(){ lockScreen(function(){
     $('pw').value='x'; $('unlock').click();
     later(300,function(){
+      var lk=RigMascot.state();
+      T(lk.role!=='lock'&&!vis($('lock-mascot')),'unlocking stops the lock-screen show ('+lk.role+')');
       var st=RigMascot.state();
       T(!st.reduce,'motion is not reduced in this run (otherwise nothing below means anything)');
       T(st.started&&st.booked,'the cameo clock starts on unlock');
       T(st.scene==='','nothing plays by itself at unlock');
       if(document.body.classList.contains('wide')) hubStrip(); else phone();
     });
+    }); });
+  }
+  /* ---- the lock screen: all four scenes back to back, left of the card ---- */
+  function lockScreen(done){
+    var st=RigMascot.state();
+    if(!document.body.classList.contains('wide')){
+      T(st.role===''&&!vis($('lock-mascot')),'a phone lock screen has no show - no room beside the card'); return done(); }
+    T(st.role==='lock'&&st.scene==='duel','the lock screen opens with the duel ('+st.role+'/'+st.scene+')');
+    var m=$('lock-mascot'),r=m.getBoundingClientRect(),rig=document.querySelector('.rig').getBoundingClientRect();
+    T(vis(m),'the lock-screen show is on screen');
+    T(r.left>=0&&r.right<=rig.left-8,'it plays LEFT of the lock card ('+Math.round(r.left)+'-'+Math.round(r.right)+', card at '+Math.round(rig.left)+')');
+    T(r.top>=rig.top-1&&r.bottom<=rig.bottom+1,'and lines up with the card, top to bottom');
+    T(hits($('pw'))&&hits($('unlock')),'the passphrase and Unlock still take the click');
+    var first=st.scene,tries=0;
+    later(2500,function(){
+      var n=inked(); T(n>0,'the lock-screen show paints ('+n+')');
+      (function w(){
+        var s=RigMascot.state();
+        if(s.role==='lock'&&s.scene&&s.scene!==first){
+          T(s.scene==='ambush','the next scene follows by itself, back to back ('+first+' -> '+s.scene+')'); return done(); }
+        if(++tries>200){ T(false,'TIMED OUT waiting for the lock screen to play its next scene'); return done(); }
+        setTimeout(w,250);
+      })();
+    });
   }
 
   /* ---- desktop ---- */
   function hubStrip(){
+    var dz=RigMascot.play('duel'),ds=RigMascot.state();
+    T(dz===true&&ds.kind==='strip'&&ds.role==='cameo','the duel plays in the hub strip too ('+ds.kind+'/'+ds.role+')');
     T(RigMascot.play('parade')===true,'a cameo can play in the hub strip');
     var s=$('hub-strip'),r=s.getBoundingClientRect(),g=$('hub-gallery').getBoundingClientRect(),
         c=document.querySelector('#scr-hub .cards').getBoundingClientRect(),h=$('scr-hub').getBoundingClientRect();

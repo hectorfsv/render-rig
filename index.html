@@ -590,6 +590,7 @@ body.wide .gal-one .pr{font-size:23px;line-height:1.38}
 .mascot canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .hub-body{position:relative}
 .hub-strip{inset:auto;right:0}
+.lock-stage{position:fixed;inset:auto}
 @media (prefers-reduced-motion:reduce){
   .prog-bg img{transition:opacity .01s linear}
   .prog-bg img.on{transform:none;animation:none}
@@ -1278,14 +1279,19 @@ body.wide .lab{font-size:12.5px}
   </div>
 </div>
 
+<div class="mascot lock-stage" id="lock-mascot" aria-hidden="true" hidden></div>
 <script>
 /* VADER CLAWD - the rig's mascot, "the Empire" (approved by Hector 2026-09-14).
    Pixel sprites drawn in code: nothing to download, nothing to pay for.
    Two jobs, one canvas:
    - the DUEL owns the rendering stage. stage('prog') starts it, poll() sheathes
      the sabers the moment a render is done, and any other stage state ends it.
-   - three CAMEOS (ambush, parade, rampage) wander through the empty stage or the
-     strip beside "See what it makes", one every 2-3 minutes, desktop only.
+   - three CAMEOS (ambush, parade, rampage) wander through the empty stage, and
+     the hub strip beside "See what it makes" also gets the duel. Every 2 minutes,
+     desktop only.
+   - the LOCK SCREEN plays all four back to back, forever, left of the card.
+   The desktop pet (projects/vader-clawd-pet) pulls everything between the
+   "sprites" and "lifecycle" markers out of this file at build time.
    A 2017 Intel Mac runs this for minutes, so requestAnimationFrame runs ONLY while
    a scene plays, capped at 30 fps; between cameos there is one setTimeout.
    Reduced motion: nothing plays. Hosts are pointer-events:none, so a sprite can
@@ -1413,8 +1419,10 @@ window.RigMascot=(function(){
     if(!W||!H) return;
     // one sprite pixel = a whole number of DEVICE pixels, so it stays crisp.
     // Stage: capped at 5 CSS px (small to medium). Hub strip: 94px tall, so 2-3 px.
-    var P=kind==='stage'
+    // lock: the empty space left of the lock card; pet: the window height IS the size
+    var P=kind==='stage'||kind==='lock'
       ?Math.max(2,Math.floor(Math.min(H/64,W/140,5)*dpr))
+      :kind==='pet'?Math.max(2,Math.floor(H/64*dpr))
       :Math.max(2,Math.floor(Math.min(H/40,W/200,3)*dpr));
     S=P/dpr;
     // a short stage (a phone) puts the floor lower so the fight stays under the dial
@@ -1591,12 +1599,18 @@ window.RigMascot=(function(){
     return [p1[0]+ua*(p2[0]-p1[0]),p1[1]+ua*(p2[1]-p1[1])];
   }
   var sheathed=false;
-  function sceneDuel(){
+  function sceneDuel(opts){
     var A=new Actor('clawd',0,-1),B=new Actor('vader',0,1); A.saber=B.saber=true; A.deg=60;
     actors=[B,A]; sheathed=false;
     function spots(){var c=W/2; return {v:c-45*S,c:c+10*S,v2:c-69*S,c2:c+34*S};}
-    var p=spots(); B.x=B.target=p.v2; A.x=A.target=p.c2;
+    var p=spots(),limit=(opts&&opts.rounds)||0,rounds=0;
     var st='ignite',t=.45,phrase=null,bi=0,beatT=0,sparkT=0,hold=0;
+    // on the render they are simply there; as a cameo they walk in from opposite
+    // sides, fight `rounds` rounds and walk away again
+    if(limit){B.x=B.target=-44*S; A.x=A.target=W+10*S; walk(B,p.v2,40); walk(A,p.c2,40); st='enter';}
+    else{B.x=B.target=p.v2; A.x=A.target=p.c2;}
+    // how high Clawd can be lifted and still be whole in frame (the hub strip is 94px)
+    function liftMax(){return Math.max(8,Math.min(26,Math.floor(FLOOR/(S*dpr))-22));}
     function clash(n){ if(A.blade<.9) return;
       var q=cross.apply(null,bladeWorld(A).concat(bladeWorld(B))); if(!q) return;   // a miss throws no sparks
       flash=.09; burst(q[0],q[1],n,['#ffffff','#fff4c2','#ffd35a',A.halo,B.halo],150);}
@@ -1607,6 +1621,8 @@ window.RigMascot=(function(){
       if(sheathed){ if(st!=='sheathed'){st='sheathed'; A.bladeTo=B.bladeTo=0; B.reach=false; A.held=false; apart(34);}
         A.deg=90; B.deg=90; return false; }
       switch(st){
+        case 'enter': A.deg=90; B.deg=90; if(here(A)&&here(B)){st='ignite'; t=.3;} break;
+        case 'exit': A.deg=90; B.deg=90; if(B.x<-40*S&&A.x>W+6*S) return true; break;
         case 'ignite': t-=dt; if(t<=0){A.bladeTo=B.bladeTo=1; st='rest';} break;
         case 'rest': A.deg=90; B.deg=90; if(A.blade>.95){st='standoff'; t=.7;} break;
         case 'standoff': A.deg=60; B.deg=90; t-=dt; if(t<=0){st='approach'; walk(B,p.v,22); walk(A,p.c,22);} break;
@@ -1631,15 +1647,19 @@ window.RigMascot=(function(){
         case 'raise': B.reach=true; B.deg=-70; A.deg=-20; t-=dt; if(t<=0){st='lift'; t=1.1; A.held=true;} break;
         case 'lift':
           B.reach=true; B.deg=-70; A.deg=-60;
-          var k=Math.min(1,1-t/1.1); A.lift=26*(1-Math.pow(1-k,3)); t-=dt;
+          var k=Math.min(1,1-t/1.1); A.lift=liftMax()*(1-Math.pow(1-k,3)); t-=dt;
           if(t<=0){st='hold'; t=.75; hold=0;}
           break;
         case 'hold':
-          B.reach=true; B.deg=-70; A.deg=-60; hold+=dt; A.lift=26+(Math.sin(hold*9)>0?1:0); t-=dt;
+          B.reach=true; B.deg=-70; A.deg=-60; hold+=dt; A.lift=liftMax()+(Math.sin(hold*9)>0?1:0); t-=dt;
           if(t<=0){st='drop'; B.reach=false; A.held=false; A.vy=0; A.landed=false;}
           break;
         case 'drop': B.deg=90; A.deg=-60; if(A.landed){st='land'; t=.6;} break;
-        case 'land': A.deg=60; B.deg=90; t-=dt; if(t<=0){st='standoff'; t=.7+Math.random()*.8;} break;
+        case 'land': A.deg=60; B.deg=90; t-=dt;
+          if(t<=0){rounds++;
+            if(limit&&rounds>=limit){st='exit'; A.bladeTo=B.bladeTo=0; B.dir=-1; A.dir=1; walk(B,-60*S,30); walk(A,W+60*S,30);}
+            else{st='standoff'; t=.7+Math.random()*.8;}}
+          break;
       }
       return false;   // the duel never ends on its own: the render ends it
     };
@@ -1720,25 +1740,26 @@ window.RigMascot=(function(){
   }
 
   /* ---------- cameo: rampage ---------- */
-  // Hector: "get him more action, it's kinda slow". He runs, ignites on the way in,
-  // and one move chains straight into the next.
+  // Pace, Hector 2026-09-14: the first cut was "kinda slow" (~20s), the second
+  // "too fast" (~12s). This one sits between them (~15s) and keeps every move.
   function sceneRampage(){
-    var sp=spd(),fast=sp*1.7,V=new Actor('vader',-44*S,1),cr=memo('crate',function(){return buildCrate(0)});
+    var sp=spd(),fast=sp*1.35,V=new Actor('vader',-44*S,1),cr=memo('crate',function(){return buildCrate(0)});
     V.saber=true; V.bladeTo=1; actors=[V];
     var A=Prop(cr,14,12,W*.34,1),B=Prop(cr,14,12,W*.62,1),droid=null,fromX=0,fromL=0;
     A.heavy=B.heavy=true; props=[A,B];
     walk(V,W*.1,fast);
     return seq([
       until(function(){return here(V)}),
-      run(function(){droid=Prop(memo('droid',buildDroid),13,6,W+6*S,-1); droid.vx=-fast*1.2; props.push(droid)}),
-      during(.5,function(k){V.deg=90+720*ease(k)}),          // double twirl
+      run(function(){droid=Prop(memo('droid',buildDroid),13,6,W+6*S,-1); droid.vx=-fast*1.1; props.push(droid)}),
+      during(.65,function(k){V.deg=90+720*ease(k)}),          // double twirl
       run(function(){V.deg=90; flash=.14; V.vy=-40}),
-      wait(.25),
+      wait(.35),
       // pull the first crate in and cut it in two
       run(function(){V.reach=true; V.deg=-70; A.held=true}),
-      during(.35,function(k){A.lift=14*(1-Math.pow(1-k,3))}),
+      during(.5,function(k){A.lift=14*(1-Math.pow(1-k,3))}),
+      wait(.1),
       run(function(){fromX=A.x; fromL=A.lift}),
-      during(.22,function(k){var e=k*k,to=V.x+34*S;
+      during(.3,function(k){var e=k*k,to=V.x+34*S;
         A.x=fromX+(to-fromX)*e; A.lift=fromL+(8-fromL)*e;
         if(k>.45){V.reach=false; V.deg=Math.round(120-(k-.45)/.55*160);}}),
       run(function(){
@@ -1746,35 +1767,38 @@ window.RigMascot=(function(){
         A.dead=true;
         var L=Prop(memo('crateL',function(){return buildCrate(1)}),14,12,A.x,1),
             R=Prop(memo('crateR',function(){return buildCrate(2)}),14,12,A.x,1);
-        L.lift=R.lift=8; L.vx=-12; L.vy=-60; L.spin=.08; L.fade=1.6;
-        R.vx=26; R.vy=-80; R.spin=.07; R.fade=1.6;
+        L.lift=R.lift=8; L.vx=-12; L.vy=-60; L.spin=.08; L.fade=1.8;
+        R.vx=26; R.vy=-80; R.spin=.07; R.fade=1.8;
         props.push(L,R);
         burst(cx,cy,22,['#fff4c2','#ffd35a','#ff6a3d','#9a6a3f','#c79660'],190);
         flash=.12; shake=.14; V.deg=-40;}),
-      wait(.15),
+      wait(.3),
       // the droid that rolled in during all that gets grabbed and thrown
-      run(function(){V.deg=90; V.reach=true; droid.held=true; droid.vx=0; droid.spin=.1; droid.emote=.5}),
-      during(.35,function(k){droid.lift=16*(1-Math.pow(1-k,3))}),
+      run(function(){V.deg=90; V.reach=true; droid.held=true; droid.vx=0; droid.spin=.1; droid.emote=.6}),
+      during(.45,function(k){droid.lift=16*(1-Math.pow(1-k,3))}),
+      wait(.15),
       run(function(){droid.held=false; droid.vx=fast*4; droid.vy=-80; droid.spin=.05; V.reach=false}),
+      wait(.3),
       // charge the second crate: up, slammed into the floor, flung away
       run(function(){walk(V,B.x-48*S,fast)}),
       until(function(){return here(V)}),
       run(function(){V.reach=true; V.deg=-70; B.held=true}),
-      during(.4,function(k){B.lift=22*(1-Math.pow(1-k,3))}),
-      wait(.12),
-      run(function(){B.held=false; B.vy=200; V.reach=false}),
+      during(.55,function(k){B.lift=22*(1-Math.pow(1-k,3))}),
+      wait(.2),
+      run(function(){B.held=false; B.vy=190; V.reach=false}),
       until(function(){return B.onFloor&&B.lift===0&&B.vy===0}),
-      run(function(){V.reach=true}),
       wait(.15),
-      run(function(){B.vx=fast*3.5; B.vy=-90; B.spin=.07}),
+      run(function(){V.reach=true}),
       wait(.25),
+      run(function(){B.vx=fast*3.5; B.vy=-90; B.spin=.07}),
+      wait(.35),
       // victory: a twirl in the air, sabre out, and off
       run(function(){V.reach=false; V.vy=-60}),
-      during(.5,function(k){V.deg=90-720*ease(k)}),
+      during(.6,function(k){V.deg=90-720*ease(k)}),
       run(function(){V.deg=90; flash=.12}),
-      wait(.3),
+      wait(.4),
       run(function(){V.bladeTo=0}),
-      wait(.3),
+      wait(.4),
       run(function(){walk(V,W+60*S,fast)}),
       until(function(){return V.x>W+4*S&&!props.length}),
       wait(.2)
@@ -1784,10 +1808,11 @@ window.RigMascot=(function(){
   /* ---------- lifecycle ---------- */
   var SCENES={duel:sceneDuel,ambush:sceneAmbush,parade:sceneParade,rampage:sceneRampage};
   var CAMEOS=['ambush','parade','rampage'];
-  var scene=null,sceneKey='',running=false,last=0,lastDraw=0,lastPick='',timer=0,started=false;
-  var stageHost=null,strip=null;
+  var scene=null,sceneKey='',role='',running=false,last=0,lastDraw=0,lastPick='',timer=0,started=false;
+  var stageHost=null,strip=null,lockHost=null;
   function hosts(){stageHost=stageHost||document.getElementById('stage-mascot');
-    strip=strip||document.getElementById('hub-strip'); return !!(stageHost&&strip);}
+    strip=strip||document.getElementById('hub-strip'); lockHost=lockHost||document.getElementById('lock-mascot');
+    return !!(stageHost&&strip&&lockHost);}
   function isCameo(k){return CAMEOS.indexOf(k)>-1}
 
   // the strip sits right of "See what it makes", from the bottom of the cards to
@@ -1800,30 +1825,38 @@ window.RigMascot=(function(){
     strip.style.top=Math.round(cr.bottom-br.top)+'px';
     strip.style.height=Math.max(0,Math.round(gr.bottom-cr.bottom+36))+'px';
   }
+  // the lock show fills the empty space LEFT of the lock card, top to bottom of the card
+  function placeLock(){
+    var rig=document.querySelector('.rig'); if(!rig) return;
+    var rr=rig.getBoundingClientRect();
+    lockHost.style.left='24px'; lockHost.style.top=Math.round(rr.top)+'px';
+    lockHost.style.width=Math.max(0,Math.round(rr.left-48))+'px'; lockHost.style.height=Math.round(rr.height)+'px';
+  }
   function attach(el,k){
     if(host&&host!==el) host.hidden=true;
     host=el; kind=k;
     if(cv.parentNode!==el) el.appendChild(cv);
     el.hidden=false;
-    if(k==='strip') placeStrip();
+    if(k==='strip') placeStrip(); else if(k==='lock') placeLock();
     W=H=0; size();
   }
-  function begin(key,el,k){
+  function begin(key,el,k,r,opts){
     if(reduce||!el) return false;
-    if(isCameo(sceneKey)) schedule(120+Math.random()*60);  // a cameo cut short still books the next one
+    if(role==='cameo') schedule(120);                        // a cameo cut short still books the next one
     attach(el,k);
-    if(!W||!H){el.hidden=true; scene=null; sceneKey=''; return false;}
-    reset(); sceneKey=key; if(isCameo(key)) lastPick=key;
-    scene=SCENES[key]();
+    if(!W||!H){el.hidden=true; scene=null; sceneKey=''; role=''; return false;}
+    reset(); sceneKey=key; role=r||'cameo'; if(role==='cameo') lastPick=key;
+    scene=SCENES[key](opts);
     if(!running){running=true; last=lastDraw=performance.now(); requestAnimationFrame(frame);}
     return true;
   }
   function end(){
-    var was=sceneKey;
-    scene=null; sceneKey=''; sheathed=false; reset();
+    var was=role;
+    scene=null; sceneKey=''; role=''; sheathed=false; reset();
     ctx.clearRect(0,0,cv.width,cv.height);
     if(host) host.hidden=true;
-    if(isCameo(was)) schedule(120+Math.random()*60);
+    if(was==='cameo') schedule(120);
+    if(was==='lock'){clearTimeout(lockTimer); lockTimer=setTimeout(lockNext,900);}   // the lock show never stops
   }
   function frame(now){
     if(!scene){running=false; return;}
@@ -1832,7 +1865,7 @@ window.RigMascot=(function(){
     var dt=Math.min(.05,(now-last)/1000); last=now; lastDraw=now;
     size();
     if(!W||!H){                                    // its screen is not showing
-      if(isCameo(sceneKey)) end();                 // a cameo nobody can see is over
+      if(role!=='render') end();                   // a cameo nobody can see is over
       return;                                      // the duel waits for the stage to come back
     }
     if(scene(dt)){end(); return;}
@@ -1871,27 +1904,51 @@ window.RigMascot=(function(){
     timer=0;
     if(document.hidden||scene){schedule(20); return}
     var s=spot(); if(!s){schedule(20); return}
-    var pool=CAMEOS.filter(function(k){return k!==lastPick}),key=pool[Math.floor(Math.random()*pool.length)];
-    if(!begin(key,s.el,s.k)) schedule(20);
+    // the hub strip also gets the duel (Hector); an empty stage does not - there,
+    // lit sabers mean a render is cooking
+    var all=s.k==='strip'?['duel'].concat(CAMEOS):CAMEOS;
+    var pool=all.filter(function(k){return k!==lastPick}),key=pool[Math.floor(Math.random()*pool.length)];
+    if(!begin(key,s.el,s.k,'cameo',{rounds:2})) schedule(20);
   }
-  window.addEventListener('resize',function(){if(scene&&kind==='strip'&&strip) placeStrip();});
+  /* ---------- the lock screen: every scene, back to back, forever ---------- */
+  var LOCK_ORDER=['duel','ambush','parade','rampage'],lockI=-1,lockTimer=0;
+  function lockOn(){var l=document.getElementById('scr-login');
+    return !!(l&&l.classList.contains('on')&&document.body.classList.contains('wide'));}
+  function lockNext(){
+    clearTimeout(lockTimer); lockTimer=0;
+    if(reduce||!hosts()||!lockOn()||scene) return;
+    lockI=(lockI+1)%LOCK_ORDER.length;
+    if(!begin(LOCK_ORDER[lockI],lockHost,'lock','lock',{rounds:2})) lockTimer=setTimeout(lockNext,2000);
+  }
+  window.addEventListener('resize',function(){
+    if(scene&&kind==='strip'&&strip) placeStrip();
+    if(scene&&kind==='lock'&&lockHost){ if(lockOn()) placeLock(); else end(); }
+    if(!scene&&lockOn()&&!lockTimer) lockTimer=setTimeout(lockNext,600);
+  });
 
   /* ---------- what the rig calls ---------- */
   API.canvas=cv;
   API.stage=function(which){
     if(reduce||!hosts()) return;
-    if(which==='prog'){ if(sceneKey!=='duel') begin('duel',stageHost,'stage'); }
-    else if(sceneKey==='duel'||(scene&&kind==='stage')) end();
+    if(which==='prog'){ if(role!=='render') begin('duel',stageHost,'stage','render'); }
+    else if(role==='render'||(scene&&kind==='stage')) end();
   };
-  API.sheathe=function(){ if(sceneKey==='duel') sheathed=true; };
-  API.start=function(){ if(started||reduce) return; started=true; schedule(120+Math.random()*60); };
+  API.sheathe=function(){ if(role==='render') sheathed=true; };
+  API.screen=function(id){
+    if(reduce||!hosts()) return;
+    if(id==='scr-login'){ if(!scene&&!lockTimer) lockTimer=setTimeout(lockNext,400); }
+    else if(role==='lock') end();
+    else if(role==='cameo'&&kind==='strip'&&id!=='scr-hub') end();
+  };
+  API.start=function(){ if(started||reduce) return; started=true; schedule(120); };
   API.play=function(key){
     if(!SCENES[key]||!hosts()) return false;
-    var s=key==='duel'?{el:stageHost,k:'stage'}:spot();
-    return !!(s&&begin(key,s.el,s.k));
+    if(key==='duel'&&document.getElementById('scr-console').classList.contains('on')) return begin('duel',stageHost,'stage','render');
+    var s=spot(); if(!s||(key==='duel'&&s.k!=='strip')) return false;
+    return begin(key,s.el,s.k,'cameo',{rounds:2});
   };
   API.state=function(){
-    return {scene:sceneKey,kind:kind,W:W,H:H,S:S,host:host?host.id:'',hidden:host?host.hidden:true,
+    return {scene:sceneKey,role:role,kind:kind,W:W,H:H,S:S,host:host?host.id:'',hidden:host?host.hidden:true,
       running:running,booked:!!timer,started:started,reduce:reduce,sheathed:sheathed,actors:actors.length,
       blades:actors.map(function(a){return Math.round(a.blade*100)/100})};
   };
@@ -1988,6 +2045,7 @@ window.RigMascot=(function(){
     $('scr-hub').classList.toggle('on', id==='scr-hub');
     $('scr-console').classList.toggle('on', id==='scr-console');
     $('menu-btn').hidden = (id==='scr-login' || id==='scr-hub');
+    if(window.RigMascot) RigMascot.screen(id);
   }
   function chip(t,c){var e=$('chip');e.textContent=t;e.className='chip'+(c?' '+c:'')}
   function fmt(s){var m=Math.floor(s/60),x=s%60;return m+':'+(x<10?'0':'')+x}
@@ -3197,7 +3255,7 @@ window.RigMascot=(function(){
 
   // resume an unlocked session
   var saved=readPw();
-  if(saved){pw=saved;enter()} else {setTimeout(function(){$('pw').focus()},380)}
+  if(saved){pw=saved;enter()} else {setTimeout(function(){$('pw').focus()},380); if(window.RigMascot) RigMascot.screen('scr-login')}
 })();
 </script>
 </body>

@@ -160,7 +160,7 @@ if [ "$WHAT" = all ] || [ "$WHAT" = mascot ]; then
   line; echo "MASCOT  (duel rides the render, cameos in empty space only, never over a click)"
   mp=0; mf=0
   for v in "2026 1037" "1440 900" "393 700"; do set -- $v
-    R=$(title "$1" "$2" "file://$B/mc.html" 90000)
+    R=$(title "$1" "$2" "file://$B/mc.html" 160000)
     p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
     f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
     [ "$p" = 0 ] && { f=$((f+1)); R="${R}FAIL  no result at all"; }
