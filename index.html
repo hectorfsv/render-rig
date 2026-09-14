@@ -139,6 +139,7 @@ body.wide.authed .rig{max-width:2400px}
 .lab .opt{font-family:var(--disp);font-size:11px;font-weight:500;letter-spacing:.01em;
   color:var(--ink-faint);opacity:.75}
 .hint{font-family:var(--disp);font-size:12px;color:var(--ink-faint);margin-top:7px;line-height:1.5;max-width:60ch}
+.hint.live{color:var(--ink-dim)}
 /* 16px is not a taste choice. iOS Safari zooms the WHOLE PAGE when a focused
    field computes under 16px, and it does not zoom back out when the field
    blurs - tapping the 14px passphrase left the hub panned 42pt off its own
@@ -958,7 +959,7 @@ body.wide .lab{font-size:12.5px}
               <button class="sbtn" id="seed-lock" type="button" aria-pressed="false" title="Lock the seed" aria-label="Lock the seed"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
               <button class="sbtn" id="seed-roll" type="button" title="New random seed" aria-label="New random seed"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="4" width="16" height="16"/><circle cx="9" cy="9" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.4" fill="currentColor" stroke="none"/></svg></button>
             </div>
-            <div class="hint">Same seed and same prompt gives the same picture. Lock it, change one word, and whatever moves is what that word did.</div>
+            <div class="hint" id="seed-hint">Same seed and same prompt gives the same picture. Lock it, change one word, and whatever moves is what that word did.</div>
           </div>
 
           <!-- UPSCALE (Topaz) -->
@@ -1141,7 +1142,7 @@ body.wide .lab{font-size:12.5px}
           <tr><td>Upscale</td><td class="d">Take a picture you already have and make it bigger and clearer.</td></tr>
         </table>
         <div class="note">Each one uses a different piece of software behind the scenes, and they are good at different things &mdash; but you never have to choose between them. <b>Pick what you want to make, and the right one is already loaded.</b></div>
-        <div class="note"><b>Just write like you are talking to a person.</b> Your words get expanded into a longer, more detailed brief before anything is made, so you do not need special phrasing or a list of keywords. Say what you want to see.</div>
+        <div class="note"><b>Just write like you are talking to a person.</b> Your words get expanded into a longer, more detailed brief before anything is made, so you do not need special phrasing or a list of keywords. Say what you want to see. Words you want <b>on</b> something &mdash; a sign, a shirt, a screen &mdash; go in quotes, and they are rendered exactly as typed, typos included.</div>
         <div class="note"><b>Every run costs real money</b> &mdash; a few cents for a picture, more for video. The exact price is on the button before you press it, and it is never a surprise. <b>If nothing comes back, you are not charged.</b> Refusals, crashes and runs you give up on are all free.</div>
       </div>
 
@@ -1162,7 +1163,7 @@ body.wide .lab{font-size:12.5px}
         <ol class="steps">
           <li><span>Pick <b>Upscale</b> and give it any photo from your phone. <b>$0.08</b>, nothing to write, back in under a minute. Start here because there is nothing to get wrong &mdash; it just proves everything works.</span></li>
           <li><span>Now <b>Image</b>. One honest sentence about something you would like to see. <b>$0.06</b>. When it arrives, look at the bottom of the picture: there is a number labelled <b>seed</b>. Tap it.</span></li>
-          <li><span>Change <b>one word</b> of your sentence and run it again. Because you tapped the seed, everything else stays put &mdash; so whatever changes in the picture is what that word did. <b>This is the trick that teaches you the most, and it is the reason the seed exists.</b></span></li>
+          <li><span>Now write only <b>what should change</b> and run it again. Because you tapped the seed, the rig hands Grok the prompt it wrote for that picture and Grok changes just that &mdash; so whatever moves in the picture is what your change did. <b>This is the trick that teaches you the most, and it is the reason the seed exists.</b></span></li>
           <li><span>Finally <b>Video</b>, set to <b>3 seconds with sound off</b> &mdash; <b>$0.336</b>, the cheapest real clip. Video is the expensive one: fifteen seconds with sound is <b>$2.52</b>, so learn on short ones first.</span></li>
         </ol>
       </div>
@@ -1171,7 +1172,7 @@ body.wide .lab{font-size:12.5px}
         <h4>The four jobs</h4>
         <table class="tbl">
           <tr><td>Video</td><td class="n">$0.336+</td><td class="d">Kling 3.0 Pro. 3 to 15 seconds, billed per second. Sound written from your words.</td></tr>
-          <tr><td>Image</td><td class="n">$0.06</td><td class="d">Krea 2 Large. Words to picture. Draws real people and copyrighted characters without complaint.</td></tr>
+          <tr><td>Image</td><td class="n">$0.06</td><td class="d">Krea 2 Large. Words to picture. Draws real people and copyrighted characters without complaint, and renders a short line of sign text cleanly.</td></tr>
           <tr><td>Compose</td><td class="n">$0.15</td><td class="d">Nano Banana Pro. Merges the photos you hand it into one picture. Refuses likenesses.</td></tr>
           <tr><td>Design</td><td class="n">$0.04</td><td class="d">Grok Imagine. Flyers, posters and memes with real lettering. Refuses nothing &mdash; but bills you even when it does. Up to 3 sources, $0.01 each.</td></tr>
           <tr><td>Upscale</td><td class="n">$0.08</td><td class="d">Topaz. Enlarges something you already have. No prompt.</td></tr>
@@ -1186,7 +1187,7 @@ body.wide .lab{font-size:12.5px}
         <div class="note">Think of it as which shuffle of the deck you were dealt. The same words with the same seed always give the same picture. The same words with a different seed give a completely different take on the same idea &mdash; still a man in a red coat on a beach, but a new one.</div>
         <div class="note"><b>Here is why you should care.</b> Say a picture comes back that you nearly love, and you want the coat to be blue. Change the word and you also get a new random seed &mdash; so you get a different beach, a different man, a different everything. The thing you liked is gone.</div>
         <div class="note">So keep the seed and change the word. <b>Now the only thing that can move is the coat.</b> That is how you steer a picture instead of gambling on it, and it is the most useful habit here.</div>
-        <div class="note">In practice: when a picture arrives, its seed is shown just underneath it. <b>Tap that number</b> and it drops into the Seed box, ready for your next run. The padlock holds it there, the dice rolls a fresh one, and an empty box means a new random seed every time &mdash; which is what you want while you are still exploring.</div>
+        <div class="note">In practice: when a picture arrives, its seed is shown just underneath it. <b>Tap that number</b> and it drops into the Seed box, locked. From then on the prompt box is for the change alone &mdash; <i>make the coat blue</i> &mdash; and Grok edits the prompt it already wrote instead of writing a new one. Run the same words again and the same picture comes back. The padlock holds it there, the dice rolls a fresh one, and an empty box means a new random seed every time &mdash; which is what you want while you are still exploring.</div>
         <div class="note">Only <b>Image</b> and <b>Compose</b> have a seed. Video and Upscale do not, so the box is not shown for those two.</div>
       </div>
 
@@ -1996,7 +1997,7 @@ window.RigMascot=(function(){
   //    they use localStorage and survive a crash, a refresh or a browser restart.
   var PW_TTL_MS = 2*60*60*1000;          // 2 hours, then type it again
   var JOB_TTL_MS = 60*60*1000;           // a 15s video takes ~11 min; 60 is generous
-  var K_PW='rig_pw', K_HIST='rig_hist', K_JOB='rig_job', K_SPEND='rig_spend';
+  var K_PW='rig_pw', K_HIST='rig_hist', K_JOB='rig_job', K_SPEND='rig_spend', K_LAST='rig_last';
 
   function savePw(v){
     try{ sessionStorage.setItem(K_PW, JSON.stringify({v:v, ts:Date.now()})) }catch(e){}
@@ -2037,6 +2038,33 @@ window.RigMascot=(function(){
   }
   var SRC=[], HIST=[], spend=0;
   var poller=null, ticker=null, t0=0, eta=0, over=false, curJob=null, lastOut=null;
+  /* THE LAST RENDER'S WRITTEN PROMPT AND SEED. A seed-locked change used to come
+     back as a new picture every time: the seed only fixes the shuffle, and Grok
+     rewrote every sentence from the new caption alone (execs 5389/5392). Now the
+     prompt Grok wrote arrives with the render, and while the seed stays locked
+     to that render it goes back up as prior_prompt, so Grok edits its own prompt
+     instead of writing a new one. The same words again skip the writer, so the
+     same seed really does give the same picture. */
+  var LASTR=null;
+  function saveLast(){ try{ LASTR ? localStorage.setItem(K_LAST, JSON.stringify(LASTR)) : localStorage.removeItem(K_LAST) }catch(e){} }
+  function loadLast(){ try{ var j=JSON.parse(localStorage.getItem(K_LAST)||'null'); LASTR=(j&&j.written&&j.seed)?j:null }catch(e){ LASTR=null } }
+  function lockOn(){ return $('seed-lock').getAttribute('aria-pressed')==='true' }
+  function setLock(on){ $('seed-lock').setAttribute('aria-pressed',String(!!on)) }
+  // The render a locked seed would revise, or null.
+  function revision(){
+    if(!(type==='image'||type==='compose')) return null;
+    if(!LASTR || !LASTR.written || LASTR.type!==type) return null;
+    if(!lockOn() || $('seed').value.trim()!==String(LASTR.seed)) return null;
+    return LASTR;
+  }
+  var SEED_HINT='Same seed and same prompt gives the same picture. Lock it, change one word, and whatever moves is what that word did.';
+  function paintSeedHint(){
+    var h=$('seed-hint'); if(!h) return;
+    if(revision()){
+      h.innerHTML='<b>Locked to your last render.</b> Say only what should change \u2014 Grok edits the prompt it wrote for that picture instead of writing a new one. The same words again bring back the same picture.';
+      h.classList.add('live');
+    }else{ h.textContent=SEED_HINT; h.classList.remove('live'); }
+  }
 
   /* ---------- screens ---------- */
   var picked=false;
@@ -2081,7 +2109,7 @@ window.RigMascot=(function(){
     show('scr-hub');chip('Ready','ok');$('guide-btn').hidden=false;
     document.body.classList.add('authed');
     syncMode();paintCost();
-    loadHist();paintHist();
+    loadHist();loadLast();paintHist();
     resumeJob();
     refreshCredit();
     if(window.RigMascot) RigMascot.start();
@@ -2467,11 +2495,13 @@ window.RigMascot=(function(){
     ELS.splice(+b.dataset.del,1); paintEls();
   });
 
-  $('seed-roll').onclick=function(){$('seed').value=String(Math.floor(Math.random()*1e9))};
+  $('seed-roll').onclick=function(){$('seed').value=String(Math.floor(Math.random()*1e9));paintSeedHint()};
+  $('seed').addEventListener('input',paintSeedHint);
   $('seed-lock').onclick=function(){
     var b=$('seed-lock'),on=b.getAttribute('aria-pressed')==='true';
     b.setAttribute('aria-pressed',String(!on));
     if(!on && !$('seed').value) $('seed').value=String(Math.floor(Math.random()*1e9));
+    paintSeedHint();
   };
 
   /* ---------- cost ---------- */
@@ -2555,6 +2585,7 @@ window.RigMascot=(function(){
     var lit=Math.max(0,Math.min(12,Math.round(c/2.52*12)));
     var b=$('bars');b.innerHTML='';
     for(var i=0;i<12;i++){var s2=document.createElement('i');if(i<lit)s2.className='on';b.appendChild(s2)}
+    paintSeedHint();
   }
 
   /* ---------- stage ---------- */
@@ -2619,7 +2650,7 @@ window.RigMascot=(function(){
   function resumeJob(){
     var j=loadJob(); if(!j) return;
     // A paid render was in flight when the page went away. Pick it back up.
-    curJob={id:j.id,priced:j.priced,type:j.type};
+    curJob={id:j.id,priced:j.priced,type:j.type,seed:j.seed||null,caption:j.caption||''};
     type=j.type; t0=j.t0; eta=j.eta||85; over=false;
     picked=true; show('scr-console');
     [].slice.call($('seg-type').querySelectorAll('button')).forEach(function(x){
@@ -2695,7 +2726,12 @@ window.RigMascot=(function(){
     // engine later cannot silently turn a flyer back into a photograph.
     fd.append('mode', type==='upscale'?'upscale':(type==='design'?'design':'generate'));
     fd.append('model', modelFor(type));
-    if(type!=='upscale') fd.append('prompt',$('prompt').value.trim());
+    var cap=$('prompt').value.trim(), rev=revision(), same=!!(rev&&cap===rev.caption), seedSent=null;
+    // A seed-locked change: the prompt Grok wrote for that render goes up with
+    // the change and Grok edits it. The same words again skip the writer, so
+    // the same seed gives the same picture.
+    if(type!=='upscale') fd.append('prompt', same?'':cap);
+    if(rev) fd.append('prior_prompt', rev.written);
     if(!$('row-ar').hidden) put('aspect_ratio',ar);
 
     if(type==='upscale'){
@@ -2733,7 +2769,13 @@ window.RigMascot=(function(){
       SRC.forEach(function(s,i){ fd.append('image_'+i, dataUrlToBlob(s.ref), 'src'+i+'.jpg') });
 
     }else{
-      put('seed', $('seed').value.trim());
+      if(type==='image'||type==='compose'){
+        // Every image run carries a seed. fal rolls one when the box is empty
+        // and Nano Banana never reports it back, so that picture could not be
+        // revised; rolling it here makes the seed under every render real.
+        seedSent=$('seed').value.trim()||String(Math.floor(Math.random()*1e9));
+        put('seed', seedSent);
+      }else put('seed', $('seed').value.trim());
       if(type==='image'){
         fd.append('creativity', crea);
         if($('use-style').checked && SRC.length){
@@ -2783,8 +2825,8 @@ window.RigMascot=(function(){
       .then(function(d){
         if(!d) return;
         if(!d.jobId) throw new Error('no job id');
-        curJob={id:d.jobId,priced:priced,type:type};
-        saveJob({id:d.jobId,priced:priced,type:type,t0:t0,eta:eta});
+        curJob={id:d.jobId,priced:priced,type:type,seed:seedSent,caption:cap};
+        saveJob({id:d.jobId,priced:priced,type:type,t0:t0,eta:eta,seed:seedSent,caption:cap});
         $('p-msg').textContent = type==='upscale' ? 'Enlarging' : 'Rendering';
         chip('Rendering','busy');
         var first = type==='video' ? 280 : (type==='upscale' ? 20 : 15);
@@ -2901,6 +2943,12 @@ window.RigMascot=(function(){
     var item={url:url,filename:d.filename,gen_type:d.gen_type,
               w:d.width||0,h:d.height||0,
               seed:(d.seed===0||d.seed)?d.seed:null};
+    // Krea reports the seed back and Nano Banana never does; the one we sent is
+    // the truth either way, and it is what makes a Nano Banana render revisable.
+    if(item.seed===null && curJob && curJob.seed) item.seed=curJob.seed;
+    if(d.written && item.seed!==null && curJob && (curJob.type==='image'||curJob.type==='compose')){
+      LASTR={written:d.written, seed:String(item.seed), type:curJob.type, caption:curJob.caption||''}; saveLast();
+    }
     HIST.unshift(item);                   // before showResult(), so got() can find it
     // The render is over the moment it lands - drop the flag BEFORE drawing, or
     // stage() still sees a render in flight and labels the fresh result's Clear
@@ -2950,7 +2998,7 @@ window.RigMascot=(function(){
   $('clear-stage').onclick=clearStage;
   $('m-seed').onclick=function(){
     var v=this.dataset.seed, b=this; if(!v) return;
-    $('seed').value=v;
+    $('seed').value=v; setLock(true); paintSeedHint();
     b.classList.add('ok'); b.textContent='seed '+v+' → set';
     setTimeout(function(){ b.classList.remove('ok'); b.textContent='seed '+v },1800);
   };
@@ -3104,6 +3152,10 @@ window.RigMascot=(function(){
     if(b) b.click();
     $('prompt').value = it.prompt || '';
     if(it.seed && $('seed')) $('seed').value = it.seed;
+    /* The prompt Grok wrote for it rides in specs.written (stored at submit
+       since 2026-09-14). With the seed locked to it, a change is a revision. */
+    var spw=(it.specs||{}).written;
+    if(spw && it.seed){ LASTR={written:spw, seed:String(it.seed), type:modeOf(it), caption:it.prompt||''}; saveLast(); setLock(true); }
     /* A Design row's words live in specs, not in the caption, and the recipe
        branches on them: with the Words box empty it is TOLD to state that the
        artwork carries no text. Restoring the caption alone would reproduce the

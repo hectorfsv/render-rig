@@ -1,0 +1,164 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* REVISE - a locked seed revises the last render instead of starting over.
+
+   Before 2026-09-14 "lock the seed, change one word" was a promise the rig could
+   not keep: the seed only fixes the shuffle, and Grok rewrote every sentence
+   from the new caption alone (execs 5389/5392). Now the prompt Grok wrote comes
+   back with the render, and while the seed stays locked to that render it goes
+   back up as prior_prompt so Grok edits it. The same words again send an empty
+   caption, which skips the writer entirely.
+
+   Also: every Image/Compose run carries a real seed. Nano Banana never reports
+   one back, so with an empty box a render could never be revised. */
+(function(){
+  var S=String.fromCharCode(167), out=[];
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); flush()}
+  function flush(){ try{document.title=S+out.join('\n')+S}catch(e){} }
+  window.onerror=function(m,f,l){ out.push('FAIL  JS ERROR: '+m+' @'+l); flush() };
+  var PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAUCAIAAAA7jDsBAAAAGElEQVR4nGM8oaHBgBsw4ZEblR6VJkkaANeKAUD7/NPBAAAAAElFTkSuQmCC';
+  var bodies=[], written='PRIOR PROMPT ONE', pollSeed=null;
+  var GAL=[{url:PNG,gen_type:'image',model:'nbp',engine:'Nano Banana Pro',prompt:'gal caption',price:0.15,seed:'555',
+            created_at:'2026-09-14T00:00:00Z',specs:{aspect_ratio:'4:5',resolution:'2K',written:'GAL WRITTEN'}}];
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth')    return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:23.04,currency:'USD'})}});
+    if(a==='gallery') return Promise.resolve({ok:true,json:function(){return Promise.resolve({items:GAL,count:GAL.length})}});
+    if(String(u).indexOf('jobId=')>-1) return Promise.resolve({ok:true,json:function(){return Promise.resolve({
+      status:'done',gen_type:'image',urls:[PNG],seed:pollSeed,written:written,filename:'ai-image.jpg'})}});
+    bodies.push(b);
+    return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued',jobId:'r'+bodies.length})}});
+  };
+  function mode(m){var b=document.querySelector('#seg-type button[data-v="'+m+'"]');if(b)b.click()}
+  function press(){$('gen-err').textContent='';$('submit').disabled=false;$('submit').click()}
+  function last(){return bodies[bodies.length-1]}
+  function lockOn(){return $('seed-lock').getAttribute('aria-pressed')==='true'}
+  function hint(){var h=$('seed-hint'); return h?(h.textContent||''):''}
+  function cards(){return document.querySelectorAll('#hist-strip .hcard').length}
+  function landed(n,then){ var t0=Date.now(); (function tick(){
+    if(cards()>=n) return then();
+    if(Date.now()-t0>40000){T(false,'TIMED OUT waiting for render '+n+' to land');return then()}
+    setTimeout(tick,100) })() }
+  var sent='';
+
+  function go(){
+    try{localStorage.removeItem('rig_last');localStorage.removeItem('rig_hist');localStorage.removeItem('rig_job');localStorage.removeItem('rig_spend')}catch(e){}
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){ document.querySelector('.card[data-go="compose"]').click(); step1() },250);
+  }
+  /* 1. an empty seed box still sends a real seed, and the seed shows under the render */
+  function step1(){
+    mode('compose');
+    T(/Same seed and same prompt/.test(hint()),'the seed hint starts on the plain explanation');
+    $('prompt').value='a man on a rooftop'; $('seed').value='';
+    press();
+    setTimeout(function(){
+      var b=last();
+      T(!!b,'Compose with an empty seed box submits');
+      sent=(b&&b.get('seed'))||'';
+      T(/^\d{1,9}$/.test(sent),'an empty seed box still sends a real seed ('+sent+')');
+      T(!b.get('prior_prompt'),'a first run carries no prior_prompt');
+      T(b.get('prompt')==='a man on a rooftop','the caption goes up as the prompt');
+      landed(1,step2);
+    },300);
+  }
+  /* 2. the written prompt is remembered; tapping the seed locks it; a change becomes a revision */
+  function step2(){
+    T(!$('m-seed').hidden && $('m-seed').dataset.seed===sent,'fal returned no seed and the one we sent shows under the render');
+    var L=null; try{L=JSON.parse(localStorage.getItem('rig_last')||'null')}catch(e){}
+    T(!!L && L.written==='PRIOR PROMPT ONE' && L.seed===sent && L.type==='compose' && L.caption==='a man on a rooftop','the written prompt, seed, mode and caption are remembered');
+    T(!lockOn(),'the seed is not locked by itself');
+    T(/Same seed and same prompt/.test(hint()),'and the hint is still the plain one');
+    $('m-seed').click();
+    T($('seed').value===sent && lockOn(),'tapping the seed fills the box AND locks it');
+    T(/Locked to your last render/.test(hint()),'the hint now says the next change is a revision');
+    written='PRIOR PROMPT TWO';
+    $('prompt').value='a man on a rooftop at night';
+    press();
+    setTimeout(function(){
+      var b=last();
+      T(b.get('prior_prompt')==='PRIOR PROMPT ONE','a changed caption on the locked seed sends the prior prompt');
+      T(b.get('prompt')==='a man on a rooftop at night','with the change as the prompt');
+      T(b.get('seed')===sent,'and the same seed');
+      landed(2,step3);
+    },300);
+  }
+  /* 3. the same words again: empty prompt + prior prompt = the writer is skipped */
+  function step3(){
+    var L=null; try{L=JSON.parse(localStorage.getItem('rig_last')||'null')}catch(e){}
+    T(!!L && L.written==='PRIOR PROMPT TWO' && L.caption==='a man on a rooftop at night','the newer render replaced the remembered one');
+    T(lockOn() && $('seed').value===sent,'the lock survived the landing');
+    press();
+    setTimeout(function(){
+      var b=last();
+      T(b.get('prompt')==='' && b.get('prior_prompt')==='PRIOR PROMPT TWO','the same words again send an EMPTY caption with the prior prompt (no writer, same picture)');
+      landed(3,step4);
+    },300);
+  }
+  /* 4. unlocked: a plain new run; locked but another mode: no revision */
+  function step4(){
+    $('seed-lock').click();
+    T(!lockOn(),'the lock toggles off');
+    T(/Same seed and same prompt/.test(hint()),'unlocked: the hint drops back to the plain one');
+    $('prompt').value='a woman on a rooftop';
+    press();
+    setTimeout(function(){
+      var b=last();
+      T(!b.get('prior_prompt'),'unlocked: no prior prompt goes up');
+      T(b.get('prompt')==='a woman on a rooftop','unlocked: the caption goes up whole');
+      T(b.get('seed')===sent,'the seed box value is still sent as typed');
+      landed(4,function(){
+        $('seed-lock').click();
+        T(lockOn(),'locked again');
+        mode('image');
+        T(/Same seed and same prompt/.test(hint()),'Image mode: a Compose render is not a revision base for Krea');
+        $('prompt').value='a woman on a rooftop at dusk';
+        press();
+        setTimeout(function(){
+          var b=last();
+          T(!b.get('prior_prompt'),'another mode: no prior prompt');
+          T(/^\d{1,9}$/.test(b.get('seed')||''),'Image mode also always carries a seed');
+          mode('video');
+          T(!$('seed-hint') || $('row-seed').hidden,'Video hides the seed row entirely');
+          mode('compose');
+          step5();
+        },300);
+      });
+    },300);
+  }
+  /* 5. a refreshed page remembers the last render */
+  function step5(){
+    var L=null; try{L=JSON.parse(localStorage.getItem('rig_last')||'null')}catch(e){}
+    T(!!L && L.written && L.seed,'rig_last is on disk for the next visit');
+    step6();
+  }
+  /* 6. "Make one like this" from the gallery is a revision base too: the row's
+        written prompt + seed come along, locked, so a change edits that prompt */
+  function step6(){
+    $('menu-btn').click(); $('hub-gallery').click();
+    setTimeout(function(){
+      var f=document.querySelector('.frame'); T(!!f,'the gallery shows the stub row');
+      if(f) f.click();
+      setTimeout(function(){
+        T(!!$('gal-use'),'Make one like this is offered'); if($('gal-use')) $('gal-use').click();
+        T($('scr-console').classList.contains('on'),'it opens the console');
+        T($('prompt').value==='gal caption' && $('seed').value==='555','caption and seed loaded');
+        T(lockOn(),'the seed arrives LOCKED');
+        var L=null; try{L=JSON.parse(localStorage.getItem('rig_last')||'null')}catch(e){}
+        T(!!L && L.written==='GAL WRITTEN' && L.seed==='555' && L.type==='compose','the row\'s written prompt is the revision base');
+        T(/Locked to your last render/.test(hint()),'the hint says a change is a revision');
+        $('prompt').value='gal caption at night';
+        press();
+        setTimeout(function(){
+          var b=last();
+          T(b.get('prior_prompt')==='GAL WRITTEN' && b.get('prompt')==='gal caption at night' && b.get('seed')==='555','a change on a gallery pick revises the prompt that made it');
+          flush();
+        },300);
+      },400);
+    },600);
+  }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

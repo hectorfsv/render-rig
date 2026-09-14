@@ -216,6 +216,16 @@ if [ "$WHAT" = all ] || [ "$WHAT" = design ]; then
   echo "  -> $dp pass / $df fail"; PASS=$((PASS+dp)); FAIL=$((FAIL+df))
 fi
 
+if [ "$WHAT" = all ] || [ "$WHAT" = revise ]; then
+  build "$INJ/revise.txt" "$B/rv.html"
+  line; echo "REVISE  (a locked seed sends Grok its own previous prompt; every image run carries a real seed)"
+  R=$(title 1440 900 "file://$B/rv.html" 150000)
+  rp=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+  rf=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+  [ "$rf" != 0 ] && { printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  echo "  -> $rp pass / $rf fail"; PASS=$((PASS+rp)); FAIL=$((FAIL+rf))
+fi
+
 if [ "$WHAT" = all ] || [ "$WHAT" = framing ]; then
   build "$INJ/framing.txt" "$B/fr.html"
   line; echo "FRAMING  (Hector sets the frame, not a blind model guessing from his caption)"
