@@ -28,7 +28,14 @@
      prompt:'a flyer for a halloween party, bloody with some neon touches',
      price:0.08,seed:'',created_at:'2026-09-13T03:23:55',
      specs:{aspect_ratio:'4:3',resolution:'2K',quality:'medium',w:2368,h:1776,
-            exact_text:'Halloween Fest'+String.fromCharCode(10)+'Saturday October 24th'}}
+            exact_text:'Halloween Fest'+String.fromCharCode(10)+'Saturday October 24th'}},
+    // A VIDEO ROW - exec 5372's real shape. The page drew every item as an <img>,
+    // so the first video flagged would have been a broken card. Image-to-video
+    // stores the UI's default aspect_ratio but takes the START PICTURE's shape.
+    {url:'data:video/mp4;base64,AAAA',gen_type:'video',model:'kling-i2v',engine:'Kling 3.0 Pro',
+     prompt:'make the man turn around nod at the camera as saying "Hi"',price:0.56,seed:'',
+     created_at:'2026-09-13T17:30:44',
+     specs:{aspect_ratio:'16:9',resolution:'2K',duration:'5',image_count:1,w:1292,h:1604}}
   ];
   window.fetch=function(u,o){
     var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
@@ -69,6 +76,21 @@
       T(/Krea 2 Large/.test(d0=frames[0].textContent), 'and a real Krea row still says Krea');
       T(!/\$/.test(frames[2].textContent), 'an item with no known price shows no price, not $0.00');
       T(/No prompt was kept/.test(frames[2].textContent), 'a promptless item says so rather than showing blank');
+      // A VIDEO ROW is drawn as a video, and its facts are a video's facts
+      var vf=frames[4], vv=vf&&vf.querySelector('video');
+      T(!!vv && !vf.querySelector('img'), 'a video row is drawn as a video, not a broken picture');
+      T(!!vv && vv.muted && vv.hasAttribute('playsinline'), 'the grid video is muted and inline (iOS would open it full screen)');
+      T(!!vv && vv.getBoundingClientRect().height>40, 'the grid video takes its real shape ('+(vv?Math.round(vv.getBoundingClientRect().height):0)+'px tall)');
+      T(!!vf && /Kling 3\.0 Pro/.test(vf.textContent) && /\$0\.56/.test(vf.textContent), 'the video card names the model and the price');
+      if(vf){
+        vf.click();
+        var ov=$('gal-one').querySelector('video'), vd=$('gal-one').textContent;
+        T(!!ov && ov.hasAttribute('controls') && !$('gal-one').querySelector('img'), 'the detail view plays the video, with controls');
+        T(/Length\s*5s/.test(vd), 'the length is listed');
+        T(!/16:9/.test(vd), 'the stored default shape is NOT listed - image-to-video takes the start picture\'s shape');
+        T(/start picture/i.test(vd), 'it says the start picture is not kept, so a copy needs one added');
+        $('gal-back').click();
+      }
       // the detail view
       frames[0].click();
       T(vis($('gal-one')) && !vis($('gal-grid')), 'tapping a frame opens the detail view');

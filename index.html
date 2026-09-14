@@ -521,10 +521,10 @@ body.wide .gal-col{gap:16px}
 /* The width/height attributes give every box its exact shape BEFORE the picture
    downloads. Without them the layout is computed against height 0, which is the
    other half of why the grid had holes. */
-.frame img{display:block;width:100%;height:auto;background:#000;
+.frame img,.frame video{display:block;width:100%;height:auto;background:#000;
   aspect-ratio:var(--ar,1);object-fit:cover;
   opacity:0;transition:opacity .45s ease}
-.frame img.in{opacity:1}
+.frame img.in,.frame video.in{opacity:1}
 .frame-cap{padding:9px 11px 10px}
 .frame-cap .pr{font-family:var(--disp);font-size:13px;line-height:1.45;color:var(--ink);
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
@@ -543,7 +543,7 @@ body.wide .gal-one{grid-template-columns:minmax(0,1fr) clamp(300px,26vw,420px);
   align-items:start;gap:26px}
 /* The frame hugs the picture. width:100% letterboxed a 4:5 image inside a wide
    column with black bars either side, which made the shape a lie. */
-.gal-one img{display:block;width:auto;max-width:100%;height:auto;max-height:72dvh;
+.gal-one img,.gal-one video{display:block;width:auto;max-width:100%;height:auto;max-height:72dvh;
   margin:0 auto;background:#000;border:1px solid var(--rule)}
 .gal-said{font-size:11px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;
   color:var(--ink-faint);margin-bottom:9px}
@@ -2339,25 +2339,30 @@ body.wide .lab{font-size:12.5px}
     }
     GAL.forEach(function(it,i){
       var sp=it.specs||{}, w=+sp.w||0, h=+sp.h||0, ar=(w&&h)?(w/h):1;
+      // Every item used to be drawn as an <img>, so a flagged video was a broken
+      // card. A video shows its first frame here (#t=0.1 makes Safari paint one
+      // instead of black) and plays in the detail view, where it has controls.
+      var isVid=it.gen_type==='video', dims=(w&&h ? ' width="'+w+'" height="'+h+'"' : '');
       var b=document.createElement('button');
       b.className='frame'; b.type='button'; b.dataset.i=i;
-      b.setAttribute('aria-label','Read the prompt behind this picture');
-      b.innerHTML='<img alt="" loading="lazy" style="--ar:'+ar.toFixed(4)+'"'+
-        (w&&h ? ' width="'+w+'" height="'+h+'"' : '')+' src="'+esc(it.url)+'">'+
+      b.setAttribute('aria-label','Read the prompt behind this '+(isVid?'video':'picture'));
+      b.innerHTML=(isVid
+          ? '<video muted playsinline loop preload="metadata" style="--ar:'+ar.toFixed(4)+'"'+dims+' src="'+esc(it.url)+'#t=0.1"></video>'
+          : '<img alt="" loading="lazy" style="--ar:'+ar.toFixed(4)+'"'+dims+' src="'+esc(it.url)+'">')+
         '<div class="frame-cap"><div class="pr">'+esc(it.prompt||'No prompt was kept for this one')+'</div>'+
         '<div class="frame-meta"><b>'+esc(engineOf(it))+'</b><span>'+
         (it.price!=null ? '$'+money(it.price) : '')+'</span></div></div>';
       // fade each picture in as it actually loads - motion that answers an event,
       // not a staggered entrance on everything
-      var im=b.querySelector('img');
-      im.addEventListener('load',function(){
+      var im=b.querySelector(isVid?'video':'img');
+      im.addEventListener(isVid?'loadeddata':'load',function(){
         im.classList.add('in');
         // A picture whose shape was never recorded arrives assumed square, which
         // would crop it. Take the real ratio from the file itself once it lands.
-        if(!(w&&h) && im.naturalWidth && im.naturalHeight)
-          im.style.setProperty('--ar',(im.naturalWidth/im.naturalHeight).toFixed(4));
+        var nw=isVid?im.videoWidth:im.naturalWidth, nh=isVid?im.videoHeight:im.naturalHeight;
+        if(!(w&&h) && nw && nh) im.style.setProperty('--ar',(nw/nh).toFixed(4));
       });
-      if(im.complete) im.classList.add('in');
+      if(isVid ? im.readyState>=2 : im.complete) im.classList.add('in');
       b.onclick=function(){ galOne(+b.dataset.i) };
       var k=0; for(var j=1;j<heights.length;j++) if(heights[j]<heights[k]) k=j;
       boxes[k].appendChild(b);
@@ -2375,21 +2380,28 @@ body.wide .lab{font-size:12.5px}
     $('gal-grid').hidden=true; $('gal-one').hidden=false;
     $('gal-back').textContent='All pictures';
     $('gal-title').textContent='Made with this'; $('gal-sub').hidden=true;
-    var sp=it.specs||{}, facts=[];
+    var sp=it.specs||{}, facts=[], isVid=it.gen_type==='video', fromPic=isVid && +sp.image_count>0;
     facts.push(['Made with', engineOf(it)]);
     if(it.price!=null) facts.push(['Cost','$'+money(it.price)]);
     if(it.seed) facts.push(['Seed', it.seed]);
-    if(sp.aspect_ratio) facts.push(['Shape', sp.aspect_ratio]);
-    if(sp.resolution) facts.push(['Detail', sp.resolution]);
+    if(isVid && sp.duration) facts.push(['Length', sp.duration+'s']);
+    // Image-to-video has no shape of its own - it takes the start picture's. The
+    // stored aspect_ratio is only the UI's default there, and listing it would lie.
+    if(sp.aspect_ratio && !fromPic) facts.push(['Shape', sp.aspect_ratio]);
+    if(sp.resolution && !isVid) facts.push(['Detail', sp.resolution]);
     if(sp.creativity) facts.push(['Creativity', sp.creativity]);
     if(it.created_at) facts.push(['Made', String(it.created_at).slice(0,10)]);
     $('gal-one').innerHTML =
-      '<img alt="" src="'+esc(it.url)+'">'+
+      (isVid ? '<video src="'+esc(it.url)+'" controls playsinline loop preload="metadata"></video>'
+             : '<img alt="" src="'+esc(it.url)+'">')+
       '<div><div class="gal-said">Someone typed</div>'+
       '<div class="pr">'+esc(it.prompt||'The prompt for this one was not kept.')+'</div>'+
       '<div class="gal-facts">'+facts.map(function(f){
         return '<div><span>'+esc(f[0])+'</span><b>'+esc(f[1])+'</b></div>' }).join('')+'</div>'+
       '<div class="gal-acts">'+
+        // The start picture is not stored, and a video mode with no source is a
+        // text-to-video: copying the prompt alone buys a different product.
+        (fromPic ? '<div class="hint">Made from a start picture, which is not kept. Add one to Sources before you generate, or this becomes a video from words alone.</div>' : '')+
         (it.prompt ? '<button class="go sm" id="gal-use" type="button">Make one like this</button>' : '')+
       '</div></div>';
     var u=$('gal-use');
