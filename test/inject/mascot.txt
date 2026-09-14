@@ -65,7 +65,7 @@
     });
     }); });
   }
-  /* ---- the lock screen: all four scenes back to back, left of the card ---- */
+  /* ---- the lock screen: all four scenes back to back, right of the card ---- */
   function lockScreen(done){
     var st=RigMascot.state();
     if(!document.body.classList.contains('wide')){
@@ -73,7 +73,7 @@
     T(st.role==='lock'&&st.scene==='duel','the lock screen opens with the duel ('+st.role+'/'+st.scene+')');
     var m=$('lock-mascot'),r=m.getBoundingClientRect(),rig=document.querySelector('.rig').getBoundingClientRect();
     T(vis(m),'the lock-screen show is on screen');
-    T(r.left>=0&&r.right<=rig.left-8,'it plays LEFT of the lock card ('+Math.round(r.left)+'-'+Math.round(r.right)+', card at '+Math.round(rig.left)+')');
+    T(r.left>=rig.right+8&&r.right<=innerWidth,'it plays RIGHT of the lock card ('+Math.round(r.left)+'-'+Math.round(r.right)+', card ends at '+Math.round(rig.right)+')');
     T(r.top>=rig.top-1&&r.bottom<=rig.bottom+1,'and lines up with the card, top to bottom');
     T(hits($('pw'))&&hits($('unlock')),'the passphrase and Unlock still take the click');
     var first=st.scene,tries=0;

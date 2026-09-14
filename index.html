@@ -1289,7 +1289,7 @@ body.wide .lab{font-size:12.5px}
    - three CAMEOS (ambush, parade, rampage) wander through the empty stage, and
      the hub strip beside "See what it makes" also gets the duel. Every 2 minutes,
      desktop only.
-   - the LOCK SCREEN plays all four back to back, forever, left of the card.
+   - the LOCK SCREEN plays all four back to back, forever, right of the card.
    The desktop pet (projects/vader-clawd-pet) pulls everything between the
    "sprites" and "lifecycle" markers out of this file at build time.
    A 2017 Intel Mac runs this for minutes, so requestAnimationFrame runs ONLY while
@@ -1825,12 +1825,12 @@ window.RigMascot=(function(){
     strip.style.top=Math.round(cr.bottom-br.top)+'px';
     strip.style.height=Math.max(0,Math.round(gr.bottom-cr.bottom+36))+'px';
   }
-  // the lock show fills the empty space LEFT of the lock card, top to bottom of the card
+  // the lock show fills the empty space RIGHT of the lock card (Hector), top to bottom of the card
   function placeLock(){
     var rig=document.querySelector('.rig'); if(!rig) return;
-    var rr=rig.getBoundingClientRect();
-    lockHost.style.left='24px'; lockHost.style.top=Math.round(rr.top)+'px';
-    lockHost.style.width=Math.max(0,Math.round(rr.left-48))+'px'; lockHost.style.height=Math.round(rr.height)+'px';
+    var rr=rig.getBoundingClientRect(),vw=document.documentElement.clientWidth;
+    lockHost.style.left=Math.round(rr.right+24)+'px'; lockHost.style.top=Math.round(rr.top)+'px';
+    lockHost.style.width=Math.max(0,Math.round(vw-rr.right-48))+'px'; lockHost.style.height=Math.round(rr.height)+'px';
   }
   function attach(el,k){
     if(host&&host!==el) host.hidden=true;
