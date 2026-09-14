@@ -412,6 +412,7 @@ body:not(.wide) .console.sheet-shut .stage:not(.fit) .out{object-fit:cover}
 body:not(.wide) .console.sheet-shut #stage-out{height:100%}
 body:not(.wide) .console.sheet-shut .stage:not(.fit) .out{height:100%}
 body:not(.wide) .console.sheet-shut #fitbtn{display:block}
+body:not(.wide) .console.sheet-shut .stage.zoomed #fitbtn{display:none}
 .fitbtn{display:none;position:absolute;top:7px;right:7px;z-index:3;
   font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.14em;
   text-transform:uppercase;color:var(--ink);background:rgba(0,0,0,.66);
@@ -482,13 +483,39 @@ body.dragging .add{border-color:var(--red);color:var(--ink)}
 
 /* stage */
 .stage{position:relative;background:var(--stage);border:1px solid var(--rule);
-  min-height:230px;display:grid;place-items:center;overflow:hidden}
+  min-height:230px;display:grid;place-items:center;overflow:hidden;touch-action:manipulation}
 body.wide .stage{min-height:clamp(430px,calc(100dvh - 215px),1040px)}
 .stage-idle{text-align:center;padding:26px 18px;max-width:34ch}
 .stage-idle h3{font-size:14px;font-weight:600;color:var(--ink-dim);margin-bottom:6px}
 .stage-idle p{font-size:12.5px;color:var(--ink-faint);line-height:1.55}
 .out{display:block;width:100%;max-height:62vh;object-fit:contain;background:#000}
 body.wide .out{max-height:clamp(430px,calc(100dvh - 215px),1040px)}
+/* zoom (Hector, 2026-09-14: "make the image bigger to check quality").
+   At rest .zview is display:contents - it has no box at all, so the stage and
+   the gallery lay out exactly as they did before zoom existed. Only .on gives it
+   one: a scroll box frozen at the size the picture had. */
+.zview{display:contents}
+.zview.on{display:flex;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;
+  margin:0 auto;cursor:grab;touch-action:manipulation}
+.zview.on::-webkit-scrollbar{display:none}
+.zview.on.grab{cursor:grabbing}
+.zview.on img{flex:none;margin:auto;max-width:none!important;max-height:none!important;
+  object-fit:fill!important;border:0!important;-webkit-user-select:none;user-select:none;
+  -webkit-user-drag:none}
+/* [hidden] loses to any class that sets display, so only a visible bar gets one */
+.zbar:not([hidden]){display:flex}
+.zbar{align-items:stretch;background:rgba(0,0,0,.66);border:1px solid var(--rule-hot);
+  backdrop-filter:blur(3px);font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.06em;color:var(--ink)}
+.zbar button{background:none;border:0;border-left:1px solid var(--rule);color:inherit;
+  font:inherit;letter-spacing:inherit;min-width:34px;height:32px;padding:0 9px;
+  cursor:pointer;touch-action:manipulation}
+.zbar button:first-child{border-left:0}
+.zbar button:disabled{color:var(--ink-faint);opacity:.5;cursor:default}
+.zbar button[aria-pressed=true]{color:var(--red-hot)}
+.zbar .zpct{min-width:50px;display:grid;place-items:center;border-left:1px solid var(--rule);
+  color:var(--ink-dim);font-variant-numeric:tabular-nums}
+.stage .zbar{position:absolute;right:7px;bottom:7px;z-index:3}
 .stage-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;
   font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--ink-faint);padding:8px 2px 0}
@@ -547,6 +574,8 @@ body.wide .gal-one{grid-template-columns:minmax(0,1fr) clamp(300px,26vw,420px);
    column with black bars either side, which made the shape a lie. */
 .gal-one img,.gal-one video{display:block;width:auto;max-width:100%;height:auto;max-height:72dvh;
   margin:0 auto;background:#000;border:1px solid var(--rule)}
+.gal-pic .zbar{width:max-content;max-width:100%;margin:10px auto 0}
+.gal-pic .zview.on{outline:1px solid var(--rule);outline-offset:-1px;background:#000}
 .gal-said{font-size:11px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;
   color:var(--ink-faint);margin-bottom:9px}
 .gal-one .pr{font-family:var(--disp);font-size:19px;line-height:1.4;color:var(--ink)}
@@ -828,6 +857,14 @@ body.wide .lab{font-size:12.5px}
             <div id="stage-out" hidden style="width:100%"></div>
             <button class="fitbtn" id="fitbtn" type="button" hidden
                     aria-pressed="false" aria-label="Show the whole frame">Fit</button>
+            <div class="zbar" id="stage-zbar" role="group" aria-label="Zoom" hidden>
+              <button type="button" data-z="fit" aria-label="Back to the whole picture">Fit</button>
+              <button type="button" data-z="out" aria-label="Zoom out">&minus;</button>
+              <span class="zpct"></span>
+              <button type="button" data-z="in" aria-label="Zoom in">+</button>
+              <button type="button" data-z="one" aria-pressed="false" aria-label="Actual pixels"
+                      title="Actual pixels: one pixel of the picture per pixel of your screen">1:1</button>
+            </div>
           </div>
           <div class="stage-foot">
             <span id="m-engine">&nbsp;</span>
@@ -2650,6 +2687,7 @@ window.RigMascot=(function(){
     $('stage-out').hidden  = which!=='out';
     $('out-actions').hidden = which!=='out';
     $('fitbtn').hidden = which!=='out';
+    $('stage-zbar').hidden = which!=='out' || !SZ;
     if(which!=='out') $('stage').classList.remove('fit');
     // Looking at an older render while a new one is running is fine - but the
     // button that leaves it must say where it goes.
@@ -2663,11 +2701,13 @@ window.RigMascot=(function(){
     b.setAttribute('aria-pressed', String(on));
     b.textContent = on ? 'Fill' : 'Fit';
     b.setAttribute('aria-label', on ? 'Fill the screen' : 'Show the whole frame');
+    if(SZ) SZ.reset();
   }
   $('fitbtn').addEventListener('click',function(e){ e.stopPropagation(); toggleFit() });
   // the picture is the bigger target, and on a phone that matters more than tidiness
   $('stage-out').addEventListener('click',function(){
     if(document.body.classList.contains('wide')) return;
+    if(SZ && SZ.zoomed()) return;
     if($('scr-console').classList.contains('sheet-shut')) toggleFit();
   });
   function genErr(m){
@@ -2903,6 +2943,132 @@ window.RigMascot=(function(){
     $('submit').disabled=false;
   }
 
+  /* ---------- zoom ----------
+     Hector, 2026-09-14: "we need zoom options, make the image bigger to check
+     quality" - on the stage and in the gallery. It happens INSIDE the box the
+     picture already sits in. No overlay and nothing position:fixed, so iOS has
+     nothing to break the way it broke the lock screen.
+     Zoomed, .zview becomes a scroll box frozen at the size of the space the
+     picture had, the picture is drawn at s CSS px per file pixel inside it, and
+     NATIVE scrolling does the panning: a finger on the phone, the trackpad on a
+     Mac, plus a drag for a mouse. 1:1 is ACTUAL pixels - one pixel of the file
+     per pixel of the SCREEN - so devicePixelRatio is in the maths. That is the
+     view that shows quality; a CSS-pixel 100% on a retina screen is 2x blown up. */
+  var SZ=null, GZ=null;
+  function dpr(){ return window.devicePixelRatio||1 }
+  function makeZoom(o){
+    var img=o.img, view=o.view, host=o.host, bar=o.bar,
+        s=null, V=null, H=null, R0=0, g0=0, inG=false, drag=null, dead=false, B={};
+    [].forEach.call(bar.querySelectorAll('[data-z]'),function(b){ B[b.dataset.z]=b });
+    var pct=bar.querySelector('.zpct');
+    function nat(){ return {w:img.naturalWidth||0, h:img.naturalHeight||0} }
+    function ready(){ var q=nat(); return q.w>0 && q.h>0 }
+    function fitIn(w,h){ var q=nat(); return Math.min(w/q.w, h/q.h) }
+    // the scale the picture is drawn at while at rest - object-fit contain OR
+    // cover, because the phone stage crops to fill until you ask for the frame
+    function rest(){
+      var q=nat(), w=img.clientWidth, h=img.clientHeight; if(!w||!h||!q.w) return 0;
+      return getComputedStyle(img).objectFit==='cover' ? Math.max(w/q.w,h/q.h) : Math.min(w/q.w,h/q.h);
+    }
+    function cur(){ return s!==null ? s : rest() }
+    function maxS(){ var b=V||o.frame(); return Math.max(fitIn(b.w,b.h)*8, 4/dpr()) }
+    // where the file's top-left pixel is on screen right now
+    function origin(){
+      var q=nat(), sc=cur();
+      if(s===null){ var r=img.getBoundingClientRect();
+        return {x:r.left+img.clientLeft+(img.clientWidth-q.w*sc)/2, y:r.top+img.clientTop+(img.clientHeight-q.h*sc)/2} }
+      var v=view.getBoundingClientRect();
+      return {x:v.left+Math.max(0,(V.w-q.w*s)/2)-view.scrollLeft, y:v.top+Math.max(0,(V.h-q.h*s)/2)-view.scrollTop};
+    }
+    function size(){ var r=host.getBoundingClientRect(); return {w:r.width,h:r.height} }
+    // zoom to s1, keeping the file pixel under (cx,cy) under (cx,cy)
+    function to(s1,cx,cy){
+      if(dead||!ready()) return;
+      if(s===null){ R0=rest(); var f=o.frame(); V={w:Math.floor(f.w), h:Math.floor(f.h)} }
+      s1=Math.min(maxS(), s1);
+      // back at (or under) how it looked at rest IS rest - not a zoomed state
+      if(!(s1>R0*1.002)) return reset();
+      if(cx==null){ var c=(s===null?img:view).getBoundingClientRect(); cx=c.left+c.width/2; cy=c.top+c.height/2 }
+      var q=nat(), o0=origin(), sc=cur(), ix=(cx-o0.x)/sc, iy=(cy-o0.y)/sc;
+      s=s1;
+      view.classList.add('on'); host.classList.add('zoomed');
+      view.style.width=V.w+'px'; view.style.height=V.h+'px';
+      img.style.width=(q.w*s)+'px'; img.style.height=(q.h*s)+'px';
+      var v=view.getBoundingClientRect();
+      view.scrollLeft=v.left+Math.max(0,(V.w-q.w*s)/2)+ix*s-cx;
+      view.scrollTop =v.top +Math.max(0,(V.h-q.h*s)/2)+iy*s-cy;
+      H=size(); paint();
+    }
+    function reset(){
+      s=null; V=null; H=null; drag=null;
+      view.classList.remove('on','grab'); host.classList.remove('zoomed');
+      view.style.width=view.style.height=''; img.style.width=img.style.height='';
+      paint();
+    }
+    function paint(){
+      if(dead) return;
+      var ok=ready(), sc=ok?cur():0;
+      pct.textContent = sc ? Math.round(sc*dpr()*100)+'%' : '';
+      B.fit.disabled = s===null;
+      B.out.disabled = s===null;
+      B['in'].disabled = !ok || sc>=maxS()*0.999;
+      // already drawn at or above actual pixels: 1:1 would be a zoom OUT
+      B.one.disabled = !ok || (s===null && 1/dpr()<=rest()*1.002);
+      B.one.setAttribute('aria-pressed', String(s!==null && Math.abs(s*dpr()-1)<0.001));
+    }
+    B.fit.onclick=function(e){ e.stopPropagation(); reset(); if(o.onFit) o.onFit() };
+    B.out.onclick=function(e){ e.stopPropagation(); to(cur()/1.5) };
+    B['in'].onclick=function(e){ e.stopPropagation(); to(cur()*1.5) };
+    B.one.onclick=function(e){ e.stopPropagation();
+      if(s!==null && Math.abs(s*dpr()-1)<0.001) reset(); else to(1/dpr()) };
+    // a trackpad pinch arrives as ctrl+wheel in Chrome, as gesture events in Safari
+    view.addEventListener('wheel',function(e){
+      if(!(e.ctrlKey||e.metaKey) || inG || !ready()) return;
+      e.preventDefault();
+      to(cur()*Math.exp(-Math.max(-60,Math.min(60,e.deltaY))*0.01), e.clientX, e.clientY);
+    },{passive:false});
+    view.addEventListener('gesturestart',function(e){ e.preventDefault(); inG=true; g0=cur() });
+    view.addEventListener('gesturechange',function(e){ e.preventDefault(); to(g0*e.scale, e.clientX, e.clientY) });
+    view.addEventListener('gestureend',function(e){ e.preventDefault(); inG=false });
+    // touch and trackpads pan natively; a mouse has to drag
+    view.addEventListener('pointerdown',function(e){
+      if(s===null || e.pointerType!=='mouse' || e.button!==0) return;
+      drag={x:e.clientX, y:e.clientY, l:view.scrollLeft, t:view.scrollTop};
+      try{ view.setPointerCapture(e.pointerId) }catch(_){}
+      view.classList.add('grab'); e.preventDefault();
+    });
+    view.addEventListener('pointermove',function(e){
+      if(!drag) return;
+      view.scrollLeft=drag.l-(e.clientX-drag.x); view.scrollTop=drag.t-(e.clientY-drag.y);
+    });
+    function up(){ drag=null; view.classList.remove('grab') }
+    view.addEventListener('pointerup',up); view.addEventListener('pointercancel',up);
+    view.addEventListener('dblclick',function(e){
+      if(!document.body.classList.contains('wide') || !ready()) return;
+      e.preventDefault();
+      if(s!==null) reset(); else to(Math.max(1/dpr(), rest()*2), e.clientX, e.clientY);
+    });
+    img.addEventListener('dragstart',function(e){ if(s!==null) e.preventDefault() });
+    // The bar is built while #stage-out is still hidden (no box yet) and a cached
+    // picture can be complete before this listener exists, so paint on every
+    // signal there is: the load event, the decode promise, and the box arriving.
+    img.addEventListener('load',paint);
+    if(img.decode) img.decode().then(paint,function(){});
+    // the box it lives in changed size (window, phone sheet, rotation): a frozen
+    // scroll box would now be the wrong size, so go back to rest
+    var ro=window.ResizeObserver ? new ResizeObserver(function(){
+      if(dead) return;
+      if(s!==null && H){ var h=size(); if(Math.abs(h.w-H.w)>2 || Math.abs(h.h-H.h)>2) return reset() }
+      paint();
+    }) : null;
+    if(ro){ ro.observe(host); ro.observe(img) }
+    paint();
+    return { reset:reset, zoomed:function(){ return s!==null },
+             // the picture is thrown away with its box, but the HOST outlives it:
+             // a stage left marked .zoomed hides the phone Fit/Fill toggle for good
+             destroy:function(){ dead=true; if(ro) ro.disconnect(); host.classList.remove('zoomed') } };
+  }
+
   /* ---------- result ---------- */
   /* ONE renderer, used by land() and by a history card, so the stage can never
      show a fresh render differently from a recalled one. NOT named show() -
@@ -2911,9 +3077,10 @@ window.RigMascot=(function(){
   function showResult(item, tail){
     var isVid=item.gen_type==='video';
     lastOut=item;
+    if(SZ){ SZ.destroy(); SZ=null }
     $('stage-out').innerHTML = isVid
       ? '<video class="out" src="'+item.url+'" controls playsinline preload="metadata"></video>'
-      : '<img class="out" src="'+item.url+'" alt="">';
+      : '<div class="zview"><img class="out" src="'+item.url+'" alt=""></div>';
     $('dl').href=DOWNLOAD+'?u='+encodeURIComponent(item.url)+'&n='+encodeURIComponent(item.filename||'render');
     $('m-engine').textContent = isVid?'Kling 3.0 Pro':(item.gen_type==='upscale'?'Topaz':'Still');
     $('stage-tag').textContent = item.gen_type;
@@ -2924,7 +3091,7 @@ window.RigMascot=(function(){
        2904x3872 file reported nothing). So ask the media itself: it is the only
        source that cannot be wrong. A cached image can already be complete before
        the listener attaches, hence the .complete check as well. */
-    var el=$('stage-out').firstChild;
+    var el=$('stage-out').querySelector('.out');
     function got(w,h){
       if(!w||!h||(item.w===w&&item.h===h)) return;
       item.w=w; item.h=h;
@@ -2934,6 +3101,14 @@ window.RigMascot=(function(){
     if(el && isVid){ el.addEventListener('loadedmetadata',function(){got(el.videoWidth,el.videoHeight)}) }
     else if(el){ el.addEventListener('load',function(){got(el.naturalWidth,el.naturalHeight)});
                  if(el.complete) got(el.naturalWidth,el.naturalHeight) }
+    // a video keeps its own controls; zoom is for stills
+    if(el && !isVid) SZ=makeZoom({img:el, view:el.parentNode, host:$('stage'), bar:$('stage-zbar'),
+      frame:function(){ var st=$('stage'); return {w:st.clientWidth, h:st.clientHeight} },
+      // Fit means the WHOLE frame - on a phone the resting stage is cropped to fill
+      onFit:function(){
+        if(!document.body.classList.contains('wide') && !$('stage').classList.contains('fit') &&
+           $('scr-console').classList.contains('sheet-shut')) toggleFit();
+      }});
     stage('out');
   }
   function paintMeta(item, tail){
@@ -2957,6 +3132,7 @@ window.RigMascot=(function(){
        render is in flight, the rendering screen IS the empty state. */
     var busy=document.body.classList.contains('rendering');
     lastOut=null;
+    if(SZ){ SZ.destroy(); SZ=null }
     $('stage-out').innerHTML='';
     $('stage-tag').textContent='';
     $('m-engine').innerHTML='&nbsp;';
@@ -3056,7 +3232,7 @@ window.RigMascot=(function(){
       .then(function(d){ GAL=(d&&d.items)||[]; paintGallery() })
       .catch(function(){ GAL=[]; paintGallery() });
   }
-  function galGrid(){ $('gal-one').hidden=true; $('gal-grid').hidden=false;
+  function galGrid(){ if(GZ){ GZ.destroy(); GZ=null } $('gal-one').hidden=true; $('gal-grid').hidden=false;
     $('gal-back').textContent='Back'; $('gal-title').textContent='Made with this';
     $('gal-sub').hidden=false; }
   function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g, function(c){
@@ -3157,9 +3333,10 @@ window.RigMascot=(function(){
     if(sp.resolution && !isVid) facts.push(['Detail', sp.resolution]);
     if(sp.creativity) facts.push(['Creativity', sp.creativity]);
     if(it.created_at) facts.push(['Made', String(it.created_at).slice(0,10)]);
+    if(GZ){ GZ.destroy(); GZ=null }
     $('gal-one').innerHTML =
       (isVid ? '<video src="'+esc(it.url)+'" controls playsinline loop preload="metadata"></video>'
-             : '<img alt="" src="'+esc(it.url)+'">')+
+             : '<div class="gal-pic"><div class="zview"><img alt="" src="'+esc(it.url)+'"></div></div>')+
       '<div><div class="gal-said">Someone typed</div>'+
       '<div class="pr">'+esc(it.prompt||'The prompt for this one was not kept.')+'</div>'+
       '<div class="gal-facts">'+facts.map(function(f){
@@ -3172,6 +3349,14 @@ window.RigMascot=(function(){
       '</div></div>';
     var u=$('gal-use');
     if(u) u.onclick=function(){ useGalleryItem(it) };
+    if(!isVid){
+      // the same bar as the stage's, cloned so there is one copy of the markup
+      var gp=$('gal-one').querySelector('.gal-pic'), gim=gp.querySelector('img'),
+          zb=$('stage-zbar').cloneNode(true);
+      zb.removeAttribute('id'); zb.hidden=false; gp.appendChild(zb);
+      GZ=makeZoom({img:gim, view:gim.parentNode, host:gp, bar:zb,
+        frame:function(){ return {w:gim.offsetWidth, h:gim.offsetHeight} }});
+    }
   }
   /* The whole point of the gallery: it is a starting point, not a trophy case.
      Load the prompt, the mode and the seed into the console and go there. */

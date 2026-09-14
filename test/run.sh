@@ -11,6 +11,7 @@
 #   ./test/run.sh gallery    the gallery: flagged work, prompts, empty and failed states
 #   ./test/run.sh segs       every segmented control reacts to the click that made it
 #   ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays)
+#   ./test/run.sh magnify    zoom on the stage and in the gallery (Chromium + WebKit)
 #   ./test/run.sh tape       the rail marquee: pitch, seam, direction, speed
 #   ./test/run.sh shots      write previews to test/build/*.png
 #
@@ -33,7 +34,7 @@ assert src.count('</body>') == 1, 'index.html has no single </body>'
 open(sys.argv[2], 'w').write(src.replace('</body>', inj + '\n</body>'))
 PY
 }
-title(){ "$CHR" --headless --disable-gpu --hide-scrollbars --virtual-time-budget="${4:-4500}" \
+title(){ "$CHR" --headless --disable-gpu --hide-scrollbars ${CHR_EXTRA:-} --virtual-time-budget="${4:-4500}" \
   --window-size="$1","$2" --dump-dom "$3" 2>/dev/null | tr -d '\n' \
   | sed -n 's/.*<title>§\(.*\)§<\/title>.*/\1/p'; }
 
@@ -153,6 +154,27 @@ if [ "$WHAT" = all ] || [ "$WHAT" = stage ]; then
     [ "$f" != 0 ] && { echo "  ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
   done
   echo "  -> $sp pass / $sf fail"; PASS=$((PASS+sp)); FAIL=$((FAIL+sf))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = magnify ]; then
+  build "$INJ/magnify.txt" "$B/mg.html"
+  line; echo "MAGNIFY  (zoom on the stage and in the gallery: drawn size, centre, box, pan, limits)"
+  zp=0; zf=0
+  mg(){ R="$1"; p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+        f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+        [ "$p" = 0 ] && { f=$((f+1)); R="${R}FAIL  no result at all"; }
+        zp=$((zp+p)); zf=$((zf+f))
+        [ "$f" != 0 ] && { echo "  $2"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }; }
+  for v in "2026 1037" "1440 900" "393 852" "393 700" "852 393"; do set -- $v
+    mg "$(title "$1" "$2" "file://$B/mg.html" 120000)" "chromium ${1}x${2}"
+  done
+  # a retina screen: 1:1 must mean SCREEN pixels, not CSS pixels
+  mg "$(CHR_EXTRA=--force-device-scale-factor=2 title 1440 900 "file://$B/mg.html" 120000)" "chromium 1440x900 @2x"
+  # Hector's engine, in real time - the only place ResizeObserver actually runs
+  for v in "2026 1037 1" "393 700 3"; do set -- $v
+    mg "$(node "$ROOT/test/webkit.js" "$B/mg.html?ro=1" "$1" "$2" "$3")" "webkit ${1}x${2} @${3}x"
+  done
+  echo "  -> $zp pass / $zf fail"; PASS=$((PASS+zp)); FAIL=$((FAIL+zf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = mascot ]; then

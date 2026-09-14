@@ -46,6 +46,23 @@ and free live executions.
   touch closer on his face, $0.12 vs $0.15 at 2K. The `nb2` wiring stays dormant in n8n.
 - **Design warns when the Words box is empty** and the caption names a flyer, poster,
   infographic, invitation, menu, sign, meme etc., or carries quoted words (5460).
+- **Zoom, on the stage and in the gallery** (Hector, afternoon: "make the image bigger to
+  check quality"). A bar with Fit / − / % / + / 1:1 on every still; pinch on the phone
+  and the trackpad, ctrl+wheel, double-click, a mouse drag to pan. **1:1 is ACTUAL
+  pixels — one file pixel per SCREEN pixel — so `devicePixelRatio` is in the maths**; a
+  CSS-pixel 100% on a retina screen is a 2x blow-up and would flatter every render.
+  It happens INSIDE the box the picture already had: `.zview` is `display:contents` at
+  rest (no box, nothing moves) and only `.on` turns it into a frozen scroll box, so
+  native scrolling does the panning and nothing is `position:fixed`. If the box
+  changes size under a zoom (window, sheet, rotation) it goes back to rest; recalling a
+  render or reopening a gallery picture starts at rest; videos keep their own controls.
+  Where rest is already above actual pixels (a 3x phone on its side, cropped to fill)
+  1:1 is disabled — it would be a zoom out. Suite `magnify` (398, Chromium at 1x and
+  2x + real WebKit at 1x/2x/3x via `test/webkit.js` — headless Chromium never runs
+  `ResizeObserver`, so the resize-resets-zoom check only exists in WebKit). **Found by
+  the suite, not by eye:** recalling a render while zoomed left the stage marked
+  `.zoomed`, which hides the phone's Fit/Fill toggle for good — `destroy()` clears it.
+  Gallery: 5594 (the BBQ flyer) and 5602 (Kratos, NBP) flagged, 30 pictures.
 
 **Open, roughly in order of value**
 - The Nano Banana photo recipe's palette slot turned a black-robed subject B&W (5439):
@@ -401,6 +418,7 @@ Full narrative: `../../research/kling-render-rig-redesign.md`.
 ./test/run.sh revise     a locked seed revises the last render; every image run has a real seed
 ./test/run.sh segs       every segmented control reacts to the click that made it
 ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays there)
+./test/run.sh magnify    picture zoom on the stage and in the gallery (Chromium 1x/2x + real WebKit 1x/3x)
 ./test/run.sh sources    the 2048 source cap and the payload guard that refuses
 ./test/run.sh tape       rail marquee: pitch, seam, direction, speed
 ./test/run.sh shots      previews into test/build/
