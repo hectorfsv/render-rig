@@ -21,90 +21,42 @@ too — n8n execution ids are sequential and would otherwise be enumerable.
 
 ## START HERE NEXT SESSION
 
-**1. The chain is proven with real money — three paid runs, 2026-09-11, zero
-errors, $0.22 total.** Krea t2i (exec 5062, $0.06, 4:5 honoured) and two Topaz
-upscales (5067 Recovery V2, 5070 Standard V2, $0.08 each, 1452x1936 -> 2904x3872).
-The gate proved itself on the same traffic: execs 5059/5060 hit `Respond Denied`
-for $0.00. **Nothing has been spent since.** Balance **$4.95** (read live
-2026-09-12, exec 5139); every reading since 2026-09-11 11:07 is the same number.
+**Where it stands (2026-09-14 morning).** Balance **$23.04**. Five modes in daily use.
+Full narrative: `../../research/kling-render-rig-redesign.md` (read the 2026-09-14 day
+section first). Three n8n deploys today, all verified by
+`./scripts/check-rig-guards.sh` (101), `./scripts/check-rig-enhancer.sh` (170 + 65)
+and free live executions.
 
-Still never paid for: **Video (Kling)** and **Compose (NBP)**. Cheapest first
-runs — $0.336 for a 3s audio-off clip, $0.15 for one NBP compose.
+**What changed today**
+- **The prompt writer SEES the sources.** `Write Image Brief` -> `Ask the Writer`
+  (HTTP to api.x.ai, grok-4.3) -> `Read Writer Reply` replaced the chain node; every
+  Compose/edit/Design source is attached to the writer's request. On the 5211 set it
+  named who is in each image correctly where the blind writer had it backwards.
+  ~$0.003-0.014 per call. The video writer is still blind.
+- **A locked seed revises the last render.** The prompt Grok wrote comes back with
+  every render (`written`), the page remembers it, and while the seed stays locked to
+  that render a change goes up as `prior_prompt` - Grok edits its own prompt. The same
+  words again skip the writer. Every Image/Compose run now carries a real seed.
+- **Quoted words are a code guarantee** (`Restore Image Context`): a `"..."` in the
+  caption that the writer dropped is appended verbatim. Fixes the 5454 class.
+- **Price and seed are recorded server-side** on every row; refused jobs close as
+  `failed` at $0.
+- **Nano Banana 2 is wired** (model `nb2`, not in the UI). Measured: refuses copyrighted
+  characters NBP accepts (free refusals); on a non-IP compose both keep identities, NBP
+  a touch closer on Hector's face, NB2 $0.12 vs $0.15 at 2K. Hector decides.
 
-**A balance delta has never actually been measured across a run.** The first
-balance read (exec 5080) is four hours *after* the last paid submit, so
-"true cost = balance delta" is still a claim, not a measurement — and it is the
-only way to price the four Topaz generative models fal publishes no price for.
-**Read the balance immediately before and after the next paid run** and the
-claim is settled for free.
-
-**2. Verify before changing anything:** `./test/run.sh` -> 1481 assertions, ~6 min,
-read-only, nothing sent or spent. Pair it with `../webkit-check/` for Safari.
-
-**3. Where the last session left off (2026-09-13)** — balance **$2.72**.
-Full narrative: `../../research/kling-render-rig-redesign.md` §2026-09-13.
-**Read that before touching the enhancer.**
-
-What happened: the relighting beat we added on 09-12 to fix "looks like
-copy/paste" **crowded out the one line asking to keep each face**, and a
-three-source compose came back as four strangers in the right clothes. Fixed —
-identity is the first instruction and the last now — and **verified on real
-money: exec 5211 is the best composition the rig has produced.**
-**Design (Grok Imagine) shipped** as the fifth mode. Suite **1481 assertions**.
-
-**Design is working as of exec 5234.** The first flyer looked like MS Paint
-because `Enhance Image Prompt`'s human message was `={{ $json.prompt }}` — the
-caption only — so the enhancer never saw the Words box and wrote *"no text of
-any kind"*, then the words got appended after it. **Same shape as the shot-list
-bug: when you fix "the model cannot see X", grep for every other X.**
-
-What to pick up, in order:
-
-- **The mascot.** Three hand-drawn SVG attempts were rejected and removed —
-  geometry is not illustration. The plan: **let the rig draw its own mascot in
-  Design mode**, then overlay the animated ember and smoke in CSS on the real
-  artwork. First attempt (exec 5217, $0.08) was **refused by the content
-  checker**, and Grok bills for refusals. Try a Vader-*like* helmet without
-  naming him, or use Krea, which has never refused a subject.
-- **The 4K question, properly.** Same seed, same sources, same caption: 2K
-  twice (that gives you the variance floor), then 4K. **NBP does have a seed** —
-  the 09-12 note saying otherwise was wrong and `Submit Image I2I` already
-  sends it, so a controlled A/B is possible for the first time.
-- **Send originals instead of data URIs.** fal says data URIs are "not
-  recommended for files larger than a few KB" and we push megabytes;
-  `POST /storage/upload/initiate?storage_type=fal-cdn-v3` hands back a
-  presigned URL the browser can PUT to with no key. Risk: CORS is unverified.
-- **The waiting screen** now drifts your sources behind the dial. It is subtle
-  by design; the mascot is what will actually carry it.
-
-**4. Open questions, roughly in order of value**
-- **Per-person codes — spec'd, prepared, and blocked on Hector alone** (how many
-  people, which codes). `../../research/render-rig-per-person-codes.md`;
-  Version A is ~20 minutes. **The trap: there are TWO hardcoded gates**, submit
-  (`Detect & Prepare`, Code) and poll (`Route by Job ID`, IF) — a code that
-  clears one and not the other can generate and never see its own result.
-- **Server-side pricing.** `Store Job` records the BROWSER's quoted price. Fine
-  for the gallery, which only displays it; wrong the moment anyone but Hector has
-  a code, and a hard prerequisite for budgets. Compute it in `Detect & Prepare`.
-- `cfg_scale` on the ignored 360° orbit — the one untried lever. ~$0.34 at 3s.
-- NBP `safety_tolerance` above 4 — every IP refusal so far ran at the default.
-- Frame interpolation (`fal-ai/film` / `rife` / `amt-interpolation`) or Kling's
-  free `end_image_url` for a seamless Gargantua loop. Hector accepted the
-  cross-dissolve for now.
-- Per-task prompt help — Hector's idea, half-built, the strongest unbuilt part
-  of the teaching surface.
-- **The waiting screen is boring — Hector, 2026-09-12.** A render is 53-79s for an
-  image and 350s+ for a clip, and right now that time shows a dial and a timer.
-  His words: *"WE HAVE to add something to the waiting screen, it's SO BORING!"*
-  Whatever goes there must not touch the in-flight job state: a refresh mid-render
-  already resumes from `localStorage`, and that is the thing protecting a paid
-  render from a backgrounded tab. Decoration only, nothing load-bearing.
-- Krea `styles` / `moodboards` — parked, needs a catalog of opaque ids the
-  schema does not provide.
-- `[TEMP] Rig Field Probe` (`sAouEujoMPiayzcL`) is deactivated but **not
-  deleted** — needs Hector's explicit OK.
-- `GOYIM` is short and guessable on a public endpoint with no rate limiting.
-  It matters more once it is not the only code.
+**Open, roughly in order of value**
+- Design: warn when the caption names a flyer/infographic and the Words box is empty
+  (5460 came back wordless, correctly).
+- The Nano Banana photo recipe's palette slot turned a black-robed subject B&W (5439):
+  a palette should be a grade he named, not the subject's own colours.
+- Same HTTP pattern for `Enhance Video Prompt` so the i2v writer sees the start frame.
+- Determinism: same prompt + seed twice, once. It is the one unmeasured premise of the
+  revision feature.
+- Per-person codes (spec'd), server-side budgets, `cfg_scale` on the orbit, NBP
+  `safety_tolerance` above 4, the seamless Gargantua loop, Krea styles/moodboards.
+- Three `[TEMP]` probe workflows are deactivated and undeleted (rebuilt today as a vision
+  probe, a seeing-writer probe and a field probe). Delete needs Hector's OK.
 
 ---
 
@@ -376,6 +328,16 @@ the lip. **Landscape** splits side by side.
   overflow as a note rather than a failure. Hector caught this by looking at the
   screen while I was reading a number.
 
+- **A field can reach the UI, `Detect & Prepare` and the API and never reach the
+  writer.** Fourth costume (2026-09-14): the sources themselves. The writer was blind
+  and guessed who was in which image. `Write Image Brief` attaches them now.
+- **A recipe rule that fails three times is not a rule, it is a wish.** Quoted words
+  were "guaranteed" by the recipe three times and dropped on a live run each time.
+  They are appended by code now, like the Design words. Put it in the tool.
+- **The seed only fixes the shuffle; the words decide the picture.** A locked seed
+  with a rewritten prompt is a new picture. The revision path keeps the prompt.
+- **`price` in the table is now the server's number**, not the browser's quote.
+
 ## More notes for future edits
 
 - **Every request is a CORS "simple" request on purpose.** Both POSTs send
@@ -427,13 +389,14 @@ Full narrative: `../../research/kling-render-rig-redesign.md`.
 ## Tests
 
 ```
-./test/run.sh            everything (1481 assertions, ~6 min)
+./test/run.sh            everything (~8 min)
 ./test/run.sh mobile     6 phone/landscape viewports x 4 modes
 ./test/run.sh desktop    5 wide viewports: console, hub, guide
 ./test/run.sh price      every figure the guide quotes vs what the meter computes
 ./test/run.sh stage      a render lands, shows its seed, and can be cleared
 ./test/run.sh credit     credit left on screen, and every way the lookup fails
 ./test/run.sh gallery    the gallery: flagged work, prompts, empty and failed states
+./test/run.sh revise     a locked seed revises the last render; every image run has a real seed
 ./test/run.sh segs       every segmented control reacts to the click that made it
 ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays there)
 ./test/run.sh sources    the 2048 source cap and the payload guard that refuses
