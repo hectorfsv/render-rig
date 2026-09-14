@@ -52,6 +52,7 @@
   function step1(){
     mode('compose');
     T(/Same seed and same prompt/.test(hint()),'the seed hint starts on the plain explanation');
+    T(/same picture on Nano Banana Pro/.test(hint()),'Compose says the seed holds the same picture (measured)');
     $('prompt').value='a man on a rooftop'; $('seed').value='';
     press();
     setTimeout(function(){
@@ -114,6 +115,7 @@
         T(lockOn(),'locked again');
         mode('image');
         T(/Same seed and same prompt/.test(hint()),'Image mode: a Compose render is not a revision base for Krea');
+        T(/re-roll/.test(hint()),'Image says Krea re-rolls the details (measured)');
         $('prompt').value='a woman on a rooftop at dusk';
         press();
         setTimeout(function(){
