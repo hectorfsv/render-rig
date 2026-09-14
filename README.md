@@ -334,9 +334,10 @@ the lip. **Landscape** splits side by side.
   They are appended by code now, like the Design words. Put it in the tool.
 - **The seed only fixes the shuffle; the words decide the picture.** A locked seed
   with a rewritten prompt is a new picture. The revision path keeps the prompt.
-- **Krea on fal is NOT deterministic** (measured 2026-09-14, two byte-identical pairs):
-  same seed + same prompt keeps framing, cast and light, and re-rolls details (16-39%
-  of pixels moved >32/255). Never promise "the same picture" in the guide or a hint.
+- **The seed promise is PER ENGINE (measured 2026-09-14 on byte-identical reruns):**
+  Nano Banana Pro holds the same picture (only fine grain differs); Krea keeps framing,
+  cast and light and re-rolls details (machetes, helmets). The hints and guide say
+  which; never write one promise for both.
 - **`price` in the table is now the server's number**, not the browser's quote.
 
 ## More notes for future edits
