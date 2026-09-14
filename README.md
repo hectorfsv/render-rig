@@ -52,7 +52,12 @@ and free live executions.
   a palette should be a grade he named, not the subject's own colours.
 - Same HTTP pattern for `Enhance Video Prompt` so the i2v writer sees the start frame.
 - Per-person codes (spec'd), server-side budgets, `cfg_scale` on the orbit, NBP
-  `safety_tolerance` above 4, the seamless Gargantua loop, Krea styles/moodboards.
+  `safety_tolerance` above 4, Krea styles/moodboards.
+- The hub's Gargantua now loops on its own: `gargantua-loop.mp4` = the Kling clip + a
+  45-frame `fal-ai/film` bridge (last frame -> first). FILM/RIFE/AMT were all tried
+  2026-09-14; only FILM kept the detail, and 15 frames ran 3x too fast - 45 matches the
+  clip's pace. A faint tick remains at the two joins. If Hector rejects it, `git revert`
+  restores the two-player cross-dissolve over `gargantua.mp4` (still in the repo).
 - Three `[TEMP]` probe workflows are deactivated and undeleted (rebuilt today as a vision
   probe, a seeing-writer probe and a field probe). Delete needs Hector's OK.
 
