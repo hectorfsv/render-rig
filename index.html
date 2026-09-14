@@ -140,6 +140,7 @@ body.wide.authed .rig{max-width:2400px}
   color:var(--ink-faint);opacity:.75}
 .hint{font-family:var(--disp);font-size:12px;color:var(--ink-faint);margin-top:7px;line-height:1.5;max-width:60ch}
 .hint.live{color:var(--ink-dim)}
+.hint.warn{color:var(--red-hot)}
 /* 16px is not a taste choice. iOS Safari zooms the WHOLE PAGE when a focused
    field computes under 16px, and it does not zoom back out when the field
    blurs - tapping the 14px passphrase left the hub panned 42pt off its own
@@ -881,7 +882,7 @@ body.wide .lab{font-size:12.5px}
           <div id="row-design" hidden>
             <div class="lab">Words on it <span class="opt">one line each</span></div>
             <textarea id="exact-text" rows="3" placeholder="SUMMER JAM&#10;Friday 9pm&#10;free entry"></textarea>
-            <div class="hint">These go to the model <b>exactly as typed</b> &mdash; they are added after the rewrite, so nothing paraphrases them. Leave it empty for artwork with no text.</div>
+            <div class="hint" id="words-hint">These go to the model <b>exactly as typed</b> &mdash; they are added after the rewrite, so nothing paraphrases them. Leave it empty for artwork with no text.</div>
             <div class="lab" style="margin-top:9px">Quality</div>
             <div class="seg" id="seg-quality" role="group" aria-label="Quality">
               <button type="button" data-v="low" aria-pressed="false">Low</button>
@@ -2058,6 +2059,26 @@ window.RigMascot=(function(){
     return LASTR;
   }
   var SEED_HINT='Same seed and same prompt gives the same picture. Lock it, change one word, and whatever moves is what that word did.';
+  /* DESIGN WITH AN EMPTY WORDS BOX SHIPS WITH NO TEXT - by design: the recipe is told
+     to state that the artwork carries no lettering. Exec 5460 asked for an infographic
+     that way and got a beautiful wordless poster. The caption cannot carry the words
+     either: quotes in it are ignored here (the words go in the box, verbatim). So say
+     so, on the spot, when the caption plainly describes a piece that carries words. */
+  var WORDS_HINT='These go to the model <b>exactly as typed</b> &mdash; they are added after the rewrite, so nothing paraphrases them. Leave it empty for artwork with no text.';
+  var WORDY=/\b(infographic|flyer|flier|poster|invitation|invite|menu|card|banner|announcement|timeline|certificate|ticket|label|cover|chart|leaflet|brochure|sign|signage|logo|meme|ad|advert|advertisement|billboard|postcard|placard|title|headline|slogan|tagline)s?\b/i;
+  function paintWordsHint(){
+    var h=$('words-hint'); if(!h) return;
+    var cap=$('prompt').value, words=$('exact-text').value.trim();
+    if(type==='design' && !words && /"[^"]{2,}"|\u201C[^\u201D]{2,}\u201D/.test(cap)){
+      h.innerHTML='<b>The words in quotes in your caption will NOT be rendered.</b> In Design the caption is ignored for text and only this box goes on the artwork. Put them here, one line each.';
+      h.classList.add('warn'); return;
+    }
+    if(type==='design' && !words && WORDY.test(cap)){
+      h.innerHTML='<b>This box is empty, so it will come back with no text at all.</b> Your caption describes a piece that carries words &mdash; put every line you want on it here, one per line.';
+      h.classList.add('warn'); return;
+    }
+    h.innerHTML=WORDS_HINT; h.classList.remove('warn');
+  }
   function paintSeedHint(){
     var h=$('seed-hint'); if(!h) return;
     if(revision()){
@@ -2420,6 +2441,7 @@ window.RigMascot=(function(){
   $('keep-framing').addEventListener('change',paintFraming);
   seg($('seg-quality'),function(v){quality=v;paintCost()});
   $('exact-text').addEventListener('input',paintCost);
+  $('prompt').addEventListener('input',paintWordsHint);
   $('face').addEventListener('change',function(){$('face-rows').hidden=!$('face').checked});
   $('upmodel').addEventListener('change',function(){syncMode();paintCost()});
 
@@ -2586,6 +2608,7 @@ window.RigMascot=(function(){
     var b=$('bars');b.innerHTML='';
     for(var i=0;i<12;i++){var s2=document.createElement('i');if(i<lit)s2.className='on';b.appendChild(s2)}
     paintSeedHint();
+    paintWordsHint();
   }
 
   /* ---------- stage ---------- */

@@ -143,10 +143,33 @@
         press();
         setTimeout(function(){
           T(submits===1,'words alone are enough to submit');
-          flush();
+          step5();
         },400);
       },300);
     },300);
+  }
+  /* the Words box warns when the caption plainly wants words and the box is empty
+     (exec 5460: an "infographic" with an empty box came back wordless, correctly) */
+  function step5(){
+    function warn(){var h=$('words-hint'); return !!(h&&h.classList.contains('warn'))}
+    function txt(){var h=$('words-hint'); return h?h.textContent:''}
+    $('exact-text').value=''; $('prompt').value='a portrait of a cat'; $('prompt').dispatchEvent(new Event('input',{bubbles:true}));
+    T(!warn() && /exactly as typed/.test(txt()),'a caption with no text in it keeps the plain hint');
+    $('prompt').value='Infographic about ghostface killer life and halloween'; $('prompt').dispatchEvent(new Event('input',{bubbles:true}));
+    T(warn() && /no text at all/.test(txt()),'"infographic" with an empty Words box warns that it will carry no text');
+    $('prompt').value='a flyer for a halloween party'; $('prompt').dispatchEvent(new Event('input',{bubbles:true}));
+    T(warn(),'"flyer" warns too');
+    $('prompt').value='a poster that says "BOO" in big letters'; $('prompt').dispatchEvent(new Event('input',{bubbles:true}));
+    T(warn() && /will NOT be rendered/.test(txt()),'quoted words in the caption warn that they are not rendered here');
+    $('exact-text').value='BOO'; $('exact-text').dispatchEvent(new Event('input',{bubbles:true}));
+    T(!warn() && /exactly as typed/.test(txt()),'typing the words clears the warning');
+    $('exact-text').value=''; $('exact-text').dispatchEvent(new Event('input',{bubbles:true}));
+    T(warn(),'emptying the box brings it back');
+    mode('compose');
+    T(!warn(),'the warning belongs to Design only');
+    mode('design');
+    T(warn(),'and returns when Design does');
+    flush();
   }
   if(document.readyState==='complete')go();else addEventListener('load',go);
 })();
