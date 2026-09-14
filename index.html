@@ -1422,7 +1422,7 @@ window.RigMascot=(function(){
     // lock: the empty space left of the lock card; pet: the window height IS the size
     var P=kind==='stage'||kind==='lock'
       ?Math.max(2,Math.floor(Math.min(H/64,W/140,5)*dpr))
-      :kind==='pet'?Math.max(2,Math.floor(H/64*dpr))
+      :kind==='pet'?Math.max(2,Math.round((window.PET_SCALE||H/64)*dpr))
       :Math.max(2,Math.floor(Math.min(H/40,W/200,3)*dpr));
     S=P/dpr;
     // a short stage (a phone) puts the floor lower so the fight stays under the dial
