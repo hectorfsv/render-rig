@@ -960,7 +960,7 @@ body.wide .lab{font-size:12.5px}
               <button class="sbtn" id="seed-lock" type="button" aria-pressed="false" title="Lock the seed" aria-label="Lock the seed"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
               <button class="sbtn" id="seed-roll" type="button" title="New random seed" aria-label="New random seed"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="4" width="16" height="16"/><circle cx="9" cy="9" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.4" fill="currentColor" stroke="none"/></svg></button>
             </div>
-            <div class="hint" id="seed-hint">Same seed and same prompt gives the same picture. Lock it, change one word, and whatever moves is what that word did.</div>
+            <div class="hint" id="seed-hint">Same seed and same prompt keeps the same framing and cast; the details still re-roll a little every run. Lock it and change one thing to see what that thing does.</div>
           </div>
 
           <!-- UPSCALE (Topaz) -->
@@ -1185,10 +1185,10 @@ body.wide .lab{font-size:12.5px}
       <div class="spec">
         <h4>Seed</h4>
         <div class="note">You will never write a sentence detailed enough to describe a whole picture. You might ask for <i>a man in a red coat on a beach</i> &mdash; but which way is he facing? Morning or evening? Is the beach empty? <b>Something has to decide all of that, and that something is a random number called the seed.</b></div>
-        <div class="note">Think of it as which shuffle of the deck you were dealt. The same words with the same seed always give the same picture. The same words with a different seed give a completely different take on the same idea &mdash; still a man in a red coat on a beach, but a new one.</div>
+        <div class="note">Think of it as which shuffle of the deck you were dealt. The same words with the same seed give the same framing, the same cast and the same light &mdash; but not a pixel-for-pixel copy: the model re-rolls small details every run (measured here, twice, on identical requests). The same words with a different seed give a completely different take on the same idea &mdash; still a man in a red coat on a beach, but a new one.</div>
         <div class="note"><b>Here is why you should care.</b> Say a picture comes back that you nearly love, and you want the coat to be blue. Change the word and you also get a new random seed &mdash; so you get a different beach, a different man, a different everything. The thing you liked is gone.</div>
-        <div class="note">So keep the seed and change the word. <b>Now the only thing that can move is the coat.</b> That is how you steer a picture instead of gambling on it, and it is the most useful habit here.</div>
-        <div class="note">In practice: when a picture arrives, its seed is shown just underneath it. <b>Tap that number</b> and it drops into the Seed box, locked. From then on the prompt box is for the change alone &mdash; <i>make the coat blue</i> &mdash; and Grok edits the prompt it already wrote instead of writing a new one. Run the same words again and the same picture comes back. The padlock holds it there, the dice rolls a fresh one, and an empty box means a new random seed every time &mdash; which is what you want while you are still exploring.</div>
+        <div class="note">So keep the seed and change the word. <b>Now the coat is what moves, and the rest stays close.</b> That is how you steer a picture instead of gambling on it, and it is the most useful habit here.</div>
+        <div class="note">In practice: when a picture arrives, its seed is shown just underneath it. <b>Tap that number</b> and it drops into the Seed box, locked. From then on the prompt box is for the change alone &mdash; <i>make the coat blue</i> &mdash; and Grok edits the prompt it already wrote instead of writing a new one. Run the same words again and you get the same framing and cast, with the small details re-rolled. The padlock holds it there, the dice rolls a fresh one, and an empty box means a new random seed every time &mdash; which is what you want while you are still exploring.</div>
         <div class="note">Only <b>Image</b> and <b>Compose</b> have a seed. Video and Upscale do not, so the box is not shown for those two.</div>
       </div>
 
@@ -2058,7 +2058,7 @@ window.RigMascot=(function(){
     if(!lockOn() || $('seed').value.trim()!==String(LASTR.seed)) return null;
     return LASTR;
   }
-  var SEED_HINT='Same seed and same prompt gives the same picture. Lock it, change one word, and whatever moves is what that word did.';
+  var SEED_HINT='Same seed and same prompt keeps the same framing and cast; the details still re-roll a little every run. Lock it and change one thing to see what that thing does.';
   /* DESIGN WITH AN EMPTY WORDS BOX SHIPS WITH NO TEXT - by design: the recipe is told
      to state that the artwork carries no lettering. Exec 5460 asked for an infographic
      that way and got a beautiful wordless poster. The caption cannot carry the words
@@ -2082,7 +2082,7 @@ window.RigMascot=(function(){
   function paintSeedHint(){
     var h=$('seed-hint'); if(!h) return;
     if(revision()){
-      h.innerHTML='<b>Locked to your last render.</b> Say only what should change \u2014 Grok edits the prompt it wrote for that picture instead of writing a new one. The same words again bring back the same picture.';
+      h.innerHTML='<b>Locked to your last render.</b> Say only what should change \u2014 Grok edits the prompt it wrote for that picture instead of writing a new one. The same words again keep the framing and cast; small details still re-roll.';
       h.classList.add('live');
     }else{ h.textContent=SEED_HINT; h.classList.remove('live'); }
   }
