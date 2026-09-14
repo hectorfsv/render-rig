@@ -51,8 +51,6 @@ and free live executions.
 - The Nano Banana photo recipe's palette slot turned a black-robed subject B&W (5439):
   a palette should be a grade he named, not the subject's own colours.
 - Same HTTP pattern for `Enhance Video Prompt` so the i2v writer sees the start frame.
-- Determinism: same prompt + seed twice, once. It is the one unmeasured premise of the
-  revision feature.
 - Per-person codes (spec'd), server-side budgets, `cfg_scale` on the orbit, NBP
   `safety_tolerance` above 4, the seamless Gargantua loop, Krea styles/moodboards.
 - Three `[TEMP]` probe workflows are deactivated and undeleted (rebuilt today as a vision
@@ -336,6 +334,9 @@ the lip. **Landscape** splits side by side.
   They are appended by code now, like the Design words. Put it in the tool.
 - **The seed only fixes the shuffle; the words decide the picture.** A locked seed
   with a rewritten prompt is a new picture. The revision path keeps the prompt.
+- **Krea on fal is NOT deterministic** (measured 2026-09-14, two byte-identical pairs):
+  same seed + same prompt keeps framing, cast and light, and re-rolls details (16-39%
+  of pixels moved >32/255). Never promise "the same picture" in the guide or a hint.
 - **`price` in the table is now the server's number**, not the browser's quote.
 
 ## More notes for future edits

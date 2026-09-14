@@ -932,11 +932,11 @@ body.wide .lab{font-size:12.5px}
             <div class="lab">Creativity</div>
             <div class="seg seg-4" id="seg-crea" role="group" aria-label="Creativity">
               <button type="button" data-v="raw" aria-pressed="false">Raw</button>
-              <button type="button" data-v="low" aria-pressed="false">Low</button>
-              <button type="button" data-v="medium" aria-pressed="true">Medium</button>
+              <button type="button" data-v="low" aria-pressed="true">Low</button>
+              <button type="button" data-v="medium" aria-pressed="false">Medium</button>
               <button type="button" data-v="high" aria-pressed="false">High</button>
             </div>
-            <div class="hint">How far Krea may drift from your words. <b>Raw</b> obeys literally, <b>High</b> reinterprets. Medium is the model's own default.</div>
+            <div class="hint">How far Krea may drift from your words. <b>Raw</b> obeys literally, <b>High</b> reinterprets. Low is where the rig starts (Hector's pick, 2026-09-14); Medium is the model's own default.</div>
             <label class="check" style="margin-top:11px">
               <input type="checkbox" id="use-style">
               <span>Use sources as style references</span><b>+$0.005</b>
@@ -1206,7 +1206,7 @@ body.wide .lab{font-size:12.5px}
 
       <div class="spec">
         <h4>Image &mdash; Krea</h4>
-        <div class="note"><b>Creativity</b> is how far Krea may drift from your words. <b>Raw</b> takes them literally, <b>High</b> reinterprets freely. Medium is the model's own default and the place to start.</div>
+        <div class="note"><b>Creativity</b> is how far Krea may drift from your words. <b>Raw</b> takes them literally, <b>High</b> reinterprets freely. Low is where the rig starts, because it obeys your words; Medium is the model's own default.</div>
         <div class="note">Eight aspect ratios, including <b>2.35:1</b> &mdash; anamorphic cinema, the widest shape in the rig. Only Krea offers it.</div>
         <div class="note"><b>Image uses the seed, and it can use your photos too</b> &mdash; though not in the way you might expect. See the next line.</div>
         <div class="note">It treats sources as <b>style references</b>, not as content &mdash; it borrows their look, it does not put them in the picture. Tick <b>Use sources as style references</b> and set the strength. That is the only thing on Krea that costs extra, and it is half a cent. <b>To actually combine photos, use Compose.</b></div>
@@ -1976,7 +1976,7 @@ window.RigMascot=(function(){
   // The default mode must match whichever button ships aria-pressed=true, or
   // the console opens with the highlight on one mode and the state on another.
   var pw='', type='image', dur='5', ar='16:9', res='2K', upf='2';
-  var crea='medium', shotType='customize', subjDet='';
+  var crea='low', shotType='customize', subjDet='';
   var SHOTS=[], ELS=[];
   // The mode IS the model now, so there is no engine dropdown to read.
   function modelFor(t){

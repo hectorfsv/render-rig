@@ -119,6 +119,7 @@
         setTimeout(function(){
           var b=last();
           T(!b.get('prior_prompt'),'another mode: no prior prompt');
+          T(b.get('creativity')==='low','Image sends creativity low by default (Hector, 2026-09-14)');
           T(/^\d{1,9}$/.test(b.get('seed')||''),'Image mode also always carries a seed');
           mode('video');
           T(!$('seed-hint') || $('row-seed').hidden,'Video hides the seed row entirely');
