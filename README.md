@@ -41,13 +41,13 @@ and free live executions.
   caption that the writer dropped is appended verbatim. Fixes the 5454 class.
 - **Price and seed are recorded server-side** on every row; refused jobs close as
   `failed` at $0.
-- **Nano Banana 2 is wired** (model `nb2`, not in the UI). Measured: refuses copyrighted
-  characters NBP accepts (free refusals); on a non-IP compose both keep identities, NBP
-  a touch closer on Hector's face, NB2 $0.12 vs $0.15 at 2K. Hector decides.
+- **Nano Banana 2 measured and set aside** (Hector: keep NBP). It refuses copyrighted
+  characters NBP accepts (free refusals); on a non-IP compose both kept identities, NBP a
+  touch closer on his face, $0.12 vs $0.15 at 2K. The `nb2` wiring stays dormant in n8n.
+- **Design warns when the Words box is empty** and the caption names a flyer, poster,
+  infographic, invitation, menu, sign, meme etc., or carries quoted words (5460).
 
 **Open, roughly in order of value**
-- Design: warn when the caption names a flyer/infographic and the Words box is empty
-  (5460 came back wordless, correctly).
 - The Nano Banana photo recipe's palette slot turned a black-robed subject B&W (5439):
   a palette should be a grade he named, not the subject's own colours.
 - Same HTTP pattern for `Enhance Video Prompt` so the i2v writer sees the start frame.
