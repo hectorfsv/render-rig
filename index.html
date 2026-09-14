@@ -734,7 +734,8 @@ body.wide .lab{font-size:12.5px}
     <!-- HUB -->
     <div class="hub" id="scr-hub">
       <div class="hub-bg">
-        <video id="hub-video" muted playsinline loop preload="none" aria-hidden="true" tabindex="-1"></video>
+        <video id="hub-video" muted playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
+        <video id="hub-video2" muted playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
       </div>
       <div class="hub-in">
         <div class="hub-head">
@@ -3283,28 +3284,50 @@ window.RigMascot=(function(){
     if(fs.length) addFiles(fs);
   });
 
-  // Gargantua at 1080p, loaded on wide screens only.
+  // Gargantua is 6.35MB at 1080p, loaded on wide screens only.
   //
-  // gargantua-loop.mp4 is the 5.04s Kling clip plus a 45-frame FILM bridge from
-  // its last frame back to its first (2026-09-14), so it loops on its own with a
-  // plain loop attribute - no second player, no cross-dissolve. Playback is
-  // slowed, which suits the subject: 6.92s of footage at 0.6x is an 11.5s cycle.
-  // The old cross-dissolve build (two players over gargantua.mp4) is in git.
+  // The clip does not loop cleanly - its last frame does not match its first, so
+  // a plain loop attribute produces a visible jump. Two stacked players solve it
+  // without re-encoding anything: the outgoing one dissolves into the incoming
+  // one over FADE seconds, so the seam is a cross-dissolve rather than a cut.
+  // Playback is also slowed, which suits the subject and makes the seam rarer:
+  // a 5.04s clip at 0.6x is an 8.4s cycle.
   (function(){
-    var A=$('hub-video'); if(!A) return;
-    var RATE=0.6, attached=false;
+    var A=$('hub-video'), B=$('hub-video2'); if(!A||!B) return;
+    var FADE=1.1, RATE=0.6, attached=false;
+
+    function hand(cur, nxt){
+      cur.ontimeupdate=function(){
+        var d=cur.duration;
+        if(!d || !isFinite(d)) return;
+        // currentTime advances at RATE, so FADE wall-clock seconds of overlap
+        // needs FADE*RATE seconds of content still to play.
+        if(cur.currentTime < d - FADE*RATE) return;
+        cur.ontimeupdate=null;
+        try{ nxt.currentTime=0 }catch(e){}
+        nxt.playbackRate=RATE;
+        var p=nxt.play(); if(p&&p.catch) p.catch(function(){});
+        nxt.classList.add('lead');
+        cur.classList.remove('lead');
+        hand(nxt, cur);
+        setTimeout(function(){ try{cur.pause()}catch(e){} }, FADE*1000+150);
+      };
+    }
 
     function attach(){
       if(attached || !document.body.classList.contains('wide')) return;
       attached=true;
-      A.addEventListener('error',function(){A.style.display='none'});
+      [A,B].forEach(function(v){
+        v.addEventListener('error',function(){A.style.display='none';B.style.display='none'});
+        v.preload='auto';
+        v.src='gargantua.mp4';
+      });
       A.addEventListener('loadedmetadata', function(){
         A.playbackRate=RATE;
         var p=A.play(); if(p&&p.catch) p.catch(function(){});
         A.classList.add('lead');
+        hand(A, B);
       }, {once:true});
-      A.preload='auto';
-      A.src='gargantua-loop.mp4';
     }
     attach();
     window.addEventListener('resize', attach);
