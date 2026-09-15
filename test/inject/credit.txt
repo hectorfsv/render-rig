@@ -1,25 +1,46 @@
 <style>*{animation:none!important;transition:none!important}</style>
 <script>
-/* Credit left, driven through the app's own auth -> balance path. The balance
-   is money on screen, so the failure cases matter as much as the happy one:
-   a balance that never answers must leave the app completely usable. */
+/* Credit left, driven through the app's own paths. The balance is money on
+   screen, so the failure cases matter as much as the happy one: a balance that
+   never answers must leave the app completely usable.
+   Since 2026-09-14 the figure RIDES on replies that happen anyway - the login
+   and the finished poll - and a standalone lookup is the exception (it was 119
+   of 372 rig executions). So the NUMBER of lookups is asserted in every mode:
+     ok / low / tiny   balance on the login reply       -> 0 lookups
+     fail / http / junk login carries none, lookup fails -> 1 lookup, nothing shown
+     reload            a remembered figure              -> 0 lookups
+     land              the finished poll carries 3.21   -> 0 lookups, figure updates
+     landnull          the finished poll carries null   -> 0 lookups, last figure stands */
 (function(){
   var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search),
       mode=q.get('bal')||'ok', calls=0;
   function $(i){return document.getElementById(i)}
   function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); document.title=S+out.join('\n')+S}
   window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
+  // the headless profile can outlive a run: start from nothing remembered
+  try{ localStorage.removeItem('rig_credit') }catch(e){}
+  if(mode==='reload'){ try{ localStorage.setItem('rig_credit', JSON.stringify({v:1.23,t:Date.now()})) }catch(e){} }
+  var PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAUCAIAAAA7jDsBAAAAGElEQVR4nGM8oaHBgBsw4ZEblR6VJkkaANeKAUD7/NPBAAAAAElFTkSuQmCC';
+  var RIDES={ok:4.95, low:0.03, tiny:0.004, land:4.95, landnull:4.95};   // what the login reply carries
   window.fetch=function(u,o){
     var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
-    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='auth'){
+      var body=(mode in RIDES) ? {ok:true,balance:RIDES[mode],currency:'USD'} : {ok:true};
+      return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve(body)}});
+    }
     if(a==='balance'){
       calls++;
       if(mode==='fail')  return Promise.reject(new Error('offline'));
       if(mode==='http')  return Promise.resolve({ok:false,status:500,json:function(){return Promise.resolve({})}});
       if(mode==='junk')  return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:'lots'})}});
-      var v = mode==='low' ? 0.03 : (mode==='tiny' ? 0.004 : 4.95);
-      return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:v,currency:'USD'})}});
+      return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:4.95,currency:'USD'})}});
     }
+    if(String(u).indexOf('jobId=')>-1){
+      return Promise.resolve({ok:true,json:function(){return Promise.resolve({
+        status:'done', gen_type:'image', urls:[PNG], width:null, height:null, seed:1, filename:'ai-image.png',
+        balance: mode==='landnull' ? null : 3.21 })}});
+    }
+    if(a==='generate') return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued',jobId:'test1'})}});
     return Promise.reject(new Error('no net'));
   };
   function vis(el){ if(!el||el.hidden) return false;
@@ -29,16 +50,32 @@
     $('pw').value='x'; $('unlock').click();
     setTimeout(function(){
       document.querySelector('.card[data-go="image"]').click();   // Image = $0.06
+      if(mode==='land'||mode==='landnull'){
+        setTimeout(function(){
+          $('prompt').value='a test'; $('submit').click();
+          var tries=0;
+          (function wait(){
+            if($('stage-out').innerHTML!==''){ return setTimeout(check,200) }
+            if(++tries>120){ T(false,'TIMED OUT waiting for the render to land'); return }
+            setTimeout(wait,500);
+          })();
+        },200);
+        return;
+      }
       setTimeout(check,400);
     },250);
   }
   function check(){
     var el=$('credit');
-    T(calls===1, 'the balance is fetched once on unlock, not polled ('+calls+')');
+    if(mode==='ok'||mode==='low'||mode==='tiny')
+      T(calls===0, 'the balance rode on the login reply: no standalone lookup ('+calls+')');
+    if(mode==='fail'||mode==='http'||mode==='junk')
+      T(calls===1, 'login carried no balance: exactly one lookup, never polled ('+calls+')');
     if(mode==='ok'){
       T(vis(el), 'the credit readout is showing');
       T(/4\.95/.test(el.textContent), 'it shows the balance ('+el.textContent+')');
       T(!el.classList.contains('low'), '$4.95 against a $0.06 run is not flagged low');
+      T($('credit').title.length>0, 'the figure explains that a tap re-checks it');
     }
     if(mode==='low'){
       T(vis(el), 'still shows when the balance is short');
@@ -50,6 +87,20 @@
     if(mode==='tiny'){
       T(vis(el), 'a sub-cent balance still reports');
       T(!/\$0\.00 left/.test(el.textContent), 'it never reads $0.00 while money remains ('+el.textContent+')');
+    }
+    if(mode==='reload'){
+      T(calls===0, 'a reload paints the remembered figure without a lookup ('+calls+')');
+      T(vis(el) && /1\.23/.test(el.textContent), 'it shows the remembered balance ('+el.textContent+')');
+    }
+    if(mode==='land'){
+      T(calls===0, 'the finished poll carried the balance: no lookup ('+calls+')');
+      T(vis(el) && /3\.21/.test(el.textContent), 'the figure updated from the finished poll ('+el.textContent+')');
+      var s=null; try{ s=JSON.parse(localStorage.getItem('rig_credit')||'null') }catch(e){}
+      T(!!s && s.v===3.21, 'and it is remembered for the next reload');
+    }
+    if(mode==='landnull'){
+      T(calls===0, 'a null balance from the server does not trigger a lookup ('+calls+')');
+      T(vis(el) && /4\.95/.test(el.textContent), 'the last figure stands ('+el.textContent+')');
     }
     if(mode==='fail'||mode==='http'||mode==='junk'){
       T(!vis(el), 'no credit shown when the balance cannot be trusted ('+mode+')');

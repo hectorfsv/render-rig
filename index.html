@@ -2035,7 +2035,7 @@ window.RigMascot=(function(){
   //    they use localStorage and survive a crash, a refresh or a browser restart.
   var PW_TTL_MS = 2*60*60*1000;          // 2 hours, then type it again
   var JOB_TTL_MS = 60*60*1000;           // a 15s video takes ~11 min; 60 is generous
-  var K_PW='rig_pw', K_HIST='rig_hist', K_JOB='rig_job', K_SPEND='rig_spend', K_LAST='rig_last';
+  var K_PW='rig_pw', K_HIST='rig_hist', K_JOB='rig_job', K_SPEND='rig_spend', K_LAST='rig_last', K_CREDIT='rig_credit';
 
   function savePw(v){
     try{ sessionStorage.setItem(K_PW, JSON.stringify({v:v, ts:Date.now()})) }catch(e){}
@@ -2156,8 +2156,14 @@ window.RigMascot=(function(){
     var af=new FormData(); af.append('action','auth'); af.append('password',v);
     fetch(BASE,{method:'POST',body:af})
       .then(function(r){
-        if(r.ok){pw=v;savePw(v); enter(); return}
-        fail('That passphrase is not right.');
+        if(!r.ok){ fail('That passphrase is not right.'); return }
+        pw=v;savePw(v);
+        // The credit left rides on the login reply: one execution, not two. Take
+        // it BEFORE entering, or loadCredit() sees nothing and does a lookup of
+        // its own. A reply without a body, or a server that sends no balance,
+        // is not an error - the fallback lookup happens inside enter().
+        var body=null; try{ body=r.json() }catch(e){ body=null }
+        return Promise.resolve(body).then(takeCredit).catch(function(){}).then(enter);
       })
       .catch(function(){fail('Could not reach the rig. Check your connection.')})
       .finally(function(){$('unlock').disabled=false;$('unlock').textContent='Unlock'});
@@ -2174,26 +2180,40 @@ window.RigMascot=(function(){
     syncMode();paintCost();
     loadHist();loadLast();paintHist();
     resumeJob();
-    refreshCredit();
+    loadCredit();
     if(window.RigMascot) RigMascot.start();
   }
 
   /* ---------- credit ----------
      The balance comes from fal, read server-side with an admin-scoped key that
-     never leaves n8n; the browser only ever sees the number. Fetched on unlock
-     and after a run finishes - never polled, because each check is an execution. */
+     never leaves n8n; the browser only ever sees the number. It RIDES on replies
+     that happen anyway - the login and the finished poll - so the everyday path
+     costs no execution of its own (a standalone lookup was 119 of 372 rig
+     executions on 09-13/14). A reload shows the last figure; tapping it is the
+     deliberate re-check. Never polled. */
   var credit=null;
+  function takeCredit(d){
+    if(!d || typeof d.balance!=='number') return false;
+    credit=d.balance; paintCredit();
+    try{ localStorage.setItem(K_CREDIT, JSON.stringify({v:credit,t:Date.now()})) }catch(e){}
+    return true;
+  }
+  function loadCredit(){
+    if(credit!==null){ paintCredit(); return }        // it came with the login reply
+    var s=null; try{ s=JSON.parse(localStorage.getItem(K_CREDIT)||'null') }catch(e){}
+    if(s && typeof s.v==='number'){ credit=s.v; paintCredit(); return }
+    refreshCredit();                 // nothing remembered yet: one lookup, once
+  }
   function refreshCredit(){
     if(!pw) return;
     var f=new FormData(); f.append('action','balance'); f.append('password',pw);
     fetch(BASE,{method:'POST',body:f})
       .then(function(r){ return r.ok ? r.json() : null })
-      .then(function(d){
-        if(!d || typeof d.balance!=='number') return;
-        credit=d.balance; paintCredit();
-      })
+      .then(takeCredit)
       .catch(function(){});          // a missing balance must never break the app
   }
+  $('credit').title='Tap to re-check the balance';
+  $('credit').addEventListener('click', refreshCredit);
   function paintCredit(){
     var el=$('credit');
     if(credit===null){ el.hidden=true; return }
@@ -3166,7 +3186,10 @@ window.RigMascot=(function(){
     saveJob(null);
     saveHist();
     paintHist();
-    refreshCredit();
+    // The finished poll carries the balance. `undefined` means a server that does
+    // not send one (fall back to a lookup); `null` means fal did not answer, and a
+    // second call would only fail the same way, so the last figure stands.
+    if(!takeCredit(d) && d.balance===undefined) refreshCredit();
   }
   function paintHist(){
     var s=$('hist-strip');
@@ -3224,13 +3247,17 @@ window.RigMascot=(function(){
      Only what Hector has flagged, fetched fresh each time it is opened so a
      newly flagged render appears without a reload. */
   var GAL=null;
+  // The gallery only changes when a row is flagged by hand, so one fetch per
+  // session is the honest cadence (42 of 372 rig executions were gallery opens).
+  var GAL_AT=0, GAL_TTL_MS=60*60*1000;
   function openGallery(){
     show('scr-gallery'); galGrid();
+    if(GAL_AT && Date.now()-GAL_AT < GAL_TTL_MS){ paintGallery(); return }
     var f=new FormData(); f.append('action','gallery'); f.append('password',pw);
     fetch(BASE,{method:'POST',body:f})
       .then(function(r){ return r.ok ? r.json() : null })
-      .then(function(d){ GAL=(d&&d.items)||[]; paintGallery() })
-      .catch(function(){ GAL=[]; paintGallery() });
+      .then(function(d){ GAL=(d&&d.items)||[]; GAL_AT=Date.now(); paintGallery() })
+      .catch(function(){ GAL=[]; GAL_AT=0; paintGallery() });
   }
   function galGrid(){ if(GZ){ GZ.destroy(); GZ=null } $('gal-one').hidden=true; $('gal-grid').hidden=false;
     $('gal-back').textContent='Back'; $('gal-title').textContent='Made with this';

@@ -6,7 +6,7 @@
    lookup that fails. */
 (function(){
   var S=String.fromCharCode(167), out=[], d0='', q=new URLSearchParams(location.search),
-      mode=q.get('g')||'ok';
+      mode=q.get('g')||'ok', galCalls=0;
   function $(i){return document.getElementById(i)}
   function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); document.title=S+out.join('\n')+S}
   window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
@@ -42,6 +42,7 @@
     if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
     if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:4.95,currency:'USD'})}});
     if(a==='gallery'){
+      galCalls++;
       if(mode==='fail') return Promise.reject(new Error('offline'));
       if(mode==='http') return Promise.resolve({ok:false,status:500,json:function(){return Promise.resolve({})}});
       var items = mode==='empty' ? [] : ITEMS;
@@ -133,6 +134,8 @@
         document.querySelectorAll('.frame')[0].click(); $('gal-use').click();
         T($('exact-text').value==='', 'copying a non-design row clears the previous words');
         T($('prompt').value==='Ghostface doing Pilates on the beach', 'and loads its own prompt');
+        // three opens by now: the gallery is fetched ONCE per session (each fetch is an execution)
+        T(galCalls===1, 'the gallery is fetched once per session, not on every open ('+galCalls+' fetches for 3 opens)');
       },300);
       // and the mislabelled one must open the engine that really made it
       $('gal-back').click(); $('hub-gallery').click();

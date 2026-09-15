@@ -130,9 +130,9 @@ if [ "$WHAT" = all ] || [ "$WHAT" = credit ]; then
   build "$INJ/credit.txt" "$B/cr.html"
   line; echo "CREDIT  (balance on screen, and every way it can fail)"
   cp=0; cf=0
-  for m in ok low tiny fail http junk; do
+  for m in ok low tiny fail http junk reload land landnull; do
     for v in "2026 1037" "393 852"; do set -- $v
-      R=$(title "$1" "$2" "file://$B/cr.html?bal=$m" 20000)
+      R=$(title "$1" "$2" "file://$B/cr.html?bal=$m" 30000)
       p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
       f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
       cp=$((cp+p)); cf=$((cf+f))
