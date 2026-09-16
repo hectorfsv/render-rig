@@ -6,6 +6,7 @@
 #   ./test/run.sh desktop    wide layout, hub, guide
 #   ./test/run.sh price      the guide's numbers vs what the meter computes
 #   ./test/run.sh stage      a render lands, shows its seed, and can be cleared
+#   ./test/run.sh giveup     polling ENDS: a job that never registered, a stuck one, and a failure message that stays
 #   ./test/run.sh mascot     the duel rides the render, cameos only in empty space, never over a click
 #   ./test/run.sh credit     credit left on screen, and every way the lookup fails
 #   ./test/run.sh gallery    the gallery: flagged work, prompts, empty and failed states
@@ -154,6 +155,25 @@ if [ "$WHAT" = all ] || [ "$WHAT" = stage ]; then
     [ "$f" != 0 ] && { echo "  ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
   done
   echo "  -> $sp pass / $sf fail"; PASS=$((PASS+sp)); FAIL=$((FAIL+sf))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = giveup ]; then
+  build "$INJ/giveup.txt" "$B/gu.html"
+  line; echo "GIVEUP  (polling ends: never-registered job, stuck job at the cap, and the message stays)"
+  gp=0; gf=0
+  # stuck = a 45-minute virtual wait for a video, so that case gets a 3,200 s budget
+  for c in norow refuse stuck; do
+    for v in "2026 1037" "393 852"; do set -- $v
+      [ "$c" = stuck ] && bud=3600000 || bud=120000
+      R=$(title "$1" "$2" "file://$B/gu.html?c=$c" $bud)
+      p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+      f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+      gp=$((gp+p)); gf=$((gf+f))
+      [ "$f" != 0 ] && { echo "  c=$c ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+      [ "$p" = 0 ] && { gf=$((gf+1)); echo "  c=$c ${1}x${2}: NO ASSERTIONS RAN"; }
+    done
+  done
+  echo "  -> $gp pass / $gf fail"; PASS=$((PASS+gp)); FAIL=$((FAIL+gf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = magnify ]; then

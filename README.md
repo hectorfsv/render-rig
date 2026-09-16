@@ -21,6 +21,17 @@ too — n8n execution ids are sequential and would otherwise be enumerable.
 
 ## START HERE NEXT SESSION
 
+**2026-09-16 — BETA AUDIT DONE.** Everything re-verified against the live instance and the
+live page (full story: `../../research/kling-render-rig-redesign.md` §2026-09-16). Balance
+**$21.55**. Suite ALL GREEN incl. the new `./test/run.sh giveup`. Fixed: **the poll loop had
+no exit** (a job whose row never lands now stops after five `row:false` answers from the new
+`No Row Response` node, ~7 min; anything else stops at 30 min for stills / 45 for clips and
+names the job id), a failed render's message no longer vanishes after 6 s, and the guide/hub
+no longer claim "four things", "refusals are free" (Design bills them) or that Design
+"draws anyone" (Grok refused Vader three times). **Beta gate still Hector's:** one passphrase
+= one wallet (per-person codes spec'd, not built), no error workflow on the rig, and one paid
+pass through every mode ($0.626: upscale, Krea, compose, design, 3 s video) as the final test.
+
 **Where it stands (2026-09-14 morning).** Balance **$23.04**. Five modes in daily use.
 Full narrative: `../../research/kling-render-rig-redesign.md` (read the 2026-09-14 day
 section first). Three n8n deploys today, all verified by

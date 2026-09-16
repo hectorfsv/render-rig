@@ -1,0 +1,90 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* POLLING MUST END. Before 2026-09-16 the poll loop had no exit on 'pending': a
+   job whose row never landed (a submit that died after Respond Loading) kept the
+   browser asking every ~80 s, one n8n execution per ask, for as long as the tab
+   stayed open. Three cases here, each driven through the app's OWN submit -> poll
+   path with a fake fetch, on headless virtual time:
+     ?c=norow   the server answers {status:'pending', row:false} - the job never
+                registered - and the page stops after five of those (~7 min real)
+     ?c=stuck   the row exists but nothing ever completes - the page stops at the
+                30 min cap (45 for video) and says where the render will be
+     ?c=refuse  a failure message must STAY on screen, not vanish after 6 s */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search), C=q.get('c')||'norow';
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); flush()}
+  function flush(){ try{document.title=S+out.join('\n')+S}catch(e){} }
+  window.onerror=function(m,f,l){ out.push('FAIL  JS ERROR: '+m+' @'+l); flush() };
+  function vis(el){ if(!el||el.hidden) return false;
+    var c=getComputedStyle(el); if(c.display==='none'||c.visibility==='hidden') return false;
+    var r=el.getBoundingClientRect(); return r.width>0 && r.height>0; }
+  var polls=0, submitted=0, VT0=Date.now(), realNow=Date.now;
+  // a fake clock the app reads through Date.now, driven by virtual time
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:4.95,currency:'USD'})}});
+    if(String(u).indexOf('jobId=')>-1){
+      polls++;
+      if(C==='refuse') return Promise.resolve({ok:true,json:function(){return Promise.resolve({
+        status:'error', message:'Refused by a content checker, so nothing was delivered.'})}});
+      if(C==='norow') return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'pending',row:false})}});
+      return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'pending'})}});
+    }
+    submitted++;
+    return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'submitted',jobId:'dead1'})}});
+  };
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){
+      document.querySelector('.card[data-go="'+(C==='stuck'?'video':'image')+'"]').click();
+      setTimeout(function(){
+        $('prompt').value='a test';
+        $('submit').click();
+        T(document.body.classList.contains('rendering'), 'a render is in flight ('+C+')');
+        var tries=0, lastPolls=-1, stableFor=0;
+        // Wait until the app has stopped polling: the poll count stays put across
+        // enough virtual time for at least two more polls to have happened.
+        (function wait(){
+          var stopped=!document.body.classList.contains('rendering');
+          if(stopped){ out.push('      [stopped after '+polls+' polls, '+tries+' ticks]'); return check() }
+          if(++tries>4000 || Date.now()-VT0 > (C==='stuck'?3300:100)*1000){ T(false,'still polling after '+polls+' polls and '+Math.round((Date.now()-VT0)/1000)+' s - the page never gives up'); flush(); return }
+          setTimeout(wait, C==='stuck'?5000:500);
+        })();
+      },200);
+    },150);
+  }
+  function check(){
+    var msg=$('gen-err').textContent;
+    T(!document.body.classList.contains('rendering'), 'polling stopped');
+    T(vis($('stage-idle')), 'the stage went back to idle');
+    T(!$('submit').disabled, 'Generate is enabled again');
+    T(localStorage.getItem('rig_job')===null, 'the dead job is not kept for resume (rig_job cleared)');
+    if(C==='norow'){
+      T(polls===5, 'gave up after exactly five row:false answers ('+polls+')');
+      T(/never registered/i.test(msg), 'says the run never registered: '+JSON.stringify(msg));
+    }
+    if(C==='stuck'){
+      T(polls>=10, 'kept polling for a real pending job before the cap ('+polls+' polls)');
+      T(/45 minutes/i.test(msg), 'says it stopped at the video cap: '+JSON.stringify(msg));
+      T(/dead1/.test(msg), 'names the job id so the render can be recovered');
+    }
+    if(C==='refuse'){
+      T(/Refused by a content checker/.test(msg), 'the failure message is shown');
+    }
+    // the message must STAY: 6 s used to wipe it
+    var polls0=polls;
+    setTimeout(function(){
+      T($('gen-err').textContent===msg && msg.length>0, 'the message is still on screen 9 s later');
+      T(polls===polls0, 'no poll fired after the stop ('+(polls-polls0)+' more)');
+      T(submitted===1, 'exactly one submit was made ('+submitted+')');
+      // a new run clears it
+      $('prompt').value='again'; $('submit').click();
+      T($('gen-err').textContent==='', 'the next submit clears the old message');
+      flush();
+    },9000);
+  }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

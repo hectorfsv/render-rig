@@ -788,8 +788,8 @@ body.wide .lab{font-size:12.5px}
           <button class="card" type="button" data-go="design">
             <h3>Design</h3>
             <div class="eng">Grok Imagine</div>
-            <p>Flyers, posters, invitations, memes &mdash; artwork with your words set into it. Draws anyone and anything, and it is the cheapest thing here.</p>
-            <div class="foot"><span class="from">$0.04</span><span class="wait">under a min</span></div>
+            <p>Flyers, posters, invitations, memes &mdash; artwork with your words set into it. The cheapest thing here. It can refuse a famous character, and bills the refusal.</p>
+            <div class="foot"><span class="from">$0.04</span><span class="wait">1 to 2 min</span></div>
           </button>
           <button class="card" type="button" data-go="upscale">
             <h3>Upscale</h3>
@@ -1171,7 +1171,7 @@ body.wide .lab{font-size:12.5px}
             <div class="spec">
         <h4>Start here</h4>
         <div class="note"><b>You describe something, and a few minutes later it exists.</b> A photo of a place that was never photographed. A short film of your dog on the moon. An old picture from a shoebox, sharp again.</div>
-        <div class="note">There are four things this can do, and you pick one before you start:</div>
+        <div class="note">There are five things this can do, and you pick one before you start:</div>
         <table class="tbl">
           <tr><td>Video</td><td class="d">A short clip, with sound, made from a sentence.</td></tr>
           <tr><td>Image</td><td class="d">A single picture, made from a sentence.</td></tr>
@@ -1181,7 +1181,7 @@ body.wide .lab{font-size:12.5px}
         </table>
         <div class="note">Each one uses a different piece of software behind the scenes, and they are good at different things &mdash; but you never have to choose between them. <b>Pick what you want to make, and the right one is already loaded.</b></div>
         <div class="note"><b>Just write like you are talking to a person.</b> Your words get expanded into a longer, more detailed brief before anything is made, so you do not need special phrasing or a list of keywords. Say what you want to see. Words you want <b>on</b> something &mdash; a sign, a shirt, a screen &mdash; go in quotes, and they are rendered exactly as typed, typos included.</div>
-        <div class="note"><b>Every run costs real money</b> &mdash; a few cents for a picture, more for video. The exact price is on the button before you press it, and it is never a surprise. <b>If nothing comes back, you are not charged.</b> Refusals, crashes and runs you give up on are all free.</div>
+        <div class="note"><b>Every run costs real money</b> &mdash; a few cents for a picture, more for video. The exact price is on the button before you press it, and it is never a surprise. <b>If nothing comes back, you are not charged.</b> Refusals, crashes and runs you give up on are free &mdash; with one exception: in Design, Grok bills a refused run.</div>
       </div>
 
       <div class="spec">
@@ -1207,12 +1207,12 @@ body.wide .lab{font-size:12.5px}
       </div>
 
       <div class="spec">
-        <h4>The four jobs</h4>
+        <h4>The five jobs</h4>
         <table class="tbl">
           <tr><td>Video</td><td class="n">$0.336+</td><td class="d">Kling 3.0 Pro. 3 to 15 seconds, billed per second. Sound written from your words.</td></tr>
           <tr><td>Image</td><td class="n">$0.06</td><td class="d">Krea 2 Large. Words to picture. Draws real people and copyrighted characters without complaint, and renders a short line of sign text cleanly.</td></tr>
-          <tr><td>Compose</td><td class="n">$0.15</td><td class="d">Nano Banana Pro. Merges the photos you hand it into one picture. Refuses likenesses.</td></tr>
-          <tr><td>Design</td><td class="n">$0.04</td><td class="d">Grok Imagine. Flyers, posters and memes with real lettering. Refuses nothing &mdash; but bills you even when it does. Up to 3 sources, $0.01 each.</td></tr>
+          <tr><td>Compose</td><td class="n">$0.15</td><td class="d">Nano Banana Pro. Merges the photos you hand it into one picture. Can refuse a famous face or character, and a refusal costs nothing.</td></tr>
+          <tr><td>Design</td><td class="n">$0.04</td><td class="d">Grok Imagine. Flyers, posters and memes with real lettering. Can refuse a famous character &mdash; and bills you when it does. Up to 3 sources, $0.01 each.</td></tr>
           <tr><td>Upscale</td><td class="n">$0.08</td><td class="d">Topaz. Enlarges something you already have. No prompt.</td></tr>
         </table>
         <div class="note">Image and Compose are <b>not a cheap and an expensive version of the same thing</b>. Krea is the one that will draw anyone; Nano Banana Pro is the one that can combine your photos. Pick on what you need, not on price.</div>
@@ -1233,7 +1233,7 @@ body.wide .lab{font-size:12.5px}
         <h4>What each job does with the tray</h4>
         <table class="tbl">
           <tr><td>Compose</td><td class="d" colspan="2">Merges every source into a single picture.</td></tr>
-          <tr><td>Design</td><td class="d" colspan="2">Builds the artwork around them, up to three. Your words sit in space left clear for them.</td></tr>
+          <tr><td>Design</td><td class="d" colspan="2">Builds the artwork around them, up to three. Your words are set into the artwork, interlocking with the pictures.</td></tr>
           <tr><td>Image</td><td class="d" colspan="2">Borrows their look, if you tick style references. Never copies them in.</td></tr>
           <tr><td>Video</td><td class="d" colspan="2">First source is the opening frame. Any source can be the last one.</td></tr>
           <tr><td>Upscale</td><td class="d" colspan="2">First source, at full resolution.</td></tr>
@@ -2374,8 +2374,8 @@ window.RigMascot=(function(){
   var MODE_HINT={
     video:'Kling 3.0 Pro. Billed per second of output.',
     image:'Krea 2 Large. Draws from words alone, and will draw anyone.',
-    compose:'Nano Banana Pro. Merges the pictures you hand it. Refuses likenesses.',
-    design:'Grok Imagine. Flyers, posters and memes with your words in them. Refuses nothing \u2014 and charges even when it does.',
+    compose:'Nano Banana Pro. Merges the pictures you hand it. Can refuse a famous face.',
+    design:'Grok Imagine. Flyers, posters and memes with your words in them. Can refuse a famous character \u2014 and charges when it does.',
     upscale:'Topaz. Enlarges a picture you already have. No prompt needed.'
   };
   function syncMode(){
@@ -2730,16 +2730,18 @@ window.RigMascot=(function(){
     if(SZ && SZ.zoomed()) return;
     if($('scr-console').classList.contains('sheet-shut')) toggleFit();
   });
-  function genErr(m){
+  // sticky: a FAILED RENDER's message stays until the next submit. The 6 s
+  // auto-clear is for form slips; a content-checker refusal has to be read.
+  function genErr(m,sticky){
     var e=$('gen-err');e.textContent=m||'';
-    if(m) setTimeout(function(){ if($('gen-err').textContent===m) $('gen-err').textContent=''; },6000);
+    if(m&&!sticky) setTimeout(function(){ if($('gen-err').textContent===m) $('gen-err').textContent=''; },6000);
   }
 
   function resumeJob(){
     var j=loadJob(); if(!j) return;
     // A paid render was in flight when the page went away. Pick it back up.
     curJob={id:j.id,priced:j.priced,type:j.type,seed:j.seed||null,caption:j.caption||''};
-    type=j.type; t0=j.t0; eta=j.eta||85; over=false;
+    type=j.type; t0=j.t0; eta=j.eta||85; over=false; noRow=0;
     picked=true; show('scr-console');
     [].slice.call($('seg-type').querySelectorAll('button')).forEach(function(x){
       x.setAttribute('aria-pressed',String(x.dataset.v===j.type))});
@@ -2900,7 +2902,7 @@ window.RigMascot=(function(){
     $('arc').style.strokeDashoffset='364.4';
     $('p-msg').textContent='Submitting to the queue';
     $('p-sub').textContent='Safe to close this tab. It picks back up when you return.';
-    t0=Date.now();over=false;
+    t0=Date.now();over=false;noRow=0;
     eta = type==='video' ? parseInt(dur,10)*44 : (type==='upscale' ? 40 : 85);
     startTick();
 
@@ -2946,20 +2948,41 @@ window.RigMascot=(function(){
   function stop(){clearTimeout(poller);clearInterval(ticker);poller=null;ticker=null}
   function finish(p){setArc(p);$('pct').textContent=Math.floor(p)+'%'}
 
+  /* POLLING MUST END (2026-09-16). This loop had no exit on 'pending', so a job
+     whose row never landed - a submit that died after the browser already had its
+     job id - kept the page asking every ~80 s, one n8n execution per ask, for as
+     long as the tab stayed open. Two exits now:
+     - the server says row:false (no job row after its own three holds): five of
+       those in a row is ~7 min, past the slowest legitimate writer (~4 min), and
+       the run is declared never registered;
+     - a cap on the whole wait, 30 min for a picture and 45 for a clip (a 15 s
+       video takes ~11 min), after which the page stops asking and says where the
+       render will be if fal finishes it anyway. The row keeps the request id. */
+  var noRow=0;
+  function waitCap(){ return (curJob&&curJob.type==='video'?45:30)*60*1000 }
+  function gaveUp(jobId,why){
+    var mins=Math.round(waitCap()/60000);
+    bad(why==='norow'
+      ? 'This run never registered on the server, so it was stopped: the submit most likely failed before reaching fal, which costs nothing. Try again. If your credit went down anyway, tell Hector the job id '+jobId+'.'
+      : 'No result after '+mins+' minutes, so this page stopped asking. If it finishes later the render is kept under job id '+jobId+' - tell Hector and it can be pulled out.');
+  }
   function poll(jobId){
+    var again=function(){ if(Date.now()-t0>waitCap()) return gaveUp(jobId,'cap');
+      poller=setTimeout(function(){poll(jobId)},(curJob&&curJob.type==='video'?30:6)*1000) };
     fetch(BASE+'?jobId='+encodeURIComponent(jobId)+'&p='+encodeURIComponent(pw))
       .then(function(r){return r.json()})
       .then(function(d){
         if(d.status==='done'){stop();finish(100);if(window.RigMascot) RigMascot.sheathe();setTimeout(function(){land(d)},420);return}
         if(d.status==='error'){stop();bad(d.message||'The model returned nothing.');return}
-        poller=setTimeout(function(){poll(jobId)},(curJob&&curJob.type==='video'?30:6)*1000);
+        if(d.row===false){ if(++noRow>=5) return gaveUp(jobId,'norow') } else noRow=0;
+        again();
       })
-      .catch(function(){poller=setTimeout(function(){poll(jobId)},(curJob&&curJob.type==='video'?30:6)*1000)});
+      .catch(again);
   }
 
   function bad(m){
     stop();saveJob(null);curJob=null;document.body.classList.remove('rendering');
-    chip('Failed','err');stage('idle');genErr(m);
+    chip('Failed','err');stage('idle');genErr(m,true);
     $('submit').disabled=false;
   }
 
