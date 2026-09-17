@@ -313,7 +313,7 @@ the lip. **Landscape** splits side by side.
   from the endpoint in `response_url` — `scripts/set-rig-engines.py` backfills it
   and re-derives the price from the same fact.
 - **Krea 2 Medium is $0.030** ($0.035 with style references). It is a retired
-  tier that older Esquiffis runs used, and its price was recorded nowhere here
+  tier that older Jarvis runs used, and its price was recorded nowhere here
   until 2026-09-11 — five gallery pictures were priceless because of it.
 - **The gallery shows ONLY rows flagged `gallery = true`.** Default off, and no
   script sets it. This is not tidiness: the upscales are family photos, and an
