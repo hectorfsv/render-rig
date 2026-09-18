@@ -21,6 +21,26 @@ too — n8n execution ids are sequential and would otherwise be enumerable.
 
 ## START HERE NEXT SESSION
 
+**2026-09-18 — LAYOUT FIX (`49bc08a`, live hash `75aa882db7cc2548`, suite 3067, WebKit clean).**
+Hector opened the page and said the buttons looked weird. He was right and it was
+mine: adding **Add words** as a fourth action, I set `#out-actions` to 2 columns,
+which made it 2x2 and put the second row's bottom at **1054px against a stage
+panel ending at 999** — *Use as source* and *Clear* were rendered outside the
+panel and unreachable. **Every DOM test still called them visible** (not hidden,
+`offsetParent` non-null, non-zero size); 3037 assertions passed. Now 4 columns
+from 600px up (124px each at his window, 140 in landscape, zero spill) and 2x2 on
+a portrait phone, where four would be 71px and Download spills by 10. The 520px
+cap stays — it is why Download stopped being a 640px bar next to Generate.
+
+**The Design ratio orphan was NOT mine** — `.seg-wrap` is a flex-wrap, identical
+in the pre-change file, and six ratios wrapped 5+1 with the orphan stretching the
+full width alone. Fixed anyway since he pointed at it: the row is an explicit grid
+now, balanced — Design 3+3, Image 4+4, Compose 5, Video 3.
+
+Both are asserted, and both assertions were **proven to fire** against the broken
+build (the action-row one names *Use as source, Clear* as falling below the
+window). **"Visible" is not "reachable" — assert geometry against the container.**
+
 **2026-09-17 (later) — THE LOOK CONTROLS.** Five menus under **Look** in the
 console: Camera (clean digital / 35mm / 16mm / DV), Lens (clean sharp /
 anamorphic / warm vintage / halation / macro), Depth (f/1.4, f/4, f/11), Light
