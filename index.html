@@ -754,6 +754,9 @@ body.typing .ctl-commit{display:none}
 #ty-font{width:100%;font-family:var(--disp);font-size:16px;color:var(--ink);
   background:var(--panel-lo);border:1px solid var(--rule);border-radius:3px;padding:9px 8px}
 #ty-lines{font-size:16px}
+.look-sel{width:100%;font-family:var(--disp);font-size:16px;color:var(--ink);
+  background:var(--panel-lo);border:1px solid var(--rule);border-radius:3px;padding:9px 8px;margin-top:5px}
+#look-sum.live{color:var(--red)}
 .ty-save{margin-top:9px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
 #out-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
 </style>
@@ -1101,6 +1104,12 @@ body.typing .ctl-commit{display:none}
           </div>
 
           <!-- ADVANCED -->
+          <details id="look" class="adv">
+            <summary>Look <span class="opt" id="look-sum">auto</span></summary>
+            <div class="hint" id="look-hint">A fixed set of looks the writer must honour, instead of adjectives in your caption that it may drop. Everything on <b>Auto</b> sends nothing at all, and costs nothing either way.</div>
+            <div id="look-rows"></div>
+            <button class="go ghost sm" id="look-clear" type="button" style="margin-top:9px">Back to auto</button>
+          </details>
           <details id="adv" class="adv">
             <summary>Advanced</summary>
 
@@ -1322,6 +1331,15 @@ body.typing .ctl-commit{display:none}
         <div class="note">Under Advanced: <b>Content filter</b> runs from 1 to 6 and sits at 4. Every refusal so far happened at that setting, and nobody has tried loosening it yet. <b>Standing instruction</b> steers style across the whole request, separately from the prompt. <b>Let it check the web</b> is for a real place, product or person the model may not know, and costs a penny and a half.</div>
       </div>
 
+
+      <div class="spec">
+        <h4>Look</h4>
+        <div class="note">Under <b>Look</b>, five menus: <b>Camera</b> (clean digital, 35mm, 16mm, DV), <b>Lens</b> (clean sharp, anamorphic, warm vintage, halation, macro), <b>Depth</b> (f/1.4, f/4, f/11), <b>Light</b> (back-lit, practicals only, window, silhouette, one hard source) and <b>Grade</b> (teal &amp; orange, bleach bypass, sodium night, cold steel, black &amp; white, warm).</div>
+        <div class="note"><b>Why a menu and not just words in your caption.</b> An adjective in your prompt competes with every other word in it and often gets dropped in the rewrite. These are handed to the writer as facts you chose, so the same pick gives you the same look run after run &mdash; which is the whole point of having them.</div>
+        <div class="note"><b>Everything sits on Auto, and Auto sends nothing.</b> Leave it alone and the brief is exactly what it was before this existed. <b>It costs nothing either way</b> &mdash; it is words in the prompt, not another call.</div>
+        <div class="note"><b>Your caption still wins.</b> If you write something about the light or the grade yourself, your words outrank the menu. And the look only changes how the picture is made &mdash; never who or what is in it.</div>
+        <div class="note"><b>Design gets the Grade only</b>, because a flyer is a graphic, not a photograph &mdash; &ldquo;shot on 16mm&rdquo; on a layout brief is noise. <b>Upscale has no Look at all</b>: it has no prompt writer to hand it to.</div>
+      </div>
 
       <div class="spec">
         <h4>Design &mdash; Grok Imagine, and the words you set yourself</h4>
@@ -2512,7 +2530,7 @@ window.RigMascot=(function(){
     $('nbp-count').textContent = SRC.length
       ? SRC.length+' source'+(SRC.length>1?'s':'')+' will be merged into one picture. The count is free.'
       : 'Every source in the tray is merged into one picture. Up to 14, and the count is free.';
-    buildEnd(); buildAR(); paintTabs();
+    buildEnd(); buildAR(); lookBuild(); paintTabs();
   }
 
   // the end frame is chosen by tray position, which is how n8n addresses it
@@ -2890,6 +2908,7 @@ window.RigMascot=(function(){
     // Design is a JOB, not an engine. The enhancer branches on this, so a second
     // engine later cannot silently turn a flyer back into a photograph.
     fd.append('mode', type==='upscale'?'upscale':(type==='design'?'design':'generate'));
+    lookFields(fd);   // nothing appended for a family left on Auto
     fd.append('model', modelFor(type));
     var cap=$('prompt').value.trim(), rev=revision(), same=!!(rev&&cap===rev.caption), seedSent=null;
     // A seed-locked change: the prompt Grok wrote for that render goes up with
@@ -3336,6 +3355,10 @@ window.RigMascot=(function(){
     b.classList.add('ok'); b.textContent='seed '+v+' → set';
     setTimeout(function(){ b.classList.remove('ok'); b.textContent='seed '+v },1800);
   };
+  $('look-clear').onclick=function(){
+    Object.keys(LOOK).forEach(function(k){ delete LOOK[k] });
+    lookSave(); lookBuild();
+  };
   $('to-src').onclick=function(){
     if(!lastOut) return;
     addUrl(lastOut.url,lastOut.w,lastOut.h);
@@ -3653,6 +3676,64 @@ window.RigMascot=(function(){
   })();
 
 
+  /* ---------- the look controls ----------
+     From the Higgsfield teardown (2026-09-17): their Cinema Studio is a closed
+     menu of looks handed to the model at generation time, which is why it
+     repeats where free-text adjectives in a caption drift. Same shape, our own
+     plain words, NO brand names - they removed theirs, and ours would carry the
+     trademark exposure with none of the benefit.
+
+     Auto everywhere sends nothing, and n8n's recipe is then byte-identical to
+     what it was before this existed (./scripts/check-rig-look.sh asserts it).
+     Costs nothing: it is prompt content, not another call. */
+  var LOOK_FAMS=[
+    ['format','Camera',  [['clean','Clean digital'],['35mm','35mm film'],['16mm','16mm film'],['dv','DV camcorder']]],
+    ['lens','Lens',      [['sharp','Clean sharp'],['anamorphic','Anamorphic'],['vintage','Warm vintage'],['halation','Halation'],['macro','Macro']]],
+    ['aperture','Depth', [['f1.4','f/1.4 - shallow'],['f4','f/4 - middling'],['f11','f/11 - deep']]],
+    ['light','Light',    [['contre','Back-lit'],['practicals','Practicals only'],['window','Window'],['silhouette','Silhouette'],['hard','One hard source']]],
+    ['palette','Grade',  [['teal','Teal & orange'],['bleach','Bleach bypass'],['sodium','Sodium night'],['steel','Cold steel'],['bw','Black & white'],['warm','Warm']]]
+  ];
+  /* Design is a GRAPHIC, not a photograph - "shot on 16mm" on a flyer brief is
+     noise at best. Only the grade carries over. Upscale has no writer at all. */
+  var LOOK_BY_MODE={image:'all',compose:'all',video:'all',design:['palette'],upscale:[]};
+  var LOOK={};
+  function lookFams(){ var m=LOOK_BY_MODE[type]||[];
+    return m==='all' ? LOOK_FAMS : LOOK_FAMS.filter(function(f){return m.indexOf(f[0])>-1}) }
+  function lookSave(){ try{ localStorage.setItem('rig_look',JSON.stringify(LOOK)) }catch(e){} }
+  function lookLoad(){ try{ var r=JSON.parse(localStorage.getItem('rig_look')||'{}');
+      LOOK_FAMS.forEach(function(f){ if(r[f[0]] && f[2].some(function(o){return o[0]===r[f[0]]})) LOOK[f[0]]=r[f[0]] });
+    }catch(e){} }
+  function lookBuild(){
+    var host=$('look-rows'), fams=lookFams();
+    host.innerHTML='';
+    fams.forEach(function(f){
+      var w=document.createElement('div'); w.style.marginTop='9px';
+      var l=document.createElement('div'); l.className='lab'; l.textContent=f[1]; w.appendChild(l);
+      var s=document.createElement('select'); s.className='look-sel'; s.id='look-'+f[0];
+      s.setAttribute('aria-label',f[1]);
+      var a=document.createElement('option'); a.value=''; a.textContent='Auto'; s.appendChild(a);
+      f[2].forEach(function(o){ var e=document.createElement('option'); e.value=o[0]; e.textContent=o[1]; s.appendChild(e) });
+      s.value=LOOK[f[0]]||'';
+      s.addEventListener('change',function(){ if(this.value) LOOK[f[0]]=this.value; else delete LOOK[f[0]];
+        lookSave(); lookSum() });
+      w.appendChild(s); host.appendChild(w);
+    });
+    $('look').hidden = fams.length===0;
+    lookSum();
+  }
+  /* The summary says what is on, so he can see it without opening the panel. */
+  function lookSum(){
+    var on=[], fams=lookFams();
+    fams.forEach(function(f){ if(LOOK[f[0]]){
+      var o=f[2].filter(function(x){return x[0]===LOOK[f[0]]})[0]; if(o) on.push(o[1].split(' - ')[0]) } });
+    $('look-sum').textContent = on.length ? on.join(' · ') : 'auto';
+    $('look-sum').classList.toggle('live', on.length>0);
+  }
+  function lookFields(fd){
+    lookFams().forEach(function(f){ if(LOOK[f[0]]) fd.append('look_'+f[0], LOOK[f[0]]) });
+  }
+  window.__rigLook={LOOK:LOOK,fams:LOOK_FAMS,byMode:LOOK_BY_MODE,build:lookBuild,sum:lookSum,fields:lookFields};
+
   /* ---------- the type layer ----------
      Hector, 2026-09-17, from the Higgsfield teardown: their thumbnail skill makes
      a browser overlay the DEFAULT delivery for headline text and baking it into
@@ -3850,6 +3931,7 @@ window.RigMascot=(function(){
     $('ty-size').value=TY.size; $('ty-size-n').textContent=TY.size+'%';
   }
 
+  lookLoad();
   (function tyWire(){
     tyLoad();
     var sel=$('ty-font');

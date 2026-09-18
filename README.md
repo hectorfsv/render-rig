@@ -21,6 +21,61 @@ too — n8n execution ids are sequential and would otherwise be enumerable.
 
 ## START HERE NEXT SESSION
 
+**2026-09-17 (later) — THE LOOK CONTROLS.** Five menus under **Look** in the
+console: Camera (clean digital / 35mm / 16mm / DV), Lens (clean sharp /
+anamorphic / warm vintage / halation / macro), Depth (f/1.4, f/4, f/11), Light
+(back-lit / practicals only / window / silhouette / one hard source), Grade (teal
+& orange / bleach bypass / sodium night / cold steel / B&W / warm). From
+Higgsfield's Cinema Studio, which is a closed menu of looks handed to the model
+rather than optical simulation — see
+`../../research/higgsfield-teardown-20260917.md`.
+
+**Costs nothing: it is prompt content, not another call.** No extra execution, no
+extra token tier, no fal charge. The meter does not move.
+
+- **THE PROPERTY IT IS BUILT AROUND: with everything on Auto, every recipe is
+  BYTE-IDENTICAL to what it was before the feature existed.** `lookWords()`
+  returns `''`. `./scripts/check-rig-look.sh` asserts that across all 16 branches
+  the image and video recipes can take. A look is additive or it is a regression.
+- **No brand names.** Higgsfield removed theirs between 2.0 and 4.0 (11 named
+  lenses → 5 generic looks); ours would carry the same exposure with none of the
+  upside.
+- **The softness ban drove the vocabulary.** The compose integration beat forbids
+  *soft / softly / softened / diffused / even / gentle / muted*. Rather than carve
+  an exception, no look sentence contains one — "the far background out of
+  focus", never "softly separated". Both `build-rig-look.py` and the detector
+  refuse one that does.
+- **Design gets the Grade only** (a flyer is a graphic; "shot on 16mm" on a layout
+  brief is noise). **Upscale gets none** — no prompt writer.
+- **The detector cross-checks both directions**: it reads `LOOK_FAMS` out of the
+  live page and asserts all 23 options exist in the deployed vocabulary. Adding a
+  bogus `sepia` to the page fails it 2×. That is "Krea ignores the seed" caught by
+  a machine instead of by Hector.
+
+n8n: `Detect & Prepare`, `Write Image Brief`, `Enhance Video Prompt`. Built by
+`./scripts/build-rig-look.py`, deployed by `deploy-rig-workflow.py` (8/8
+byte-identical checks, every other node untouched). Rollback
+`workflows/kling-3-video-generator-PRE-LOOK-20260917.json`.
+
+**PRICE PARITY — the rig prices a run TWICE and nothing checked they agree.**
+`cost()` paints the meter, n8n's `priceOf()` writes the jobs table. Both are now
+held to one table of the guide's published figures:
+`./scripts/check-rig-price.sh`, 36 assertions, read-only. **The server-side price
+already existed** — a stale note claimed the table stored the browser's quote; the
+live code computes it in `Detect & Prepare` where the spender cannot reach it, and
+the browser sends no `price` field at all. The tier edges are where a
+re-implementation drifts: **exactly 24 MP is the $0.08 tier**, and I had that
+wrong before the deployed code corrected me.
+
+**Detectors, all read-only, run them after any change here:**
+`check-rig-enhancer.sh` (170 + 65) · `check-rig-guards.sh` (101) ·
+`check-rig-look.sh` (116) · `check-rig-price.sh` (36).
+
+**Suite 2968 → 3037.** `./test/run.sh look` (69) joins `type` (246).
+**Harness lesson banked twice today: WAIT FOR THE CONDITION, NEVER A DELAY.** Both
+new harnesses used fixed 700 ms / 260 ms pauses, passed alone, and threw 18 false
+failures inside the full suite when the machine was busy. They poll now.
+
 **2026-09-17 — THE TYPE LAYER: WORDS SET IN THE BROWSER, NOT IN THE MODEL.**
 Front end only — **no n8n change, no paid call, no execution.** Idea taken from
 Higgsfield's open-sourced `higgsfield-ai/skills` (MIT); full teardown in

@@ -50,6 +50,17 @@
   };
 
   function vis(e){return !!(e&&!e.hidden&&e.offsetParent!==null)}
+  /* WAIT FOR THE CONDITION, NEVER A DELAY. A fixed 700ms pause passed alone and
+     failed inside the full suite: toBlob and the font load both outrun it when
+     the machine is busy, and the whole bake block then reported false failures
+     against a working page. */
+  function waitFor(what, test, then){
+    var n=0; (function tick(){
+      if(test()) return then();
+      if(++n>400){ T(false,'TIMED OUT waiting for '+what); out.push('[done]'); flush(); return }
+      setTimeout(tick,50);
+    })();
+  }
   function ink(cv){                       // bounding box of everything that is not the flat background
     var x=cv.getContext('2d'), d=x.getImageData(0,0,cv.width,cv.height).data;
     var minY=1e9,maxY=-1,minX=1e9,maxX=-1;
@@ -93,7 +104,7 @@
 
     var submitsBefore=submits;
     $('add-words').click();
-    setTimeout(function(){
+    waitFor('the type panel', function(){ return document.body.classList.contains('typing') && !!$('ty-cv') }, function(){
       T(document.body.classList.contains('typing'),'opening it puts the page in type mode');
       T(!!$('ty-cv'),'the stage becomes a canvas');
       T(getComputedStyle($('pane-ctl').querySelector('#row-prompt')).display==='none',
@@ -182,7 +193,9 @@
 
       /* --- the bake lands as a result --- */
       $('ty-bake').click();
-      setTimeout(function(){
+      waitFor('the bake to land', function(){
+        return !document.body.classList.contains('typing') && !!$('stage-out').querySelector('img.out');
+      }, function(){
         T(!document.body.classList.contains('typing'),'baking leaves type mode');
         var img=$('stage-out').querySelector('img.out');
         T(!!img,'the baked picture lands on the stage');
@@ -207,8 +220,8 @@
         T(+st.size===17,'so is the size (got '+st.size+')');
         T(st.pos==='bc','and where the words sit (got '+st.pos+')');
         out.push('[done]'); flush();
-      },700);
-    },700);
+      });
+    });
   }
   if(document.readyState==='complete') setTimeout(go,60); else window.addEventListener('load',function(){setTimeout(go,60)});
 })();

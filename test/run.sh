@@ -14,6 +14,7 @@
 #   ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays)
 #   ./test/run.sh magnify    zoom on the stage and in the gallery (Chromium + WebKit)
 #   ./test/run.sh type       words set in the browser: baked at native size, nothing spent
+#   ./test/run.sh look       the look menu: auto sends nothing, Design gets the grade only
 #   ./test/run.sh tape       the rail marquee: pitch, seam, direction, speed
 #   ./test/run.sh shots      write previews to test/build/*.png
 #
@@ -277,6 +278,22 @@ if [ "$WHAT" = all ] || [ "$WHAT" = framing ]; then
   ff=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
   [ "$ff" != 0 ] && { printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
   echo "  -> $fp pass / $ff fail"; PASS=$((PASS+fp)); FAIL=$((FAIL+ff))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = look ]; then
+  build "$INJ/look.txt" "$B/lk.html"
+  line; echo "LOOK  (a closed menu: Auto sends nothing, Design gets the grade only)"
+  kp=0; kf=0
+  for v in "2026 1037" "1440 900" "393 852"; do set -- $v
+    R=$(title "$1" "$2" "file://$B/lk.html" 120000)
+    p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+    f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    [ "$p" = 0 ] && { f=$((f+1)); R="${R}FAIL  no assertions ran at all"; }
+    printf '%s' "$R" | grep -q '\[done\]' || { f=$((f+1)); echo "  ${1}x${2}: harness never finished"; }
+    kp=$((kp+p)); kf=$((kf+f))
+    [ "$f" != 0 ] && { echo "  ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  done
+  echo "  -> $kp pass / $kf fail"; PASS=$((PASS+kp)); FAIL=$((FAIL+kf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = type ]; then
