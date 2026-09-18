@@ -65,8 +65,16 @@ extra token tier, no fal charge. The meter does not move.
   an exception, no look sentence contains one — "the far background out of
   focus", never "softly separated". Both `build-rig-look.py` and the detector
   refuse one that does.
-- **Design gets the Grade only** (a flyer is a graphic; "shot on 16mm" on a layout
-  brief is noise). **Upscale gets none** — no prompt writer.
+- **CORRECTED SAME DAY — DESIGN GETS NO LOOK AT ALL.** I first gave it the Grade,
+  reasoning a flyer's colour is a design choice, **without checking what Design
+  already had**: its recipe owns colour with its own beat ("PALETTE — two or three
+  colours, plus the background"), so a Grade there appends photographic grading
+  language on top and the two compete. **Hector caught it, not me and not 3,000
+  assertions.** Now `design:[]` in the page and `if (dd.mode === 'design') return ''`
+  in n8n, so a stale tab cannot slip one through. **Upscale gets none either.**
+  **The root cause was verification, not judgement: I rendered the Look panel in
+  Image mode only.** One screenshot of Design would have shown a panel called
+  "Look" holding a single photographic dropdown and asked the question he asked.
 - **The detector cross-checks both directions**: it reads `LOOK_FAMS` out of the
   live page and asserts all 23 options exist in the deployed vocabulary. Adding a
   bogus `sepia` to the page fails it 2×. That is "Krea ignores the seed" caught by
