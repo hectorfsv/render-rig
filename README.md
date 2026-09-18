@@ -21,6 +21,65 @@ too — n8n execution ids are sequential and would otherwise be enumerable.
 
 ## START HERE NEXT SESSION
 
+**2026-09-17 — THE TYPE LAYER: WORDS SET IN THE BROWSER, NOT IN THE MODEL.**
+Front end only — **no n8n change, no paid call, no execution.** Idea taken from
+Higgsfield's open-sourced `higgsfield-ai/skills` (MIT); full teardown in
+`../../research/higgsfield-teardown-20260917.md`. Their thumbnail skill makes a
+browser overlay the **default** delivery for headline text and baking it into the
+generation the **fallback** — and we had the bug that argues for it: **exec 5269
+returned "exeeptions" from a letter-perfect prompt.** The verbatim append
+guarantees the PROMPT, not the PIXELS.
+
+**Add words** now sits under any still result. It opens a type panel — the lines,
+five looks (Beast / Fire / Lime / Glass / Marker), five typefaces, nine
+positions, a size — with the **stage itself as the live preview**. *Bake it in*
+redraws at the picture's **native resolution** and hands back a new still that
+flows through the existing result path (zoom, Download, Use as source all work
+unchanged).
+
+- **ONE draw function serves the preview and the bake**, at different pixel
+  sizes, so what he sees is what he saves. Every size is a share of frame
+  height, so a 4K bake scales itself.
+- **`strokeText` before `fillText`.** Their doc calls a stroke painted over the
+  fill "the #1 bug in 90% of home-made MrBeast text" — it eats half of every
+  letter. The suite spies on the 2D context and asserts the call order; the
+  check was **proven to fire** (25 pass / 1 fail) against a deliberately
+  inverted build.
+- **The five families are fetched only when the panel first opens** — the page
+  does not pay for display faces it may never draw.
+- **fal sends `access-control-allow-origin: *`** (measured on a real 1.2 MB PNG,
+  HTTP 200), so `crossOrigin='anonymous'` keeps the canvas untainted and
+  `toBlob` works. Without that there is no bake at all.
+- **A baked still is a blob in this browser**, so `#dl` links straight at it —
+  the n8n proxy only fetches fal URLs. iOS ignores a blob download, so there the
+  button opens the picture where press-and-hold saves it. It is **not** written
+  to session history: save it before closing the tab, and the type settings
+  persist so re-baking is one click.
+- **Still generate the words** when lettering must live *inside* the scene — on
+  a wall, a can, a shirt. An overlay cannot do that. The guide says so.
+
+`./test/run.sh type` — **246 assertions**: 4 Chromium viewports plus **2 in real
+WebKit**, because canvas text metrics and font loading differ by engine and
+Hector's is Safari. Suite **2722 → 2968**.
+
+**Three bugs, and the order they were caught in is the lesson:**
+1. The 1x-vs-4x check failed on a *correct* draw — the fixture had two colour
+   bands and **`drawImage` interpolates that seam when it upscales**, so every
+   blended pixel read as type. A flat fixture fixed it. The detector was wrong.
+2. `paintMeta` printed the dimensions **twice** — found by reading, not testing.
+3. **The screenshot caught what every number missed.** Size is a share of
+   *height*, so on a tall flyer a long line ran off both edges and the first
+   render read *"UMMER JAM"* — ink height and position were both correct, so
+   nothing in the suite could see it. Now the longest line is measured and the
+   cap comes down until it fits, stroke included.
+
+**The detector for (3) was broken first, and that is the trap worth keeping:**
+`getImageData` cannot see a pixel outside the canvas, so `l>=0 && r<=W-1` is a
+check that **can never fail** — it passed 41/41 against the deliberately broken
+build. It only bites as **strictly inside** (`l>0 && r<W-1`) **on a portrait
+fixture**, the shape that actually overflows; then it fires 13 times. A test that
+cannot fail and a test that never ran look identical from outside.
+
 **2026-09-16 — BETA AUDIT DONE.** Everything re-verified against the live instance and the
 live page (full story: `../../research/kling-render-rig-redesign.md` §2026-09-16). Balance
 **$21.55**. Suite ALL GREEN incl. the new `./test/run.sh giveup`. Fixed: **the poll loop had

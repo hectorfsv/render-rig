@@ -1,0 +1,215 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* THE TYPE LAYER - words set in the browser, not in the model.
+
+   Why this exists: exec 5269 came back with "exeeptions" from a letter-perfect
+   prompt. The verbatim append guarantees the PROMPT, not the PIXELS. Type set
+   here cannot be misspelled and costs nothing to change.
+
+   So the assertions that matter are:
+     - the bake happens at the picture's NATIVE size, not the preview's
+     - the stroke is drawn UNDER the fill (their documented #1 bug: a stroke
+       painted on top eats half of every letter)
+     - every size is a share of the frame, so the preview and the bake agree
+     - and NOTHING is ever submitted: no fetch, no job, no credits, no execution
+
+   The last one is the whole point of the feature and is checked hardest. */
+(function(){
+  var S=String.fromCharCode(167), out=[];
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); flush()}
+  function flush(){ try{document.title=S+out.join('\n')+S}catch(e){} }
+  window.onerror=function(m,f,l){ out.push('FAIL  JS ERROR: '+m+' @'+l); flush() };
+
+  /* a 400x300 source, so "native" is a number we know and the preview is not it */
+  var NW=400, NH=300;
+  /* FLAT on purpose: a two-tone source gets its seam interpolated when drawImage
+     upscales it, and every blended pixel reads as ink. That made a correct draw
+     look like it did not scale. */
+  var SRC=(function(){ var c=document.createElement('canvas'); c.width=NW; c.height=NH;
+    var x=c.getContext('2d'); x.fillStyle='#204060'; x.fillRect(0,0,NW,NH);
+    return c.toDataURL('image/png') })();
+
+  /* order spy: their doc says a stroke painted OVER the fill eats the letters */
+  var calls=[];
+  ['strokeText','fillText'].forEach(function(k){
+    var real=CanvasRenderingContext2D.prototype[k];
+    CanvasRenderingContext2D.prototype[k]=function(){ calls.push(k); return real.apply(this,arguments) };
+  });
+
+  var submits=0;
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:4.95,currency:'USD'})}});
+    if(String(u).indexOf('jobId=')>-1) return Promise.resolve({ok:true,json:function(){return Promise.resolve({
+      status:'done', gen_type:'image', urls:[SRC], width:null, height:null,
+      seed:4242, filename:'flyer.png'})}});
+    submits++;
+    return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued',jobId:'t1'})}});
+  };
+
+  function vis(e){return !!(e&&!e.hidden&&e.offsetParent!==null)}
+  function ink(cv){                       // bounding box of everything that is not the flat background
+    var x=cv.getContext('2d'), d=x.getImageData(0,0,cv.width,cv.height).data;
+    var minY=1e9,maxY=-1,minX=1e9,maxX=-1;
+    for(var y=0;y<cv.height;y++)for(var xx=0;xx<cv.width;xx++){
+      var i=(y*cv.width+xx)*4, r=d[i],g=d[i+1],b=d[i+2];
+      var bg = Math.abs(r-0x20)<10&&Math.abs(g-0x40)<10&&Math.abs(b-0x60)<10;
+      if(!bg){ if(y<minY)minY=y; if(y>maxY)maxY=y; if(xx<minX)minX=xx; if(xx>maxX)maxX=xx }
+    }
+    return {t:minY,b:maxY,l:minX,r:maxX,any:maxY>=0,h:maxY-minY,w:maxX-minX};
+  }
+  function sig(cv){                       // a cheap fingerprint of the drawn pixels
+    var x=cv.getContext('2d'), d=x.getImageData(0,0,cv.width,cv.height).data, s=0;
+    for(var i=0;i<d.length;i+=997) s=(s*31+d[i])>>>0;
+    return s;
+  }
+  function bake(){ var c=document.createElement('canvas'); window.__rigType.draw(c,NW,NH); return c }
+
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){
+      document.querySelector('.card[data-go="design"]').click();
+      setTimeout(function(){
+        $('prompt').value='a gig flyer';
+        if($('exact-text')) $('exact-text').value='SUMMER JAM\nFriday 9pm';
+        $('submit').click();
+        var tries=0;
+        (function wait(){
+          if($('stage-out').innerHTML!==''){ return afterLand() }
+          if(++tries>120){ T(false,'TIMED OUT waiting for the render to land'); flush(); return }
+          setTimeout(wait,500);
+        })();
+      },200);
+    },250);
+  }
+
+  function afterLand(){
+    var api=window.__rigType;
+    T(!!api,'the type layer is present');
+    if(!api){ flush(); return }
+    T(vis($('add-words')),'a still offers "Add words"');
+
+    var submitsBefore=submits;
+    $('add-words').click();
+    setTimeout(function(){
+      T(document.body.classList.contains('typing'),'opening it puts the page in type mode');
+      T(!!$('ty-cv'),'the stage becomes a canvas');
+      T(getComputedStyle($('pane-ctl').querySelector('#row-prompt')).display==='none',
+        'the normal controls give way to the type controls');
+      T($('ty-lines').value.indexOf('SUMMER JAM')===0,
+        'the words he already typed in the Words box are carried over');
+
+      api.fonts.forEach(function(f){ /* menu built from the same list that draws */ });
+      T($('ty-font').options.length===api.fonts.length,
+        'every typeface in the list is offered ('+api.fonts.length+')');
+
+      /* --- the draw itself --- */
+      api.TY.lines='SUMMER JAM\nFriday 9pm'; api.TY.pre='beast'; api.TY.pos='bc'; api.TY.size=14;
+      calls.length=0;
+      var c1=bake();
+      var i1=ink(c1);
+      T(i1.any,'the words are actually drawn');
+      T(calls.length>0 && calls[0]==='strokeText',
+        'the stroke is drawn UNDER the fill (first call is strokeText, got '+(calls[0]||'none')+')');
+      T(calls.filter(function(k){return k==='fillText'}).length===2,'one fill per line (2)');
+
+      /* native resolution, not preview resolution */
+      var big=document.createElement('canvas'); api.draw(big,NW*4,NH*4);
+      T(big.width===NW*4 && big.height===NH*4,'the bake draws at whatever size it is given (4x here)');
+      var ib=ink(big);
+      var rel1=i1.h/NH, relb=ib.h/(NH*4);
+      T(Math.abs(rel1-relb)<0.06,
+        'type is a share of the frame, so 1x and 4x agree ('+rel1.toFixed(3)+' vs '+relb.toFixed(3)+')');
+
+      /* the controls move the pixels */
+      api.TY.pos='tc'; var top=ink(bake());
+      api.TY.pos='bc'; var bot=ink(bake());
+      T(top.t<bot.t,'top and bottom put the words in different places ('+top.t+' vs '+bot.t+')');
+      api.TY.pos='bc';
+
+      api.TY.size=8;  var small=ink(bake());
+      api.TY.size=22; var large=ink(bake());
+      T(large.h>small.h,'the size slider changes the size ('+small.h+' -> '+large.h+')');
+      api.TY.size=14;
+
+      /* driven through the real buttons, so the save path is exercised too */
+      function look(v){ document.querySelector('#ty-pre button[data-v="'+v+'"]').click() }
+      look('beast');  var sBeast=sig(bake());
+      look('fire');   var sFire=sig(bake());
+      look('marker'); var sMark=sig(bake());
+      T(sBeast!==sFire && sFire!==sMark,'the looks actually differ');
+      look('lime');
+      document.querySelector('#ty-grid button[data-v="tl"]').click();
+      T(api.TY.pre==='lime' && api.TY.pos==='tl','clicking a look and a position moves the state');
+      look('beast'); document.querySelector('#ty-grid button[data-v="bc"]').click();
+      $('ty-size').value=17; $('ty-size').dispatchEvent(new Event('input',{bubbles:true}));
+      $('ty-size').dispatchEvent(new Event('change',{bubbles:true}));
+
+      api.TY.lines=''; T(!ink(bake()).any,'no words means the picture is untouched');
+      api.TY.lines='SUMMER JAM\nFriday 9pm';
+
+      /* THE SCREENSHOT CAUGHT WHAT THE NUMBERS DID NOT: size is a share of
+         HEIGHT, so on a TALL frame a long line ran off both edges - the first
+         render of this panel read "UMMER JAM". Ink height and position were
+         both correct, so nothing above could see it.
+
+         Two things this detector has to get right, learned the hard way:
+         (1) the fixture must be PORTRAIT, because that is the shape that
+             overflows - the same check on a 400x300 landscape passed happily
+             against the broken build;
+         (2) it must assert ink is STRICTLY INSIDE, never merely within bounds -
+             getImageData cannot see a pixel outside the canvas, so clipped text
+             is invisible and "l>=0 && r<=W-1" is a check that can never fail. */
+      var PW=600, PH=900;                      // a flyer shape, like his real ones
+      function portrait(){ var c=document.createElement('canvas'); api.draw(c,PW,PH); return c }
+      function inside(lbl){
+        var k=ink(portrait());
+        T(k.any && k.l>0 && k.r<PW-1 && k.t>0 && k.b<PH-1,
+          lbl+' stays inside the frame (x '+k.l+'-'+k.r+' of '+PW+', y '+k.t+'-'+k.b+' of '+PH+')');
+      }
+      var keepL=api.TY.lines, keepS=api.TY.size, keepF=api.TY.font, keepP=api.TY.pos;
+      api.TY.size=26;
+      api.TY.lines='SUMMER JAM';                                    inside('one long line at full size');
+      api.TY.lines='WE ARE ABSOLUTELY NOT MESSING AROUND TONIGHT';  inside('a very long line');
+      api.TY.lines='SUMMER JAM\nFriday 9pm\nfree entry\nat the yard\nbring cash';
+      inside('five lines at full size');
+      ['tl','tr','bl','br','mc'].forEach(function(pz){ api.TY.pos=pz; inside('at '+pz) });
+      api.TY.pos='bc';
+      api.fonts.forEach(function(f){ api.TY.font=f[0]; inside(f[0]) });
+      api.TY.font=keepF; api.TY.lines=keepL; api.TY.size=keepS; api.TY.pos=keepP;
+
+      /* --- the bake lands as a result --- */
+      $('ty-bake').click();
+      setTimeout(function(){
+        T(!document.body.classList.contains('typing'),'baking leaves type mode');
+        var img=$('stage-out').querySelector('img.out');
+        T(!!img,'the baked picture lands on the stage');
+        T(!!img && /^blob:|^data:/.test(img.src),'it is a local file, not a new render');
+        var dl=$('dl');
+        T(dl.getAttribute('href').indexOf('kling-download')===-1,
+          'Download points at the baked file, not the n8n proxy');
+        T(dl.hasAttribute('download'),'and carries a download filename');
+        T(submits===submitsBefore,
+          'NOTHING was submitted setting type: '+(submits-submitsBefore)+' calls, 0 credits, 0 executions');
+
+        /* paintMeta prints the dimensions itself, so handing it the CURRENT meta
+           line as the tail printed them twice. */
+        var meta=$('m-time').textContent;
+        T((meta.match(/\u00d7/g)||[]).length===1,
+          'the size is printed once, not twice ('+meta.trim()+')');
+        T(meta.indexOf('words set here')>-1,'and the meta line says the words were set here');
+
+        /* settings survive */
+        var st={}; try{ st=JSON.parse(localStorage.getItem('rig_type')||'{}') }catch(e){}
+        T(st.pre==='beast','the look is remembered for next time (got '+st.pre+')');
+        T(+st.size===17,'so is the size (got '+st.size+')');
+        T(st.pos==='bc','and where the words sit (got '+st.pos+')');
+        out.push('[done]'); flush();
+      },700);
+    },700);
+  }
+  if(document.readyState==='complete') setTimeout(go,60); else window.addEventListener('load',function(){setTimeout(go,60)});
+})();
+</script>

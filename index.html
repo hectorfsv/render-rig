@@ -725,6 +725,37 @@ body.wide .lab{font-size:12.5px}
 .ctl-scroll::-webkit-scrollbar-thumb{background:var(--rule-hot);border-radius:4px}
 .ctl-scroll::-webkit-scrollbar-track{background:transparent}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* ---------- type layer ----------
+   Set the words in the BROWSER, not in the model. Higgsfield's thumbnail skill
+   makes the overlay the default for headline text and baking it into the
+   generation the fallback; we have the bug that argues for it - exec 5269 came
+   back with "exeeptions" from a letter-perfect prompt, because the verbatim
+   append guarantees the PROMPT, not the pixels. Type set here cannot be
+   misspelled, costs no credits, and re-typing costs no render. */
+body.typing #pane-ctl .ctl-scroll > *:not(#row-type){display:none}
+body.typing .ctl-commit{display:none}
+.ty-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;max-width:132px}
+.ty-grid button{border:1px solid var(--rule);background:var(--panel-lo);height:26px;
+  cursor:pointer;border-radius:3px;position:relative}
+.ty-grid button::after{content:'';position:absolute;left:50%;top:50%;width:11px;height:3px;
+  margin:-1.5px 0 0 -5.5px;background:var(--ink-faint);border-radius:1px}
+.ty-grid button:hover{border-color:var(--rule-hot)}
+.ty-grid button[aria-pressed=true]{border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red)}
+.ty-grid button[aria-pressed=true]::after{background:var(--red)}
+.ty-pre{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.ty-pre button{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.02em;
+  border:1px solid var(--rule);background:var(--panel-lo);color:var(--ink-dim);
+  padding:9px 2px;cursor:pointer;border-radius:3px;text-transform:uppercase}
+.ty-pre button:hover{border-color:var(--rule-hot);color:var(--ink)}
+.ty-pre button[aria-pressed=true]{border-color:var(--red);color:var(--ink);box-shadow:inset 0 -2px 0 var(--red)}
+.ty-sl{display:flex;align-items:center;gap:9px}
+.ty-sl input[type=range]{flex:1;accent-color:var(--red);height:20px}
+.ty-sl .ty-n{font-family:var(--mono);font-size:12px;color:var(--ink-dim);min-width:38px;text-align:right}
+#ty-font{width:100%;font-family:var(--disp);font-size:16px;color:var(--ink);
+  background:var(--panel-lo);border:1px solid var(--rule);border-radius:3px;padding:9px 8px}
+#ty-lines{font-size:16px}
+.ty-save{margin-top:9px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#out-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
 </style>
 </head>
 <body>
@@ -788,7 +819,7 @@ body.wide .lab{font-size:12.5px}
           <button class="card" type="button" data-go="design">
             <h3>Design</h3>
             <div class="eng">Grok Imagine</div>
-            <p>Flyers, posters, invitations, memes &mdash; artwork with your words set into it. The cheapest thing here. It can refuse a famous character, and bills the refusal.</p>
+            <p>Flyers, posters, invitations, memes &mdash; artwork with your words set into it. The cheapest thing here. It can refuse a famous character, and bills the refusal. Headline text can also be set in your browser afterwards, free and spelled right.</p>
             <div class="foot"><span class="from">$0.04</span><span class="wait">1 to 2 min</span></div>
           </button>
           <button class="card" type="button" data-go="upscale">
@@ -874,6 +905,7 @@ body.wide .lab{font-size:12.5px}
           </div>
           <div class="row3" id="out-actions" hidden style="margin-top:8px">
             <a class="go sm" id="dl" href="#">Download</a>
+            <button class="go sm ghost" id="add-words" type="button">Add words</button>
             <button class="go sm ghost" id="to-src" type="button">Use as source</button>
             <button class="go sm ghost" id="clear-stage" type="button">Clear</button>
           </div>
@@ -882,6 +914,39 @@ body.wide .lab{font-size:12.5px}
         <!-- CONTROLS -->
         <div class="pane" id="pane-ctl">
           <div class="stack ctl-scroll">
+          <div id="row-type" hidden>
+            <div class="lab">The words <span class="opt">one line each</span></div>
+            <textarea id="ty-lines" rows="3" placeholder="SUMMER JAM&#10;Friday 9pm"></textarea>
+            <div class="hint">Set here, in your browser. They cannot come back misspelled, and changing them costs nothing &mdash; no new render.</div>
+
+            <div class="lab" style="margin-top:11px">Look</div>
+            <div class="ty-pre" id="ty-pre" role="group" aria-label="Type look">
+              <button type="button" data-v="beast" aria-pressed="true">Beast</button>
+              <button type="button" data-v="fire" aria-pressed="false">Fire</button>
+              <button type="button" data-v="lime" aria-pressed="false">Lime</button>
+              <button type="button" data-v="glass" aria-pressed="false">Glass</button>
+              <button type="button" data-v="marker" aria-pressed="false">Marker</button>
+            </div>
+
+            <div class="lab" style="margin-top:11px">Typeface</div>
+            <select id="ty-font" aria-label="Typeface"></select>
+            <div class="hint" id="ty-font-hint"></div>
+
+            <div class="lab" style="margin-top:11px">Where</div>
+            <div class="ty-grid" id="ty-grid" role="group" aria-label="Position"></div>
+
+            <div class="lab" style="margin-top:11px">Size <span class="opt">share of the frame</span></div>
+            <div class="ty-sl">
+              <input type="range" id="ty-size" min="5" max="26" step="1" value="14" aria-label="Size">
+              <span class="ty-n" id="ty-size-n">14%</span>
+            </div>
+
+            <div class="ty-save">
+              <button class="go sm" id="ty-bake" type="button">Bake it in</button>
+              <button class="go sm ghost" id="ty-cancel" type="button">Back</button>
+            </div>
+            <div class="hint" id="ty-note">Baking draws the words at the picture&rsquo;s real size and hands you a new still. The render underneath is untouched.</div>
+          </div>
           <div>
             <div class="seg seg-5" id="seg-type" role="group" aria-label="What to make">
               <button type="button" data-v="image" aria-pressed="true">Image</button>
@@ -1255,6 +1320,16 @@ body.wide .lab{font-size:12.5px}
         <div class="note">Order matters to the model and the tray is numbered, so describe them the same way: <b>the man in image 1 wearing the coat from image 2</b>.</div>
         <div class="note"><b>In Compose, always use 2K.</b> There is no 1K button there because Nano Banana Pro bills 1K and 2K identically, so 1K would just give you less for the same money. 4K costs double. <b>Design is the exception</b> &mdash; Grok really does charge less at 1K ($0.04 against $0.06), so draft your layout at 1K and finish at 2K.</div>
         <div class="note">Under Advanced: <b>Content filter</b> runs from 1 to 6 and sits at 4. Every refusal so far happened at that setting, and nobody has tried loosening it yet. <b>Standing instruction</b> steers style across the whole request, separately from the prompt. <b>Let it check the web</b> is for a real place, product or person the model may not know, and costs a penny and a half.</div>
+      </div>
+
+
+      <div class="spec">
+        <h4>Design &mdash; Grok Imagine, and the words you set yourself</h4>
+        <div class="note">There are <b>two ways</b> to get words onto a picture here, and they are good at different things.</div>
+        <div class="note"><b>The Words box, before you render.</b> Every line goes to the model exactly as you typed it, added after the rewrite so nothing paraphrases it. Use this when the lettering has to live <b>inside the scene</b> &mdash; painted on a wall, printed on a can, stitched on a shirt. The catch: a picture model draws letters, it does not type them, so a long line can come back misspelled even from a perfect prompt. It has happened here.</div>
+        <div class="note"><b>Add words, after it lands.</b> The button under any still opens a type panel: your lines, five looks, five typefaces, nine positions and a size. It draws in your browser, over the picture, and <b>Bake it in</b> writes it at the picture's real resolution. <b>It cannot be misspelled, it costs nothing, and changing your mind costs nothing</b> &mdash; no new render. For a headline over artwork, this is the one to use. Draft the artwork with the Words box empty, then set the type here.</div>
+        <div class="note">The render underneath is never touched. Baking hands you a <b>new</b> still and leaves the original in This Session, so you can go back and set the words differently as often as you like.</div>
+        <div class="note">A baked picture lives in your browser, not on fal &mdash; so <b>save it before you close the tab</b>. On a phone the button opens it full screen; press and hold to save.</div>
       </div>
 
       <div class="spec">
@@ -3119,12 +3194,21 @@ window.RigMascot=(function(){
      same name in this scope silently replaces it and breaks all navigation. */
   function showResult(item, tail){
     var isVid=item.gen_type==='video';
-    lastOut=item;
+    lastOut=item; TYTAIL=tail||'';
     if(SZ){ SZ.destroy(); SZ=null }
     $('stage-out').innerHTML = isVid
       ? '<video class="out" src="'+item.url+'" controls playsinline preload="metadata"></video>'
       : '<div class="zview"><img class="out" src="'+item.url+'" alt=""></div>';
-    $('dl').href=DOWNLOAD+'?u='+encodeURIComponent(item.url)+'&n='+encodeURIComponent(item.filename||'render');
+    /* A baked still lives in this browser as a blob. The n8n download proxy only
+       fetches fal URLs, so a local file links straight to itself - and iOS ignores
+       a blob download, but opening it shows the picture where press-and-hold saves. */
+    if(item.local){ $('dl').href=item.url; $('dl').setAttribute('download', item.filename||'render.png');
+                    if(IOS) $('dl').setAttribute('target','_blank');
+                    $('dl').textContent = IOS ? 'Open to save' : 'Download'; }
+    else { $('dl').href=DOWNLOAD+'?u='+encodeURIComponent(item.url)+'&n='+encodeURIComponent(item.filename||'render');
+           $('dl').removeAttribute('download'); $('dl').removeAttribute('target');
+           $('dl').textContent='Download'; }
+    $('add-words').hidden = isVid;
     $('m-engine').textContent = isVid?'Kling 3.0 Pro':(item.gen_type==='upscale'?'Topaz':'Still');
     $('stage-tag').textContent = item.gen_type;
     paintSeed(item.seed);
@@ -3567,6 +3651,233 @@ window.RigMascot=(function(){
     attach();
     window.addEventListener('resize', attach);
   })();
+
+
+  /* ---------- the type layer ----------
+     Hector, 2026-09-17, from the Higgsfield teardown: their thumbnail skill makes
+     a browser overlay the DEFAULT delivery for headline text and baking it into
+     the generation the fallback. We already had the bug that argues for it -
+     exec 5269 returned "exeeptions" from a letter-perfect prompt, because the
+     verbatim append guarantees the PROMPT, not the pixels.
+
+     Words set here cannot be misspelled, cost no credits, and re-typing costs no
+     render. ONE draw function serves the live preview and the bake, at different
+     pixel sizes, so what he sees is what he saves; every size is a share of the
+     frame height, so the 4K bake scales itself.
+
+     This is NOT for type that lives inside the scene - on a wall, a can, a shirt.
+     That still has to be generated. */
+  var TYPEF=[['Anton',400,'fat condensed caps — the loud default'],
+             ['Bebas Neue',400,'tall, narrow caps'],
+             ['Archivo Black',400,'blocky and wide'],
+             ['Montserrat',900,'clean geometric'],
+             ['Playfair Display',700,'elegant serif']];
+  /* stroke/shadow/box are all fractions of cap height, never pixels */
+  var TYPRE={
+    beast :{fill:'#fff',    stroke:'#000',    sw:.11},
+    fire  :{grad:[[0,'#FFE24B'],[.45,'#FF9A1F'],[1,'#FF2E2E']], stroke:'#1a0a00', sw:.11},
+    lime  :{fill:'#D4FF3F', stroke:'#0a1400', sw:.10, glow:'rgba(180,255,40,.75)'},
+    glass :{fill:'#fff',    box:'rgba(18,18,22,.55)', sw:0},
+    marker:{fill:'#0a0a0a', box:'#D4FF3F',    sw:0}
+  };
+  var TYTAIL='';
+  var TY={lines:'',font:'Anton',pre:'beast',pos:'bc',size:14,base:null,cv:null,on:false,fonts:0};
+  var IOS=/iP(hone|ad|od)/.test(navigator.platform||'')||
+          ((navigator.maxTouchPoints||0)>1 && /Mac/.test(navigator.platform||''));
+
+  function tyLoad(){ try{ var r=JSON.parse(localStorage.getItem('rig_type')||'{}');
+      if(r.font && TYPEF.some(function(f){return f[0]===r.font})) TY.font=r.font;
+      if(TYPRE[r.pre]) TY.pre=r.pre;
+      if(/^[tmb][lcr]$/.test(r.pos||'')) TY.pos=r.pos;
+      if(+r.size>=5 && +r.size<=26) TY.size=+r.size;
+    }catch(e){} }
+  function tySave(){ try{ localStorage.setItem('rig_type',
+      JSON.stringify({font:TY.font,pre:TY.pre,pos:TY.pos,size:TY.size})) }catch(e){} }
+
+  /* The families are only fetched when the panel is first opened - the page does
+     not pay for five display faces it may never draw. */
+  function tyFonts(){
+    if(TY.fonts) return TY.fonts;
+    var l=document.createElement('link'); l.rel='stylesheet';
+    l.href='https://fonts.googleapis.com/css2?'+TYPEF.map(function(f){
+      return 'family='+f[0].replace(/ /g,'+')+':wght@'+f[1] }).join('&')+'&display=swap';
+    document.head.appendChild(l);
+    TY.fonts=Promise.all(TYPEF.map(function(f){
+      /* a face that never arrives must not hang the panel */
+      return (document.fonts&&document.fonts.load)
+        ? document.fonts.load('120px "'+f[0]+'"').catch(function(){}) : Promise.resolve();
+    })).then(function(){ return document.fonts&&document.fonts.ready });
+    return TY.fonts;
+  }
+
+  /* The one draw. cv is sized to W x H and gets the picture plus the words. */
+  function tyDraw(cv,W,H){
+    var ctx=cv.getContext('2d');
+    cv.width=W; cv.height=H;
+    ctx.clearRect(0,0,W,H);
+    if(TY.base) ctx.drawImage(TY.base,0,0,W,H);
+    var lines=String(TY.lines).split('\n').map(function(s){return s.trim()}).filter(Boolean);
+    if(!lines.length) return;
+    var P=TYPRE[TY.pre]||TYPRE.beast, F=TYPEF.filter(function(f){return f[0]===TY.font})[0]||TYPEF[0];
+    var cap=Math.round(H*TY.size/100), pad=Math.round(H*0.045);
+    ctx.textBaseline='alphabetic';
+    var up=(TY.font!=='Playfair Display');
+    var txt=lines.map(function(s){return up?s.toUpperCase():s});
+    /* Safari only grew ctx.letterSpacing recently; where it is missing the
+       tracking is simply default. Preview and bake run this same line, so they
+       agree either way. */
+    function setFont(c){ ctx.font=F[1]+' '+c+'px "'+F[0]+'", sans-serif';
+                         try{ ctx.letterSpacing=Math.round(-c*0.012)+'px' }catch(e){} }
+    /* THE SIZE IS A SHARE OF HEIGHT, BUT THE FRAME ALSO HAS A WIDTH. Six words
+       at 14% of a tall frame are far wider than it - the first screenshot of
+       this panel had "SUMMER JAM" cut off at both edges. So measure the longest
+       line and come down until it fits, stroke included. */
+    setFont(cap);
+    var room=W-2*pad, widest=0;
+    for(var m=0;m<txt.length;m++) widest=Math.max(widest, ctx.measureText(txt[m]).width);
+    widest += cap*((TYPRE[TY.pre]||TYPRE.beast).sw||0);      // the stroke sits outside the glyphs
+    if(widest>room && widest>0){ cap=Math.max(6, Math.floor(cap*room/widest)); setFont(cap) }
+    var lh=cap*1.02;
+    /* and if the block is now taller than the frame, come down again */
+    if(txt.length*lh > H-2*pad){ cap=Math.max(6, Math.floor(cap*(H-2*pad)/(txt.length*lh)));
+                                 setFont(cap); lh=cap*1.02 }
+    var v=TY.pos[0], hz=TY.pos[1];
+    ctx.textAlign = hz==='l'?'left':hz==='r'?'right':'center';
+    var x = hz==='l'?pad : hz==='r'?W-pad : W/2;
+    var block=txt.length*lh;
+    var top = v==='t'?pad : v==='b'?H-pad-block : (H-block)/2;
+    var y=top+cap;                                  // first baseline
+    for(var i=0;i<txt.length;i++){
+      var t=txt[i], w=ctx.measureText(t).width;
+      if(P.box){                                    // glass / marker sit on a plate
+        var bx = hz==='l'?x-cap*0.16 : hz==='r'?x-w-cap*0.16 : x-w/2-cap*0.16;
+        var r=Math.round(cap*0.12);
+        ctx.save(); ctx.fillStyle=P.box;
+        tyRect(ctx,bx,y-cap*0.98,w+cap*0.32,cap*1.22,r); ctx.fill(); ctx.restore();
+      }
+      if(P.sw>0){                                   // stroke UNDER the fill, always
+        ctx.save();
+        ctx.shadowColor='rgba(0,0,0,.55)'; ctx.shadowBlur=cap*0.20; ctx.shadowOffsetY=cap*0.11;
+        ctx.lineWidth=cap*P.sw; ctx.strokeStyle=P.stroke;
+        ctx.lineJoin='round'; ctx.miterLimit=2;     // no spikes on thick corners
+        ctx.strokeText(t,x,y);
+        ctx.restore();
+      }
+      ctx.save();
+      if(P.glow){ ctx.shadowColor=P.glow; ctx.shadowBlur=cap*0.30 }
+      if(P.grad){
+        var g=ctx.createLinearGradient(0,y-cap,0,y);
+        P.grad.forEach(function(s){g.addColorStop(s[0],s[1])});
+        ctx.fillStyle=g;
+      } else ctx.fillStyle=P.fill;
+      ctx.fillText(t,x,y);
+      ctx.restore();
+      y+=lh;
+    }
+  }
+  function tyRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+  }
+
+  function tyPreview(){
+    if(!TY.on||!TY.cv||!TY.base) return;
+    var nw=TY.base.naturalWidth||TY.base.width, nh=TY.base.naturalHeight||TY.base.height;
+    if(!nw||!nh) return;
+    var box=$('stage').clientWidth||600;
+    var W=Math.min(nw, Math.max(360, Math.round(box*(window.devicePixelRatio||1))));
+    tyDraw(TY.cv, W, Math.round(W*nh/nw));
+  }
+
+  function tyOpen(){
+    if(!lastOut||lastOut.gen_type==='video') return;
+    var img=new Image();
+    if(/^https?:/.test(lastOut.url)) img.crossOrigin='anonymous';  // fal sends ACAO * - keeps the canvas untainted
+    img.onload=function(){
+      TY.base=img; TY.on=true;
+      document.body.classList.add('typing');
+      $('row-type').hidden=false;
+      if(SZ){ SZ.destroy(); SZ=null }
+      $('stage-out').innerHTML='<canvas id="ty-cv" class="out"></canvas>';
+      TY.cv=$('ty-cv');
+      $('stage-zbar').hidden=true; $('fitbtn').hidden=true; $('out-actions').hidden=true;
+      /* he already typed the words once, in the Words box - do not make him do it twice */
+      if(!TY.lines && $('exact-text') && $('exact-text').value.trim()) TY.lines=$('exact-text').value.trim();
+      $('ty-lines').value=TY.lines;
+      tySyncUI();
+      tyPreview();                       // draw immediately, even before the faces land
+      tyFonts().then(tyPreview);         // and again once they have
+    };
+    img.onerror=function(){ genErr('Could not read that picture back to set type on it.') };
+    img.src=lastOut.url;
+  }
+  function tyClose(){
+    TY.on=false; TY.base=null; TY.cv=null;
+    document.body.classList.remove('typing');
+    $('row-type').hidden=true;
+    if(lastOut) showResult(lastOut, TYTAIL);
+  }
+
+  function tyBake(){
+    if(!TY.base) return;
+    var nw=TY.base.naturalWidth||TY.base.width, nh=TY.base.naturalHeight||TY.base.height;
+    var off=document.createElement('canvas');
+    tyDraw(off,nw,nh);                              // native resolution, same code as the preview
+    var done=function(url){
+      var prev=lastOut;
+      if(prev && prev.local && prev.url!==url){ try{URL.revokeObjectURL(prev.url)}catch(e){} }
+      TY.on=false; TY.base=null; TY.cv=null;
+      document.body.classList.remove('typing'); $('row-type').hidden=true;
+      showResult({url:url, gen_type:(prev&&prev.gen_type)||'design', local:true, w:nw, h:nh,
+                  seed:prev&&prev.seed, filename:((prev&&prev.filename)||'render').replace(/\.\w+$/,'')+'-type.png'},
+                 'words set here');
+    };
+    if(off.toBlob) off.toBlob(function(b){ done(b?URL.createObjectURL(b):off.toDataURL('image/png')) },'image/png');
+    else done(off.toDataURL('image/png'));
+  }
+
+  function tySyncUI(){
+    [].slice.call($('ty-pre').querySelectorAll('button')).forEach(function(b){
+      b.setAttribute('aria-pressed',String(b.dataset.v===TY.pre)) });
+    [].slice.call($('ty-grid').querySelectorAll('button')).forEach(function(b){
+      b.setAttribute('aria-pressed',String(b.dataset.v===TY.pos)) });
+    $('ty-font').value=TY.font;
+    var f=TYPEF.filter(function(x){return x[0]===TY.font})[0];
+    $('ty-font-hint').textContent=f?f[2]:'';
+    $('ty-size').value=TY.size; $('ty-size-n').textContent=TY.size+'%';
+  }
+
+  (function tyWire(){
+    tyLoad();
+    var sel=$('ty-font');
+    TYPEF.forEach(function(f){ var o=document.createElement('option');
+      o.value=f[0]; o.textContent=f[0]; sel.appendChild(o) });
+    var g=$('ty-grid');
+    ['t','m','b'].forEach(function(v){ ['l','c','r'].forEach(function(h){
+      var b=document.createElement('button'); b.type='button'; b.dataset.v=v+h;
+      b.setAttribute('aria-pressed','false');
+      b.setAttribute('aria-label',({t:'top',m:'middle',b:'bottom'})[v]+' '+({l:'left',c:'centre',r:'right'})[h]);
+      g.appendChild(b) }) });
+    $('add-words').onclick=tyOpen;
+    $('ty-cancel').onclick=tyClose;
+    $('ty-bake').onclick=tyBake;
+    $('ty-lines').addEventListener('input',function(){ TY.lines=this.value; tyPreview() });
+    $('ty-pre').addEventListener('click',function(e){ var b=e.target.closest('button[data-v]');
+      if(!b) return; TY.pre=b.dataset.v; tySyncUI(); tySave(); tyPreview() });
+    g.addEventListener('click',function(e){ var b=e.target.closest('button[data-v]');
+      if(!b) return; TY.pos=b.dataset.v; tySyncUI(); tySave(); tyPreview() });
+    sel.addEventListener('change',function(){ TY.font=this.value; tySyncUI(); tySave();
+      tyFonts().then(tyPreview); tyPreview() });
+    $('ty-size').addEventListener('input',function(){ TY.size=+this.value;
+      $('ty-size-n').textContent=TY.size+'%'; tyPreview() });
+    $('ty-size').addEventListener('change',tySave);
+    window.addEventListener('resize',function(){ if(TY.on) tyPreview() });
+    tySyncUI();
+  })();
+  window.__rigType={TY:TY,draw:tyDraw,open:tyOpen,bake:tyBake,close:tyClose,preview:tyPreview,presets:TYPRE,fonts:TYPEF};
 
   // resume an unlocked session
   var saved=readPw();

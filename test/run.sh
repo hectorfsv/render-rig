@@ -13,6 +13,7 @@
 #   ./test/run.sh segs       every segmented control reacts to the click that made it
 #   ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays)
 #   ./test/run.sh magnify    zoom on the stage and in the gallery (Chromium + WebKit)
+#   ./test/run.sh type       words set in the browser: baked at native size, nothing spent
 #   ./test/run.sh tape       the rail marquee: pitch, seam, direction, speed
 #   ./test/run.sh shots      write previews to test/build/*.png
 #
@@ -276,6 +277,30 @@ if [ "$WHAT" = all ] || [ "$WHAT" = framing ]; then
   ff=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
   [ "$ff" != 0 ] && { printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
   echo "  -> $fp pass / $ff fail"; PASS=$((PASS+fp)); FAIL=$((FAIL+ff))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = type ]; then
+  build "$INJ/type.txt" "$B/ty.html"
+  line; echo "TYPE  (words set in the browser: native-size bake, stroke under fill, nothing spent)"
+  tp=0; tf=0
+  for v in "2026 1037" "1440 900" "393 852" "393 700"; do set -- $v
+    R=$(title "$1" "$2" "file://$B/ty.html" 120000)
+    p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+    f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    [ "$p" = 0 ] && { f=$((f+1)); R="${R}FAIL  no assertions ran at all"; }
+    tp=$((tp+p)); tf=$((tf+f))
+    [ "$f" != 0 ] && { echo "  ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  done
+  # Canvas text metrics and font loading differ by engine, and Hector's is Safari.
+  for v in "2026 1037 1" "393 700 3"; do set -- $v
+    R=$(node "$ROOT/test/webkit.js" "$B/ty.html" "$1" "$2" "$3")
+    p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+    f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    [ "$p" = 0 ] && { f=$((f+1)); R="${R}FAIL  no assertions ran in WebKit"; }
+    tp=$((tp+p)); tf=$((tf+f))
+    [ "$f" != 0 ] && { echo "  webkit ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  done
+  echo "  -> $tp pass / $tf fail"; PASS=$((PASS+tp)); FAIL=$((FAIL+tf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = tape ]; then
