@@ -1,0 +1,25 @@
+{
+  "name": "Render Rig",
+  "short_name": "Render Rig",
+  "start_url": "/render-rig/",
+  "scope": "/render-rig/",
+  "theme_color": "#0A0708",
+  "background_color": "#0A0708",
+  "icons": [
+    {
+      "src": "icon-192-v2.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512-v2.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-180-v2.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

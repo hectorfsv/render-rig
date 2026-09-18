@@ -7,6 +7,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Render Rig</title>
+<!-- Hector 2026-09-18: the Rig had NO icon of its own - not one link tag, not one file - so Safari
+     drew it an "R" and it leaned on the domain root's /favicon.ico, which is the Lounge's Vader.
+     Its own icon is Gargantua CENTRED ON THE BLACK HOLE (his pick; the centre is measured, see
+     tools/build-icon.py). The -v2 names are deliberate: Safari files its icon answer per SITE and a
+     re-added bookmark never clears it, so a name it has never requested is the only way to make it
+     look again without wiping website data - which holds this Rig's job history and spend. -->
+<link rel="icon" href="icon-v2.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32-v2.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icon-16-v2.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180-v2.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-title" content="Render Rig">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
