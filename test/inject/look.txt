@@ -66,9 +66,8 @@
     mode('compose'); T(!!sel('format')&&!!sel('palette'),'Compose offers all five');
     mode('video');   T(!!sel('format')&&!!sel('palette'),'Video offers all five');
     mode('design');
-    T(!sel('format') && !sel('lens') && !sel('aperture') && !sel('light'),
-      'Design does NOT offer camera, lens, depth or light - it is a graphic, not a photograph');
-    T(!!sel('palette'),'Design does offer the grade');
+    T($('look').hidden,
+      'Design offers NO look at all - it is a graphic, and its recipe already owns the palette');
     mode('upscale');
     T($('look').hidden,'Upscale offers no look at all - it has no prompt writer');
 
@@ -97,14 +96,14 @@
           'the summary names what is on ("'+sum+'")');
         T($('look-sum').classList.contains('live'),'and marks itself as set');
 
-        /* --- Design sends only the grade, even with the rest remembered --- */
+        /* --- Design sends NOTHING, even with looks remembered from another mode --- */
         mode('design');
         $('prompt').value='a flyer'; if($('exact-text')) $('exact-text').value='PARTY';
         press();
         afterSubmit(function(){
           var dg=keysWithPrefix('look_');
-          T(dg.length===1 && dg[0]==='look_palette=teal',
-            'Design sends the grade and nothing else (got '+dg.join(',')+')');
+          T(dg.length===0,
+            'Design sends no look field even with five remembered (got '+dg.join(',')+')');
 
           /* --- upscale sends none ---
              Upscale cannot be submitted without a source, so ask the builder

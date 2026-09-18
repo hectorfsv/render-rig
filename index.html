@@ -3711,9 +3711,14 @@ window.RigMascot=(function(){
     ['light','Light',    [['contre','Back-lit'],['practicals','Practicals only'],['window','Window'],['silhouette','Silhouette'],['hard','One hard source']]],
     ['palette','Grade',  [['teal','Teal & orange'],['bleach','Bleach bypass'],['sodium','Sodium night'],['steel','Cold steel'],['bw','Black & white'],['warm','Warm']]]
   ];
-  /* Design is a GRAPHIC, not a photograph - "shot on 16mm" on a flyer brief is
-     noise at best. Only the grade carries over. Upscale has no writer at all. */
-  var LOOK_BY_MODE={image:'all',compose:'all',video:'all',design:['palette'],upscale:[]};
+  /* PHOTOGRAPHIC JOBS ONLY. Design is a graphic, not a photograph - "shot on
+     16mm" on a flyer brief is noise, and its recipe ALREADY owns the colour with
+     its own beat ("PALETTE - two or three colours, plus the background"). A Grade
+     control there would append photographic grading language on top of that
+     instruction and the two would compete, which is how this project has been
+     bitten before. Hector, 2026-09-18: "why design has to do with depth, lens,
+     camera, grade!?" - he was right, it was my overreach. Upscale has no writer. */
+  var LOOK_BY_MODE={image:'all',compose:'all',video:'all',design:[],upscale:[]};
   var LOOK={};
   function lookFams(){ var m=LOOK_BY_MODE[type]||[];
     return m==='all' ? LOOK_FAMS : LOOK_FAMS.filter(function(f){return m.indexOf(f[0])>-1}) }
