@@ -758,7 +758,16 @@ body.typing .ctl-commit{display:none}
   background:var(--panel-lo);border:1px solid var(--rule);border-radius:3px;padding:9px 8px;margin-top:5px}
 #look-sum.live{color:var(--red)}
 .ty-save{margin-top:9px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+/* Four actions, one row. A 2-column grid made it two rows and the second fell
+   OUTSIDE the stage panel (measured: bottom 1054 against a pane ending at 999),
+   so Use as source and Clear were unreachable. The 520px cap stays - it is why
+   Download stopped being a 640px bar competing with Generate. */
 #out-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* Four fit from 600px up (measured: 124px each at his 2026 window, 140 in
+   landscape, no spill). On a portrait phone four would be 71px and Download
+   spills by 10, so there it stays 2x2 - the console is a flex column and the
+   extra row costs nothing. */
+@media (min-width:600px){#out-actions{grid-template-columns:repeat(4,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -2453,6 +2462,15 @@ window.RigMascot=(function(){
       return '<button type="button" data-v="'+x[0]+'" aria-pressed="'+(x[0]===ar)+'" aria-label="'+x[1]+', '+s.word+'">'+
         '<i class="ar-mark'+(x[0]==='auto'?' auto':'')+'" style="width:'+s.w+'px;height:'+s.h+'px" aria-hidden="true"></i>'+x[1]+'</button>';
     }).join('');
+    /* A flex-wrap leaves a lone orphan: six ratios wrapped 5+1 and the last one
+       stretched the full width on its own (Hector spotted it in Design). Lay them
+       on an explicit grid instead, balanced across two rows - 6 goes 3+3, 7 goes
+       4+3, 8 goes 4+4, and anything up to 5 stays on one row. */
+    (function(){
+      var n=list.length, cols = n<=5 ? n : Math.ceil(n/2), el=$('seg-ar');
+      el.style.display='grid';
+      el.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';
+    })();
     $('ar-shape').textContent=arShape(ar).word;
     $('ar-hint').textContent = type==='image'
       ? '2.35:1 is anamorphic cinema. Only Krea offers it.'

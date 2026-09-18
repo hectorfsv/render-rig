@@ -102,6 +102,38 @@
     if(!api){ flush(); return }
     T(vis($('add-words')),'a still offers "Add words"');
 
+    /* THE ACTION ROW MUST NOT GROW A ROW THAT FALLS OFF THE PANEL.
+       Adding a 4th button on a 2-column grid put "Use as source" and "Clear" on a
+       second row whose bottom measured 1054 against a stage pane ending at 999 -
+       both were unreachable, and no assertion here could see it because they were
+       still "visible" by every DOM test. Measure the geometry. */
+    (function(){
+      var oa=$('out-actions'), kids=[].slice.call(oa.children);
+      var rows={}; kids.forEach(function(k){ rows[Math.round(k.getBoundingClientRect().top)]=1 });
+      var nRows=Object.keys(rows).length, wide=innerWidth>=600;
+      T(wide ? nRows===1 : nRows<=2,
+        'the action row is '+nRows+' row(s) at '+innerWidth+'px wide (expected '+(wide?1:'<=2')+')');
+      var over=kids.filter(function(k){ return k.getBoundingClientRect().bottom > innerHeight+1 });
+      T(over.length===0, 'no action button falls below the window ('+
+        over.map(function(k){return k.textContent.trim()}).join(',')+')');
+      var spill=kids.filter(function(k){ return k.scrollWidth-k.clientWidth > 1 });
+      T(spill.length===0, 'no action button clips its own label ('+
+        spill.map(function(k){return k.textContent.trim()}).join(',')+')');
+    })();
+
+    /* The aspect-ratio row is a grid, not a flex-wrap: six ratios used to wrap
+       5+1 and the orphan stretched the whole width on its own. */
+    (function(){
+      var seg=$('seg-ar'); if(!seg) return;
+      var kids=[].slice.call(seg.children), rows={};
+      kids.forEach(function(k){ var t=Math.round(k.getBoundingClientRect().top); rows[t]=(rows[t]||0)+1 });
+      var counts=Object.keys(rows).sort(function(x,y){return x-y}).map(function(k){return rows[k]});
+      T(!(counts.length>1 && counts[counts.length-1]===1 && kids.length>2),
+        'the ratio row never leaves a single orphan ('+kids.length+' -> '+counts.join('+')+')');
+      var sp=kids.filter(function(k){ return k.scrollWidth-k.clientWidth > 1 });
+      T(sp.length===0,'no ratio button clips its label ('+sp.map(function(k){return k.textContent.trim()}).join(',')+')');
+    })();
+
     var submitsBefore=submits;
     $('add-words').click();
     waitFor('the type panel', function(){ return document.body.classList.contains('typing') && !!$('ty-cv') }, function(){
