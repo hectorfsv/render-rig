@@ -62,6 +62,15 @@
       R.noteW=Math.round(g.querySelector('.note').getBoundingClientRect().width);
       R.specs=g.querySelectorAll('.spec').length;
     }
+    // The header strip: type sizes and the pinned heights (2026-09-19, the 9->11px round).
+    (function(){
+      var hd=document.querySelector('.head'), mk=document.querySelector('.mark'), hr=document.querySelector('.head-r');
+      var fs=function(sel){var e=document.querySelector(sel); return e?parseFloat(getComputedStyle(e).fontSize):0};
+      R.head={h:Math.round(hd.getBoundingClientRect().height), mkI:fs('.mark i'), btn:fs('.gbtn'), chip:fs('.chip'),
+        btnH:Math.round(document.getElementById('guide-btn').getBoundingClientRect().height),
+        gap:Math.round(hr.getBoundingClientRect().left-mk.getBoundingClientRect().right),
+        mkSpill:mk.scrollWidth-Math.ceil(mk.getBoundingClientRect().width)};
+    })();
     if(scr==='scr-hub'){
       var cards=[].slice.call(document.querySelectorAll('.card'));
       R.cards=cards.length; R.hit=cards.map(hit).join(',');

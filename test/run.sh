@@ -73,6 +73,12 @@ if r['genHit']!='yes': bad.append('Generate '+r['genHit'])
 if r['vscroll']>0: bad.append('console scrolls the page %d'%r['vscroll'])
 e=[r['stage']['b'],r['gen']['b'],r['hist']['b']]
 if max(e)-min(e)>60: bad.append('columns ragged')
+h=r.get('head',{})
+if h and r['wide']:
+  if h['h']!=55: bad.append('header strip %dpx, was 55'%h['h'])
+  if h['btnH']!=23: bad.append('Guide button %dpx tall, was 23'%h['btnH'])
+  if min(h['mkI'],h['btn'],h['chip'])<11: bad.append('header type under 11px (fal.ai %s, buttons %s, chip %s)'%(h['mkI'],h['btn'],h['chip']))
+  if h['gap']<0 or h['mkSpill']>0: bad.append('title meets the buttons (gap %d, spill %d)'%(h['gap'],h['mkSpill']))
 print('|'.join(bad))")
       [ -z "$E" ] && dp=$((dp+1)) || { df=$((df+1)); echo "  FAIL ${1}x${2} $m: $E"; }
     done
@@ -83,6 +89,12 @@ r=json.load(sys.stdin); bad=[]
 if r['hscroll']>0: bad.append('horizontal overflow')
 if r.get('noteW',0)>620: bad.append('guide measure %dpx (cap 620)'%r['noteW'])
 if r.get('cards') is not None and (r['cards']!=r.get('modes') or 'NO' in r.get('hit','')): bad.append('hub cards %s vs %s modes, hit=%s'%(r['cards'],r.get('modes'),r.get('hit')))
+h=r.get('head',{})
+if h and r['wide']:
+  if h['h']!=55: bad.append('header strip %dpx, was 55'%h['h'])
+  if h['btnH']!=23: bad.append('Guide button %dpx tall, was 23'%h['btnH'])
+  if min(h['mkI'],h['btn'],h['chip'])<11: bad.append('header type under 11px (fal.ai %s, buttons %s, chip %s)'%(h['mkI'],h['btn'],h['chip']))
+  if h['gap']<0 or h['mkSpill']>0: bad.append('title meets the buttons (gap %d, spill %d)'%(h['gap'],h['mkSpill']))
 print('|'.join(bad))")
       [ -z "$E" ] && dp=$((dp+1)) || { df=$((df+1)); echo "  FAIL ${1}x${2} $s: $E"; }
     done

@@ -103,6 +103,9 @@ body.wide.authed .rig{max-width:2400px}
 .brk.tr{top:6px;right:6px;border-top:2px solid var(--red);border-right:2px solid var(--red)}
 .brk.bl{bottom:6px;left:6px;border-bottom:2px solid var(--red);border-left:2px solid var(--red)}
 
+/* 2026-09-19 (Hector: the fal.ai letters, Guide and Ready "too small"): the mark,
+   the buttons and the chip went 9px -> 11px. Their padding came down 1px so the
+   boxes stay 23px and the strip stays 55px - only the type changed. */
 .head{display:flex;align-items:center;justify-content:space-between;gap:12px;
   padding:15px 18px;border-bottom:1px solid var(--rule);
   background:linear-gradient(90deg,rgba(224,27,27,.10),transparent 62%)}
@@ -110,20 +113,20 @@ body.wide.authed .rig{max-width:2400px}
 .mark b{font-size:18px;font-weight:700;letter-spacing:.05em;white-space:nowrap;
   text-transform:uppercase;color:var(--ink);text-shadow:0 0 22px rgba(224,27,27,.5)}
 @media (max-width:430px){.mark b{font-size:15px}.mark i{font-size:8px;letter-spacing:.14em}}
-.mark i{font-family:var(--mono);font-style:normal;font-size:9px;font-weight:600;
+.mark i{font-family:var(--mono);font-style:normal;font-size:11px;font-weight:600;
   letter-spacing:.2em;color:var(--red);text-transform:uppercase}
 .head-r{display:flex;align-items:center;gap:8px;flex:0 0 auto}
-.chip{display:flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--rule);
-  font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.16em;
+.chip{display:flex;align-items:center;gap:6px;padding:4px 11px;border:1px solid var(--rule);
+  font-family:var(--mono);font-size:11px;line-height:13px;font-weight:600;letter-spacing:.16em;
   text-transform:uppercase;color:var(--ink-dim);white-space:nowrap}
 .chip::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--ink-faint)}
 .chip.busy::before{background:var(--amber);animation:blip 1s infinite}
 .chip.ok::before{background:var(--go)}
 .chip.err::before{background:var(--red-hot)}
 @keyframes blip{0%,100%{opacity:1}50%{opacity:.25}}
-.gbtn{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.16em;
+.gbtn{font-family:var(--mono);font-size:11px;line-height:13px;font-weight:600;letter-spacing:.16em;
   text-transform:uppercase;color:var(--ink-dim);background:rgba(0,0,0,.32);
-  border:1px solid var(--rule);padding:5px 10px;cursor:pointer}
+  border:1px solid var(--rule);padding:4px 11px;cursor:pointer}
 .gbtn:hover{border-color:var(--rule-hot);color:var(--ink)}
 
 /* ---------- screens (login / guide) ---------- */
@@ -345,8 +348,8 @@ body.wide #pane-ctl{order:3}
    here (the stage shows the dial, the elapsed time and the result), so the
    chip keeps its colour and drops its label. */
 body:not(.wide) .mark i{display:none}
-body:not(.wide) .gbtn{letter-spacing:.1em;padding:5px 8px}
-body:not(.wide) .chip{padding:5px 8px;gap:0;font-size:0;letter-spacing:0}
+body:not(.wide) .gbtn{letter-spacing:.1em;padding:4px 8px}
+body:not(.wide) .chip{padding:5px 8px;gap:0;font-size:0;line-height:0;letter-spacing:0}
 body:not(.wide) .chip::before{width:7px;height:7px}
 
 /* ---------- THE PHONE CONSOLE ----------
