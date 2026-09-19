@@ -76,6 +76,9 @@
     T(r.left>=rig.right+8&&r.right<=innerWidth,'it plays RIGHT of the lock card ('+Math.round(r.left)+'-'+Math.round(r.right)+', card ends at '+Math.round(rig.right)+')');
     T(r.top>=rig.top-1&&r.bottom<=rig.bottom+1,'and lines up with the card, top to bottom');
     T(hits($('pw'))&&hits($('unlock')),'the passphrase and Unlock still take the click');
+    // Hector 2026-09-19: "the vaderclawd it's too big in the lock screen, can you make it a lil bit smaller!" - at his
+    // 2026x1037 window the lock show drew 5 CSS px per sprite pixel (the stage's cap); the lock screen is capped at 4
+    T(st.S<=4&&(innerWidth!==2026||st.S===4),'the lock-screen characters are a notch smaller than the stage\'s (S='+st.S+')');
     var first=st.scene,tries=0;
     later(2500,function(){
       var n=inked(); T(n>0,'the lock-screen show paints ('+n+')');

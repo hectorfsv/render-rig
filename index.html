@@ -1576,8 +1576,10 @@ window.RigMascot=(function(){
     // one sprite pixel = a whole number of DEVICE pixels, so it stays crisp.
     // Stage: capped at 5 CSS px (small to medium). Hub strip: 94px tall, so 2-3 px.
     // lock: the empty space left of the lock card; pet: the window height IS the size
+    // Hector 2026-09-19: "the vaderclawd it's too big in the lock screen, can you make it a lil bit smaller!" - the lock
+    // screen alone is capped at 4 (it reached the stage's 5 at his 2026x1037 window); the render stage keeps 5
     var P=kind==='stage'||kind==='lock'
-      ?Math.max(2,Math.floor(Math.min(H/64,W/140,5)*dpr))
+      ?Math.max(2,Math.floor(Math.min(H/64,W/140,kind==='lock'?4:5)*dpr))
       :kind==='pet'?Math.max(2,Math.round((window.PET_SCALE||H/64)*dpr))
       :Math.max(2,Math.floor(Math.min(H/40,W/200,3)*dpr));
     S=P/dpr;
