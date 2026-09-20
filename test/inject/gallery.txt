@@ -1,7 +1,9 @@
 <style>*{animation:none!important;transition:none!important}</style>
 <script>
-/* The gallery drives real money decisions (people copy a prompt and spend), and
-   it is the one screen strangers will see. Checked with the REAL payload shape
+/* The gallery is the one screen strangers will see. Since 2026-09-20 (Hector) it
+   shows the picture, what made it and what it cost - NO prompt, NO seed, NO
+   settings and no "make one like this", for anyone. The fixtures still CARRY
+   prompts and seeds, so the checks prove the page hides them even when sent. Checked with the REAL payload shape
    the n8n endpoint returns, plus the two states nobody looks at: empty, and a
    lookup that fails. */
 (function(){
@@ -66,7 +68,7 @@
       T($('gal-count').textContent.indexOf(ITEMS.length+' picture')===0,
         'the count is shown ('+$('gal-count').textContent+')');
       var c0=frames[0].textContent;
-      T(/Ghostface doing Pilates/.test(c0), 'the prompt is on the card, not hidden behind hover');
+      T(!/Ghostface doing Pilates/.test(c0) && !frames[0].querySelector('.pr'), 'no prompt on the card, even though the payload carried one');
       T(/Krea 2 Large/.test(c0), 'the card names the MODEL that made it ('+
         (c0.match(/Krea 2 Large|Nano Banana Pro|Image|Compose/)||[''])[0]+')');
       T(/\$0\.06/.test(c0), 'the price is shown');
@@ -76,7 +78,7 @@
         'a row that ran on NBP says so, even though krea was picked');
       T(/Krea 2 Large/.test(d0=frames[0].textContent), 'and a real Krea row still says Krea');
       T(!/\$/.test(frames[2].textContent), 'an item with no known price shows no price, not $0.00');
-      T(/No prompt was kept/.test(frames[2].textContent), 'a promptless item says so rather than showing blank');
+      T(!/prompt/i.test(frames[2].textContent), 'a promptless item is just the picture and its model, no note about prompts');
       // A VIDEO ROW is drawn as a video, and its facts are a video's facts
       var vf=frames[4], vv=vf&&vf.querySelector('video');
       T(!!vv && !vf.querySelector('img'), 'a video row is drawn as a video, not a broken picture');
@@ -89,56 +91,36 @@
         T(!!ov && ov.hasAttribute('controls') && !$('gal-one').querySelector('img'), 'the detail view plays the video, with controls');
         T(/Length\s*5s/.test(vd), 'the length is listed');
         T(!/16:9/.test(vd), 'the stored default shape is NOT listed - image-to-video takes the start picture\'s shape');
-        T(/start picture/i.test(vd), 'it says the start picture is not kept, so a copy needs one added');
+        T(!/start picture/i.test(vd) && !/nod at the camera/.test(vd), 'no copy hint and no prompt on a video either');
         $('gal-back').click();
       }
       // the detail view
       frames[0].click();
       T(vis($('gal-one')) && !vis($('gal-grid')), 'tapping a frame opens the detail view');
       var d=$('gal-one').textContent;
-      T(/Ghostface doing Pilates/.test(d), 'the prompt is the headline in detail');
-      T(/166030281/.test(d), 'the seed is listed');
-      T(/4:5/.test(d), 'the shape is listed');
+      T(!/Ghostface doing Pilates/.test(d) && !/Someone typed/.test(d), 'the prompt is NOT in the detail view');
+      T(!/166030281/.test(d), 'the seed is NOT listed');
+      T(!/4:5/.test(d) && !/2K/.test(d) && !/medium/.test(d), 'settings are NOT listed');
+      T(/Krea 2 Large/.test(d), 'what made it is listed');
       T(/\$0\.06/.test(d), 'the cost is listed');
       var img=$('gal-one').querySelector('img');
       T(img && img.getBoundingClientRect().width<=$('gal-one').getBoundingClientRect().width+1,
         'the detail image fits its column');
-      // THE POINT OF THE WHOLE SCREEN
-      T(!!$('gal-use'), 'there is a way to make one like it');
-      $('gal-use').click();
-      T($('scr-console').classList.contains('on'), 'it takes you to the console');
-      T($('prompt').value==='Ghostface doing Pilates on the beach', 'the prompt is loaded ('+$('prompt').value.slice(0,28)+')');
-      T($('seed').value==='166030281', 'the seed is loaded ('+$('seed').value+')');
-      T(document.querySelector('#seg-type button[data-v="image"]').getAttribute('aria-pressed')==='true',
-        'the right mode is selected');
-      // A DESIGN ROW CARRIES ITS WORDS IN specs, NOT IN THE CAPTION.
-      // Restoring only the caption reopens Design with the Words box empty, and
-      // the recipe then branches to "the artwork carries NO text" - so the copy
-      // of a flyer would come back as a wordless picture at $0.08 a go.
+      T(!$('gal-use'), 'there is no "make one like this" (removed 2026-09-20)');
+      // A DESIGN ROW carries its words in specs; none of them may show either.
       $('gal-back').click();
       var dsn=document.querySelectorAll('.frame')[3];
       T(!!dsn, 'the design row has a frame');
       dsn.click();
-      T(!!$('gal-use'), 'the design row can be copied');
-      $('gal-use').click();
-      T(document.querySelector('#seg-type button[data-v="design"]').getAttribute('aria-pressed')==='true',
-        'a Grok row opens Design');
-      T($('exact-text').value.indexOf('Halloween Fest')===0,
-        'the WORDS come back too ('+JSON.stringify($('exact-text').value.slice(0,22))+')');
-      T($('exact-text').value.indexOf('Saturday October 24th')>0, 'every line of them, not just the first');
-      T(document.querySelector('#seg-ar button[data-v="4:3"]').getAttribute('aria-pressed')==='true',
-        'and the canvas shape it was designed for');
-      // and it must not leave its text behind on the next pick
-      $('menu-btn').click(); $('hub-gallery').click();
+      var dd=$('gal-one').textContent;
+      T(!$('gal-use') && !/Halloween Fest/.test(dd) && !/halloween party/.test(dd), 'a design row shows neither its words nor its caption nor a copy button');
+      T(/Grok Imagine 2\.0/.test(dd) && /\$0\.08/.test(dd), 'it shows what made it and what it cost');
+      // three opens by now: the gallery is fetched ONCE per session (each fetch is an execution)
+      $('gal-back').click(); $('menu-btn').click(); $('hub-gallery').click();
+      $('gal-back').click(); $('hub-gallery').click();
       setTimeout(function(){
-        document.querySelectorAll('.frame')[0].click(); $('gal-use').click();
-        T($('exact-text').value==='', 'copying a non-design row clears the previous words');
-        T($('prompt').value==='Ghostface doing Pilates on the beach', 'and loads its own prompt');
-        // three opens by now: the gallery is fetched ONCE per session (each fetch is an execution)
         T(galCalls===1, 'the gallery is fetched once per session, not on every open ('+galCalls+' fetches for 3 opens)');
       },300);
-      // and the mislabelled one must open the engine that really made it
-      $('gal-back').click(); $('hub-gallery').click();
     }
     if(mode==='empty'){
       T(frames.length===0, 'no frames when nothing is flagged');

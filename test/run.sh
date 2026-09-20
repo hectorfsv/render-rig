@@ -6,6 +6,7 @@
 #   ./test/run.sh desktop    wide layout, hub, guide
 #   ./test/run.sh price      the guide's numbers vs what the meter computes
 #   ./test/run.sh stage      a render lands, shows its seed, and can be cleared
+#   ./test/run.sh codes      per-person codes: a guest's credit, denials, expiry, the throttle, a refused poll
 #   ./test/run.sh giveup     polling ENDS: a job that never registered, a stuck one, and a failure message that stays
 #   ./test/run.sh mascot     the duel rides the render, cameos only in empty space, never over a click
 #   ./test/run.sh credit     credit left on screen, and every way the lookup fails
@@ -169,6 +170,23 @@ if [ "$WHAT" = all ] || [ "$WHAT" = stage ]; then
     [ "$f" != 0 ] && { echo "  ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
   done
   echo "  -> $sp pass / $sf fail"; PASS=$((PASS+sp)); FAIL=$((FAIL+sf))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = codes ]; then
+  build "$INJ/codes.txt" "$B/cd.html"
+  line; echo "CODES  (per-person codes: a guest's credit, denials, expiry, the throttle, a refused poll)"
+  kp=0; kf=0
+  for m in guest owner denied unpriced expired off throttle poll401 reload; do
+    for v in "2026 1037" "393 852"; do set -- $v
+      R=$(title "$1" "$2" "file://$B/cd.html?c=$m" 45000)
+      p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+      f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+      printf '%s' "$R" | grep -q '\[done\]' || { f=$((f+1)); R="${R}FAIL  c=$m never finished"; }
+      kp=$((kp+p)); kf=$((kf+f))
+      if [ "$f" != 0 ]; then echo "  c=$m ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; fi
+    done
+  done
+  echo "  -> $kp pass / $kf fail"; PASS=$((PASS+kp)); FAIL=$((FAIL+kf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = giveup ]; then

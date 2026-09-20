@@ -163,6 +163,17 @@ build. It only bites as **strictly inside** (`l>0 && r<W-1`) **on a portrait
 fixture**, the shape that actually overflows; then it fires 13 times. A test that
 cannot fail and a test that never ran look identical from outside.
 
+**2026-09-20 — PER-PERSON CODES WITH A CREDIT (built + proven free on a DEV copy; production deploy and
+the $0.06 paid proof are the morning's first job).** A code is a row in the `rig_codes` table (budget null =
+Hector), $10 / 10 days from the first login for the first tester. The rig holds credit on submit, spends it on
+delivery, gives it back on a failure (Grok keeps the charge), refuses over-budget and unpriced runs before the
+writer and before fal, checks the code AND the owner on every poll, and never calls fal's balance for a guest.
+Page: a guest sees "$7.40 of $10.00 left · 6 days", the four unpriced Topaz models are not offered, a refused run
+says why and starts no poll, three wrong tries lock Unlock for 15 min, an expired code is never sent again from
+that browser. The gallery shows the picture, what made it and what it cost - no prompt, no seed, no "make one
+like this", for anyone. New suite `./test/run.sh codes` (96); `gallery` rewritten (212). Story:
+`../../research/kling-render-rig-redesign.md` §2026-09-20; builder `../../scripts/build-rig-codes.py`.
+
 **2026-09-16 — BETA AUDIT DONE.** Everything re-verified against the live instance and the
 live page (full story: `../../research/kling-render-rig-redesign.md` §2026-09-16). Balance
 **$21.55**. Suite ALL GREEN incl. the new `./test/run.sh giveup`. Fixed: **the poll loop had

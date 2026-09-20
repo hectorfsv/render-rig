@@ -1251,8 +1251,8 @@ body.typing .ctl-commit{display:none}
       <div class="gal-head">
         <div>
           <h2 id="gal-title">Made with this</h2>
-          <p id="gal-sub">Every one of these started as a sentence. Tap any picture to read the
-             sentence that made it, then make your own from the same starting point.</p>
+          <p id="gal-sub">Everything here came out of this rig. Tap any picture to see it big,
+             what made it and what it cost.</p>
         </div>
         <span class="gal-count" id="gal-count"></span>
       </div>
@@ -2142,7 +2142,8 @@ window.RigMascot=(function(){
     if(t==='design') return 'grok';
     return 'topaz';
   }
-  function isGenUpscale(){return ['Redefine','Wonder','Wonder 3','Standard MAX'].indexOf($('upmodel').value)>=0}
+  var GEN_UPS=['Redefine','Wonder','Wonder 3','Standard MAX'];
+  function isGenUpscale(){return GEN_UPS.indexOf($('upmodel').value)>=0}
   function hasVoice(){return ELS.some(function(e){return e.voice && e.voice.trim()})}
   function optVal(id,useId){return $(useId).checked ? $(id).value : null}
 
@@ -2266,17 +2267,49 @@ window.RigMascot=(function(){
     $('scr-login').classList.add('shake');
     setTimeout(function(){$('scr-login').classList.remove('shake')},430);
   }
+  /* WRONG TRIES AND EXPIRED CODES STAY ON THIS DEVICE (2026-09-20). Every request
+     that reaches the rig is one n8n execution, gate or no gate, so the page is the
+     place a guest mashing Unlock after his credit ran out is stopped: three wrong
+     tries lock the button for 15 minutes, and a code the rig has called expired
+     is never sent again from this browser. */
+  var K_TRIES='rig_tries', K_EXPIRED='rig_expired', TRY_MAX=3, TRY_LOCK_MS=15*60*1000;
+  function tries(n){
+    try{
+      if(n===0){ localStorage.removeItem(K_TRIES); return null }
+      var o=JSON.parse(localStorage.getItem(K_TRIES)||'null')||{n:0,until:0};
+      if(n){ o.n=(o.n||0)+1; if(o.n>=TRY_MAX){ o.until=Date.now()+TRY_LOCK_MS; o.n=0 } localStorage.setItem(K_TRIES,JSON.stringify(o)) }
+      return o;
+    }catch(e){ return null }
+  }
+  function lockedFor(){ var o=tries(); if(!o||!o.until||o.until<=Date.now()) return '';
+    var m=Math.ceil((o.until-Date.now())/60000); return m+(m===1?' minute':' minutes') }
+  function codeTag(v){ var h=5381; for(var i=0;i<v.length;i++) h=((h*33)^v.charCodeAt(i))>>>0; return String(h) }
+  function isExpiredCode(v){ try{ return (JSON.parse(localStorage.getItem(K_EXPIRED)||'[]')||[]).indexOf(codeTag(v))>=0 }catch(e){ return false } }
+  function rememberExpired(v){ try{ var a=JSON.parse(localStorage.getItem(K_EXPIRED)||'[]')||[];
+    if(a.indexOf(codeTag(v))<0) a.push(codeTag(v)); localStorage.setItem(K_EXPIRED,JSON.stringify(a.slice(-10))) }catch(e){} }
+  function refused(v,why){
+    if(why==='expired'){ rememberExpired(v); fail('This code has expired. Ask Hector for a new one.'); return }
+    if(why==='off'){ fail('This code has been turned off.'); return }
+    tries(1); var wait=lockedFor();
+    fail(wait ? 'That passphrase is not right. Too many tries: wait '+wait+'.' : 'That passphrase is not right.');
+  }
   function unlock(){
     var v=$('pw').value.trim();
     if(!v){fail('Enter the passphrase.');return}
+    var wait=lockedFor(); if(wait){ fail('Too many wrong tries. Try again in '+wait+'.'); return }
+    if(isExpiredCode(v)){ fail('This code has expired. Ask Hector for a new one.'); return }
     $('unlock').disabled=true;$('unlock').textContent='Checking';$('pw-err').textContent='';
     // FormData keeps this a CORS "simple" request. A JSON content-type would
     // trigger an OPTIONS preflight that the n8n webhook cannot answer.
     var af=new FormData(); af.append('action','auth'); af.append('password',v);
     fetch(BASE,{method:'POST',body:af})
       .then(function(r){
-        if(!r.ok){ fail('That passphrase is not right.'); return }
-        pw=v;savePw(v);
+        if(!r.ok){
+          if(r.status!==401){ fail('The rig did not answer properly (HTTP '+r.status+'). Try again in a moment.'); return }
+          var eb=null; try{ eb=r.json() }catch(e){ eb=null }
+          return Promise.resolve(eb).catch(function(){ return null }).then(function(b){ refused(v,(b&&b.reason)||'wrong') });
+        }
+        tries(0); pw=v;savePw(v);
         // The credit left rides on the login reply: one execution, not two. Take
         // it BEFORE entering, or loadCredit() sees nothing and does a lookup of
         // its own. A reply without a body, or a server that sends no balance,
@@ -2310,17 +2343,24 @@ window.RigMascot=(function(){
      costs no execution of its own (a standalone lookup was 119 of 372 rig
      executions on 09-13/14). A reload shows the last figure; tapping it is the
      deliberate re-check. Never polled. */
-  var credit=null;
+  var credit=null, who=null;
+  /* WHO IS LOGGED IN rides on the same replies (2026-09-20): guest:true with the
+     budget and the expiry for a code on a credit, guest:false for Hector. A guest
+     sees his own credit left, never the account balance. */
   function takeCredit(d){
     if(!d || typeof d.balance!=='number') return false;
-    credit=d.balance; paintCredit();
-    try{ localStorage.setItem(K_CREDIT, JSON.stringify({v:credit,t:Date.now()})) }catch(e){}
+    credit=d.balance;
+    if(typeof d.guest==='boolean') who={guest:d.guest, user:String(d.user||''),
+      budget:(typeof d.budget==='number')?d.budget:null, expires_at:String(d.expires_at||''),
+      days_left:(typeof d.days_left==='number')?d.days_left:null};
+    paintCredit(); applyGuest();
+    try{ localStorage.setItem(K_CREDIT, JSON.stringify({v:credit,t:Date.now(),who:who})) }catch(e){}
     return true;
   }
   function loadCredit(){
     if(credit!==null){ paintCredit(); return }        // it came with the login reply
     var s=null; try{ s=JSON.parse(localStorage.getItem(K_CREDIT)||'null') }catch(e){}
-    if(s && typeof s.v==='number'){ credit=s.v; paintCredit(); return }
+    if(s && typeof s.v==='number'){ credit=s.v; who=(s.who&&typeof s.who.guest==='boolean')?s.who:who; paintCredit(); applyGuest(); return }
     refreshCredit();                 // nothing remembered yet: one lookup, once
   }
   function refreshCredit(){
@@ -2337,8 +2377,22 @@ window.RigMascot=(function(){
     var el=$('credit');
     if(credit===null){ el.hidden=true; return }
     el.hidden=false;
-    el.textContent=money(credit)==='0.00'&&credit>0 ? '<$0.01 left' : '$'+money(credit)+' left';
+    var amt=(money(credit)==='0.00'&&credit>0) ? '<$0.01' : '$'+money(credit), txt=amt+' left';
+    if(who&&who.guest){
+      if(typeof who.budget==='number') txt=amt+' of $'+money(who.budget)+' left';
+      if(typeof who.days_left==='number') txt+=' \u00b7 '+(who.days_left<=1 ? 'last day' : who.days_left+' days');
+    }
+    el.textContent=txt;
     el.classList.toggle('low', credit < cost());
+  }
+  /* A guest cannot pick a Topaz model fal publishes no price for: the rig refuses
+     it server-side, and the menu simply does not offer it. */
+  function applyGuest(){
+    var g=!!(who&&who.guest);
+    document.body.classList.toggle('guest', g);
+    var sel=$('upmodel'); if(!sel) return;
+    [].forEach.call(sel.options,function(o){ var gen=GEN_UPS.indexOf(o.value)>=0; o.hidden=g&&gen; o.disabled=g&&gen; });
+    if(g && GEN_UPS.indexOf(sel.value)>=0){ sel.value='Standard V2'; try{ syncMode(); paintCost() }catch(e){} }
   }
 
   /* ---------- layout ---------- */
@@ -3043,6 +3097,9 @@ window.RigMascot=(function(){
       })
       .then(function(d){
         if(!d) return;
+        // The rig priced the run against this code's credit and said no: nothing
+        // was sent to fal, nothing was held. Show why, and the credit it quoted.
+        if(d.status==='denied'){ takeCredit(d); bad(d.message||'That run is more than the credit left on this code.'); return }
         if(!d.jobId) throw new Error('no job id');
         curJob={id:d.jobId,priced:priced,type:type,seed:seedSent,caption:cap};
         saveJob({id:d.jobId,priced:priced,type:type,t0:t0,eta:eta,seed:seedSent,caption:cap});
@@ -3099,8 +3156,13 @@ window.RigMascot=(function(){
     var again=function(){ if(Date.now()-t0>waitCap()) return gaveUp(jobId,'cap');
       poller=setTimeout(function(){poll(jobId)},(curJob&&curJob.type==='video'?30:6)*1000) };
     fetch(BASE+'?jobId='+encodeURIComponent(jobId)+'&p='+encodeURIComponent(pw))
-      .then(function(r){return r.json()})
+      .then(function(r){
+        // A code that no longer opens this job (turned off, or not its owner): stop
+        // asking - every retry would be an execution - and back to the lock screen.
+        if(r.status===401){ stop(); saveJob(null); curJob=null; document.body.classList.remove('rendering'); lockOut(); return null }
+        return r.json() })
       .then(function(d){
+        if(!d) return;
         if(d.status==='done'){stop();finish(100);if(window.RigMascot) RigMascot.sheathe();setTimeout(function(){land(d)},420);return}
         if(d.status==='error'){stop();bad(d.message||'The model returned nothing.');return}
         if(d.row===false){ if(++noRow>=5) return gaveUp(jobId,'norow') } else noRow=0;
@@ -3479,12 +3541,11 @@ window.RigMascot=(function(){
       var isVid=it.gen_type==='video', dims=(w&&h ? ' width="'+w+'" height="'+h+'"' : '');
       var b=document.createElement('button');
       b.className='frame'; b.type='button'; b.dataset.i=i;
-      b.setAttribute('aria-label','Read the prompt behind this '+(isVid?'video':'picture'));
+      b.setAttribute('aria-label','Open this '+(isVid?'video':'picture'));
       b.innerHTML=(isVid
           ? '<video muted playsinline loop preload="metadata" style="--ar:'+ar.toFixed(4)+'"'+dims+' src="'+esc(it.url)+'#t=0.1"></video>'
           : '<img alt="" loading="lazy" style="--ar:'+ar.toFixed(4)+'"'+dims+' src="'+esc(it.url)+'">')+
-        '<div class="frame-cap"><div class="pr">'+esc(it.prompt||'No prompt was kept for this one')+'</div>'+
-        '<div class="frame-meta"><b>'+esc(engineOf(it))+'</b><span>'+
+        '<div class="frame-cap"><div class="frame-meta"><b>'+esc(engineOf(it))+'</b><span>'+
         (it.price!=null ? '$'+money(it.price) : '')+'</span></div></div>';
       // fade each picture in as it actually loads - motion that answers an event,
       // not a staggered entrance on everything
@@ -3514,33 +3575,20 @@ window.RigMascot=(function(){
     $('gal-grid').hidden=true; $('gal-one').hidden=false;
     $('gal-back').textContent='All pictures';
     $('gal-title').textContent='Made with this'; $('gal-sub').hidden=true;
-    var sp=it.specs||{}, facts=[], isVid=it.gen_type==='video', fromPic=isVid && +sp.image_count>0;
+    var sp=it.specs||{}, facts=[], isVid=it.gen_type==='video';
     facts.push(['Made with', engineOf(it)]);
     if(it.price!=null) facts.push(['Cost','$'+money(it.price)]);
-    if(it.seed) facts.push(['Seed', it.seed]);
     if(isVid && sp.duration) facts.push(['Length', sp.duration+'s']);
-    // Image-to-video has no shape of its own - it takes the start picture's. The
-    // stored aspect_ratio is only the UI's default there, and listing it would lie.
-    if(sp.aspect_ratio && !fromPic) facts.push(['Shape', sp.aspect_ratio]);
-    if(sp.resolution && !isVid) facts.push(['Detail', sp.resolution]);
-    if(sp.creativity) facts.push(['Creativity', sp.creativity]);
     if(it.created_at) facts.push(['Made', String(it.created_at).slice(0,10)]);
     if(GZ){ GZ.destroy(); GZ=null }
     $('gal-one').innerHTML =
       (isVid ? '<video src="'+esc(it.url)+'" controls playsinline loop preload="metadata"></video>'
              : '<div class="gal-pic"><div class="zview"><img alt="" src="'+esc(it.url)+'"></div></div>')+
-      '<div><div class="gal-said">Someone typed</div>'+
-      '<div class="pr">'+esc(it.prompt||'The prompt for this one was not kept.')+'</div>'+
-      '<div class="gal-facts">'+facts.map(function(f){
+      // Hector, 2026-09-20: the picture, what made it and what it cost. No prompt,
+      // no seed, no settings, no "make one like this" - for anyone.
+      '<div><div class="gal-facts">'+facts.map(function(f){
         return '<div><span>'+esc(f[0])+'</span><b>'+esc(f[1])+'</b></div>' }).join('')+'</div>'+
-      '<div class="gal-acts">'+
-        // The start picture is not stored, and a video mode with no source is a
-        // text-to-video: copying the prompt alone buys a different product.
-        (fromPic ? '<div class="hint">Made from a start picture, which is not kept. Add one to Sources before you generate, or this becomes a video from words alone.</div>' : '')+
-        (it.prompt ? '<button class="go sm" id="gal-use" type="button">Make one like this</button>' : '')+
-      '</div></div>';
-    var u=$('gal-use');
-    if(u) u.onclick=function(){ useGalleryItem(it) };
+      '</div>';
     if(!isVid){
       // the same bar as the stage's, cloned so there is one copy of the markup
       var gp=$('gal-one').querySelector('.gal-pic'), gim=gp.querySelector('img'),
@@ -3549,29 +3597,6 @@ window.RigMascot=(function(){
       GZ=makeZoom({img:gim, view:gim.parentNode, host:gp, bar:zb,
         frame:function(){ return {w:gim.offsetWidth, h:gim.offsetHeight} }});
     }
-  }
-  /* The whole point of the gallery: it is a starting point, not a trophy case.
-     Load the prompt, the mode and the seed into the console and go there. */
-  function useGalleryItem(it){
-    var b=document.querySelector('#seg-type button[data-v="'+modeOf(it)+'"]');
-    if(b) b.click();
-    $('prompt').value = it.prompt || '';
-    if(it.seed && $('seed')) $('seed').value = it.seed;
-    /* The prompt Grok wrote for it rides in specs.written (stored at submit
-       since 2026-09-14). With the seed locked to it, a change is a revision. */
-    var spw=(it.specs||{}).written;
-    if(spw && it.seed){ LASTR={written:spw, seed:String(it.seed), type:modeOf(it), caption:it.prompt||''}; saveLast(); setLock(true); }
-    /* A Design row's words live in specs, not in the caption, and the recipe
-       branches on them: with the Words box empty it is TOLD to state that the
-       artwork carries no text. Restoring the caption alone would reproduce the
-       flyer as a wordless picture. Always assign, so a previous pick cannot
-       leave its text behind. */
-    var sp=it.specs||{};
-    if($('exact-text')) $('exact-text').value = sp.exact_text || '';
-    /* The canvas shape is part of what made it look like that - the enhancer
-       now writes the layout for the shape it is given. */
-    if(sp.aspect_ratio) ar = sp.aspect_ratio;
-    picked=true; syncMode(); paintCost(); show('scr-console');
   }
   $('hub-gallery').onclick=openGallery;
   $('gal-back').onclick=function(){
