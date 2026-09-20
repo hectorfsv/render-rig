@@ -288,6 +288,9 @@ body.wide .card h3{font-size:16px}
 body.wide .card p{font-size:13px}
 .hub-in h2{font-size:19px;font-weight:600;letter-spacing:.02em;margin-bottom:5px}
 .hub-head p{font-size:13px;color:var(--ink-dim);margin-bottom:20px;max-width:56ch;line-height:1.5}
+/* a guest's welcome (2026-09-20): the name from the code row, the greeting Hector wrote for them */
+.hub-head p.welcome{color:var(--ink);font-size:14px;margin-bottom:16px}
+.hub-head p.welcome b{font-family:var(--disp);font-size:18px;font-weight:600;letter-spacing:.02em;display:block;margin-bottom:4px}
 .cards{display:grid;gap:10px;grid-template-columns:1fr}
 /* ONE ROW, ONE CARD PER MODE. At four columns the fifth mode dropped to a row
    of its own with a wide empty gap beside it. The cap grew with the count so the
@@ -826,6 +829,7 @@ body.typing .ctl-commit{display:none}
       </div>
       <div class="hub-in">
         <div class="hub-head">
+        <p class="welcome" id="welcome" hidden><b id="welcome-hi"></b><span id="welcome-msg"></span></p>
         <h2>What are you making?</h2>
         <p>Pick one and the console opens set up for it. You can switch at any point without coming back here.</p>
         </div>
@@ -2355,7 +2359,8 @@ window.RigMascot=(function(){
       // the days never vanish from the credit line after a render (seen live 09-20).
       var exp=String(d.expires_at||(who&&who.expires_at)||''), dl=(typeof d.days_left==='number') ? d.days_left
         : (exp && isFinite(Date.parse(exp)) ? Math.max(0,Math.ceil((Date.parse(exp)-Date.now())/864e5)) : (who&&typeof who.days_left==='number'?who.days_left:null));
-      who={guest:d.guest, user:String(d.user||''), budget:(typeof d.budget==='number')?d.budget:(who&&who.guest===d.guest?who.budget:null), expires_at:exp, days_left:dl};
+      who={guest:d.guest, user:String(d.user||''), budget:(typeof d.budget==='number')?d.budget:(who&&who.guest===d.guest?who.budget:null), expires_at:exp, days_left:dl,
+           greeting:String(d.greeting||(who&&who.greeting)||'')};
     }
     paintCredit(); applyGuest();
     try{ localStorage.setItem(K_CREDIT, JSON.stringify({v:credit,t:Date.now(),who:who})) }catch(e){}
@@ -2391,9 +2396,16 @@ window.RigMascot=(function(){
   }
   /* A guest cannot pick a Topaz model fal publishes no price for: the rig refuses
      it server-side, and the menu simply does not offer it. */
+  var WELCOME_DEFAULT='You are beta testing the Rig. Use everything, and give Hector all your feedback.';
   function applyGuest(){
     var g=!!(who&&who.guest);
     document.body.classList.toggle('guest', g);
+    var w=$('welcome');
+    if(w){
+      w.hidden=!g;
+      if(g){ var nm=String(who.user||'').trim(); nm=nm ? nm.charAt(0).toUpperCase()+nm.slice(1) : 'there';
+        $('welcome-hi').textContent='Welcome, '+nm+'.'; $('welcome-msg').textContent=who.greeting||WELCOME_DEFAULT; }
+    }
     var sel=$('upmodel'); if(!sel) return;
     [].forEach.call(sel.options,function(o){ var gen=GEN_UPS.indexOf(o.value)>=0; o.hidden=g&&gen; o.disabled=g&&gen; });
     if(g && GEN_UPS.indexOf(sel.value)>=0){ sel.value='Standard V2'; try{ syncMode(); paintCost() }catch(e){} }

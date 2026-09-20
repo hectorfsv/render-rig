@@ -176,7 +176,7 @@ if [ "$WHAT" = all ] || [ "$WHAT" = codes ]; then
   build "$INJ/codes.txt" "$B/cd.html"
   line; echo "CODES  (per-person codes: a guest's credit, denials, expiry, the throttle, a refused poll)"
   kp=0; kf=0
-  for m in guest owner denied unpriced expired off throttle land poll401 reload; do
+  for m in guest owner denied unpriced expired off throttle land poll401 reload nogreet; do
     for v in "2026 1037" "393 852"; do set -- $v
       R=$(title "$1" "$2" "file://$B/cd.html?c=$m" 45000)
       p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')

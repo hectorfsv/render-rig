@@ -15,7 +15,8 @@
      throttle  three wrong tries lock the button; the fourth try sends nothing
      land      a finished poll carries only the expiry: the days stay on the credit line
      poll401   a poll answered 401 stops the polling and locks the screen
-     reload    a remembered guest credit paints without a lookup */
+     reload    a remembered guest credit paints without a lookup
+     nogreet   a guest whose row has no greeting gets the standard beta line */
 (function(){
   var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search),
       mode=q.get('c')||'guest', calls={auth:0,balance:0,generate:0,poll:0};
@@ -25,9 +26,10 @@
   window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
   try{ ['rig_credit','rig_tries','rig_expired','rig_job'].forEach(function(k){ localStorage.removeItem(k) }) }catch(e){}
   var EXP=new Date(Date.now()+6*86400000).toISOString();
-  if(mode==='reload'){ try{ localStorage.setItem('rig_credit', JSON.stringify({v:7.4,t:Date.now(),who:{guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6}})) }catch(e){} }
+  if(mode==='reload'){ try{ localStorage.setItem('rig_credit', JSON.stringify({v:7.4,t:Date.now(),who:{guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6,greeting:'You have $10 for 5 days. Use everything, and give Hector all your feedback.'}})) }catch(e){} }
   var PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAUCAIAAAA7jDsBAAAAGElEQVR4nGM8oaHBgBsw4ZEblR6VJkkaANeKAUD7/NPBAAAAAElFTkSuQmCC';
-  var GUEST={ok:true,guest:true,user:'tanner',balance:7.4,budget:10,spent:2.6,expires_at:EXP,days_left:6,currency:'USD'};
+  var GREET='You have $10 for 5 days. Use everything, and give Hector all your feedback.';
+  var GUEST={ok:true,guest:true,user:'tanner',balance:7.4,budget:10,spent:2.6,expires_at:EXP,days_left:6,greeting:(mode==='nogreet'?'':GREET),currency:'USD'};
   var OWNER={ok:true,guest:false,user:'hector',balance:20.79,currency:'USD'};
   function J(status,body){ return Promise.resolve({ok:status<400,status:status,json:function(){return Promise.resolve(body)}}) }
   window.fetch=function(u,o){
@@ -98,7 +100,7 @@
     setTimeout(function(){
       var el=$('credit'), g=document.body.classList.contains('guest');
       document.querySelector('.card[data-go="image"]').click();
-      if(mode==='guest'||mode==='reload'){
+      if(mode==='guest'||mode==='reload'||mode==='nogreet'){
         T(calls.balance===0, 'no standalone lookup ('+calls.balance+')');
         T(vis(el) && /\$7\.40 of \$10\.00 left/.test(el.textContent), 'a guest sees his own credit against his budget ('+el.textContent+')');
         T(/6 days/.test(el.textContent), 'and the days left ('+el.textContent+')');
@@ -108,9 +110,22 @@
         T(GEN_UPS_ok(), 'the selected model is a priced one ('+$('upmodel').value+')');
         var s=null; try{ s=JSON.parse(localStorage.getItem('rig_credit')||'null') }catch(e){}
         T(!!s && s.who && s.who.guest===true && s.who.budget===10, 'who is logged in is remembered with the credit');
+        if(mode!=='nogreet'){
+          // the welcome lives on the hub: go back there to see it (the card click above opened the console)
+          $('menu-btn').click();
+          var wv=$('welcome');
+          T(!!wv && !wv.hidden && vis(wv), 'the hub greets the guest');
+          T($('welcome-hi').textContent==='Welcome, Tanner.', 'by name, capitalised ('+$('welcome-hi').textContent+')');
+          T($('welcome-msg').textContent===GREET, 'with the greeting Hector wrote in the row');
+          done();
+        }
+      }
+      if(mode==='nogreet'){
+        T(!$('welcome').hidden && /beta testing/.test($('welcome-msg').textContent) && $('welcome-hi').textContent==='Welcome, Tanner.', 'an empty greeting column falls back to the standard beta line ('+$('welcome-msg').textContent+')');
         done();
       }
       if(mode==='owner'){
+        T($('welcome').hidden, 'no welcome line for the owner');
         T(vis(el) && /\$20\.79 left/.test(el.textContent) && !/ of /.test(el.textContent), 'the owner sees the plain balance ('+el.textContent+')');
         T(!g, 'not a guest');
         document.querySelector('#seg-type button[data-v="upscale"]').click();
