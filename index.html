@@ -2350,9 +2350,13 @@ window.RigMascot=(function(){
   function takeCredit(d){
     if(!d || typeof d.balance!=='number') return false;
     credit=d.balance;
-    if(typeof d.guest==='boolean') who={guest:d.guest, user:String(d.user||''),
-      budget:(typeof d.budget==='number')?d.budget:null, expires_at:String(d.expires_at||''),
-      days_left:(typeof d.days_left==='number')?d.days_left:null};
+    if(typeof d.guest==='boolean'){
+      // The finished poll carries the expiry but not the day count: derive it, so
+      // the days never vanish from the credit line after a render (seen live 09-20).
+      var exp=String(d.expires_at||(who&&who.expires_at)||''), dl=(typeof d.days_left==='number') ? d.days_left
+        : (exp && isFinite(Date.parse(exp)) ? Math.max(0,Math.ceil((Date.parse(exp)-Date.now())/864e5)) : (who&&typeof who.days_left==='number'?who.days_left:null));
+      who={guest:d.guest, user:String(d.user||''), budget:(typeof d.budget==='number')?d.budget:(who&&who.guest===d.guest?who.budget:null), expires_at:exp, days_left:dl};
+    }
     paintCredit(); applyGuest();
     try{ localStorage.setItem(K_CREDIT, JSON.stringify({v:credit,t:Date.now(),who:who})) }catch(e){}
     return true;

@@ -13,6 +13,7 @@
      expired   401 reason expired: message, the code is never sent again
      off       401 reason off
      throttle  three wrong tries lock the button; the fourth try sends nothing
+     land      a finished poll carries only the expiry: the days stay on the credit line
      poll401   a poll answered 401 stops the polling and locks the screen
      reload    a remembered guest credit paints without a lookup */
 (function(){
@@ -46,7 +47,7 @@
     }
     if(String(u).indexOf('jobId=')>-1){ calls.poll++;
       if(mode==='poll401') return J(401,{error:'unauthorized',reason:'wrong'});
-      return J(200,{status:'done',gen_type:'image',urls:[PNG],width:null,height:null,seed:1,filename:'ai-image.png',balance:7.34,guest:true,budget:10,user:'tanner'});
+      return J(200,{status:'done',gen_type:'image',urls:[PNG],width:null,height:null,seed:1,filename:'ai-image.png',balance:7.34,guest:true,budget:10,user:'tanner',expires_at:EXP});
     }
     return Promise.reject(new Error('no net'));
   };
@@ -131,6 +132,15 @@
           }
           setTimeout(function(){ T($('gen-err').textContent===e, 'the message is still there 8 s later'); done() },8000);
         },400);
+      }
+      if(mode==='land'){
+        $('prompt').value='a test'; $('submit').click();
+        setTimeout(function(){
+          T(calls.poll===1 && document.body.classList.contains('done'), 'the render landed ('+calls.poll+' poll)');
+          T(/\$7\.34 of \$10\.00 left/.test(el.textContent), 'the credit updated from the finished poll ('+el.textContent+')');
+          T(/6 days/.test(el.textContent), 'the days survive a render whose reply carries only the expiry ('+el.textContent+')');
+          done();
+        },16500);
       }
       if(mode==='poll401'){
         $('prompt').value='a test'; $('submit').click();
