@@ -137,28 +137,24 @@
     T(!!L && L.written && L.seed,'rig_last is on disk for the next visit');
     step6();
   }
-  /* 6. "Make one like this" from the gallery is a revision base too: the row's
-        written prompt + seed come along, locked, so a change edits that prompt */
+  /* 6. The gallery offers NO "make one like this" any more (Hector, 2026-09-20): a
+        visit shows the picture, what made it and what it cost, and leaves the
+        revision base of the LAST RENDER exactly as it was. */
   function step6(){
+    var before=localStorage.getItem('rig_last');
     $('menu-btn').click(); $('hub-gallery').click();
     setTimeout(function(){
       var f=document.querySelector('.frame'); T(!!f,'the gallery shows the stub row');
       if(f) f.click();
       setTimeout(function(){
-        T(!!$('gal-use'),'Make one like this is offered'); if($('gal-use')) $('gal-use').click();
-        T($('scr-console').classList.contains('on'),'it opens the console');
-        T($('prompt').value==='gal caption' && $('seed').value==='555','caption and seed loaded');
-        T(lockOn(),'the seed arrives LOCKED');
-        var L=null; try{L=JSON.parse(localStorage.getItem('rig_last')||'null')}catch(e){}
-        T(!!L && L.written==='GAL WRITTEN' && L.seed==='555' && L.type==='compose','the row\'s written prompt is the revision base');
-        T(/Locked to your last render/.test(hint()),'the hint says a change is a revision');
-        $('prompt').value='gal caption at night';
-        press();
-        setTimeout(function(){
-          var b=last();
-          T(b.get('prior_prompt')==='GAL WRITTEN' && b.get('prompt')==='gal caption at night' && b.get('seed')==='555','a change on a gallery pick revises the prompt that made it');
-          flush();
-        },300);
+        T(!$('gal-use'),'no "make one like this" is offered');
+        var d=$('gal-one').textContent;
+        T(!/gal caption/.test(d) && !/555/.test(d) && !/GAL WRITTEN/.test(d),'the row\'s prompt, seed and written prompt are not shown');
+        T(localStorage.getItem('rig_last')===before,'the last render\'s revision base is untouched by a gallery visit');
+        $('gal-back').click(); $('gal-back').click();
+        T($('scr-console').classList.contains('on'),'Back returns to the console');
+        T(lockOn(),'the seed is still locked to the last render');
+        flush();
       },400);
     },600);
   }
