@@ -2159,19 +2159,36 @@ window.RigMascot=(function(){
   //    they use localStorage and survive a crash, a refresh or a browser restart.
   var PW_TTL_MS = 2*60*60*1000;          // 2 hours, then type it again
   var JOB_TTL_MS = 60*60*1000;           // a 15s video takes ~11 min; 60 is generous
-  var K_PW='rig_pw', K_HIST='rig_hist', K_JOB='rig_job', K_SPEND='rig_spend', K_LAST='rig_last', K_CREDIT='rig_credit';
+  var K_PW='rig_pw', K_HIST='rig_hist', K_JOB='rig_job', K_SPEND='rig_spend', K_LAST='rig_last', K_CREDIT='rig_credit', K_USER='';
+  /* ONE PERSON, ONE SET OF KEYS (2026-09-20, Hector: "never mix works"). Everything a
+     session keeps on this device - history, spend, last render, in-flight job, credit -
+     is filed under the name the rig answered with, so his own sessions and a check as
+     a guest on the same browser never see each other. Keys without a name are from
+     before names existed: they are the owner's and move under his name once. */
+  function keysFor(user){
+    var u=String(user||''), sfx=u?':'+u:'';
+    K_USER=u; K_HIST='rig_hist'+sfx; K_JOB='rig_job'+sfx; K_SPEND='rig_spend'+sfx; K_LAST='rig_last'+sfx; K_CREDIT='rig_credit'+sfx;
+  }
+  function adoptLegacy(user){
+    try{
+      if(!user || localStorage.getItem('rig_hist:'+user)!==null) return;
+      ['rig_hist','rig_spend','rig_last','rig_job'].forEach(function(k){
+        var v=localStorage.getItem(k); if(v!==null){ localStorage.setItem(k+':'+user,v); localStorage.removeItem(k) } });
+      localStorage.removeItem('rig_credit');     // whoever's figure that was, it is not trusted under a name
+    }catch(e){}
+  }
 
-  function savePw(v){
-    try{ sessionStorage.setItem(K_PW, JSON.stringify({v:v, ts:Date.now()})) }catch(e){}
+  function savePw(v,user,guest){
+    try{ sessionStorage.setItem(K_PW, JSON.stringify({v:v, ts:Date.now(), user:String(user||''), guest:(typeof guest==='boolean')?guest:null})) }catch(e){}
   }
   function readPw(){
     try{
-      var raw=sessionStorage.getItem(K_PW); if(!raw) return '';
+      var raw=sessionStorage.getItem(K_PW); if(!raw) return null;
       var o=JSON.parse(raw);
-      if(!o || !o.v || !o.ts) return '';
-      if(Date.now()-o.ts > PW_TTL_MS){ sessionStorage.removeItem(K_PW); return '' }
-      return o.v;
-    }catch(e){ return '' }
+      if(!o || !o.v || !o.ts) return null;
+      if(Date.now()-o.ts > PW_TTL_MS){ sessionStorage.removeItem(K_PW); return null }
+      return o;
+    }catch(e){ return null }
   }
   function clearPw(){ try{ sessionStorage.removeItem(K_PW) }catch(e){} }
 
@@ -2325,7 +2342,7 @@ window.RigMascot=(function(){
       .finally(function(){$('unlock').disabled=false;$('unlock').textContent='Unlock'});
   }
   function lockOut(){
-    pw='';clearPw();
+    pw='';clearPw();who=null;credit=null;applyGuest();
     show('scr-login');chip('Locked');$('guide-btn').hidden=true;
     document.body.classList.remove('authed');
     fail('Session expired. Enter the passphrase again.');
@@ -2352,9 +2369,26 @@ window.RigMascot=(function(){
      budget and the expiry for a code on a credit, guest:false for Hector. A guest
      sees his own credit left, never the account balance. */
   function takeCredit(d){
-    if(!d || typeof d.balance!=='number') return false;
-    credit=d.balance;
-    if(typeof d.guest==='boolean'){
+    if(!d || typeof d!=='object') return false;
+    var known=(typeof d.guest==='boolean'), num=(typeof d.balance==='number');
+    // WHO comes from any reply that names a person; HOW MUCH only from a number. The
+    // two were one test until 09-20: a fal outage on the owner's login left the
+    // previous person's name and figure on screen (execution 6117).
+    if(known){
+      var u=String(d.user||'');
+      if(!who || who.user!==u || who.guest!==d.guest){
+        if(d.guest===false) adoptLegacy(u);
+        keysFor(u); credit=null; who=null;         // never the last person's figure under this name
+      }
+      if(pw) savePw(pw,u,d.guest);
+    }
+    if(num) credit=d.balance;
+    else if(known && credit===null){
+      // the person is named but the figure did not come (fal slow or down): keep the
+      // figure remembered for THIS person rather than overwrite it with nothing
+      try{ var prev=JSON.parse(localStorage.getItem(K_CREDIT)||'null'); if(prev && typeof prev.v==='number') credit=prev.v }catch(e){}
+    }
+    if(known){
       // The finished poll carries the expiry but not the day count: derive it, so
       // the days never vanish from the credit line after a render (seen live 09-20).
       var exp=String(d.expires_at||(who&&who.expires_at)||''), dl=(typeof d.days_left==='number') ? d.days_left
@@ -2362,14 +2396,17 @@ window.RigMascot=(function(){
       who={guest:d.guest, user:String(d.user||''), budget:(typeof d.budget==='number')?d.budget:(who&&who.guest===d.guest?who.budget:null), expires_at:exp, days_left:dl,
            greeting:String(d.greeting||(who&&who.greeting)||'')};
     }
+    if(!known && !num) return false;
     paintCredit(); applyGuest();
     try{ localStorage.setItem(K_CREDIT, JSON.stringify({v:credit,t:Date.now(),who:who})) }catch(e){}
-    return true;
+    return num;
   }
   function loadCredit(){
     if(credit!==null){ paintCredit(); return }        // it came with the login reply
     var s=null; try{ s=JSON.parse(localStorage.getItem(K_CREDIT)||'null') }catch(e){}
-    if(s && typeof s.v==='number'){ credit=s.v; who=(s.who&&typeof s.who.guest==='boolean')?s.who:who; paintCredit(); applyGuest(); return }
+    if(s && s.who && typeof s.who.guest==='boolean' && !who) who=s.who;   // a resumed session: the person is remembered with the figure
+    if(s && typeof s.v==='number'){ credit=s.v; paintCredit(); applyGuest(); return }
+    applyGuest();
     refreshCredit();                 // nothing remembered yet: one lookup, once
   }
   function refreshCredit(){
@@ -4044,7 +4081,7 @@ window.RigMascot=(function(){
 
   // resume an unlocked session
   var saved=readPw();
-  if(saved){pw=saved;enter()} else {setTimeout(function(){$('pw').focus()},380); if(window.RigMascot) RigMascot.screen('scr-login')}
+  if(saved){pw=saved.v;keysFor(saved.user);enter()} else {setTimeout(function(){$('pw').focus()},380); if(window.RigMascot) RigMascot.screen('scr-login')}
 })();
 </script>
 </body>

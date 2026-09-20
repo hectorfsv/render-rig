@@ -16,7 +16,10 @@
      land      a finished poll carries only the expiry: the days stay on the credit line
      poll401   a poll answered 401 stops the polling and locks the screen
      reload    a remembered guest credit paints without a lookup
-     nogreet   a guest whose row has no greeting gets the standard beta line */
+     nogreet   a guest whose row has no greeting gets the standard beta line
+     switch    the owner logs in on a browser that remembers a guest, and fal's balance is DOWN:
+               no welcome, no figure, the guest's history and credit untouched under the guest's keys
+     migrate   the owner's pre-name history moves under his name; a leaked nameless credit is dropped */
 (function(){
   var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search),
       mode=q.get('c')||'guest', calls={auth:0,balance:0,generate:0,poll:0};
@@ -24,9 +27,14 @@
   function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); document.title=S+out.join('\n')+S}
   function done(){ out.push('[done]'); document.title=S+out.join('\n')+S }
   window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
-  try{ ['rig_credit','rig_tries','rig_expired','rig_job'].forEach(function(k){ localStorage.removeItem(k) }) }catch(e){}
+  try{ ['rig_credit','rig_tries','rig_expired','rig_job','rig_hist','rig_spend','rig_last','rig_hist:tanner','rig_credit:tanner','rig_hist:hector','rig_credit:hector','rig_spend:hector','rig_job:hector','rig_last:hector'].forEach(function(k){ localStorage.removeItem(k) }) }catch(e){}
+  try{ sessionStorage.removeItem('rig_pw') }catch(e){}
   var EXP=new Date(Date.now()+6*86400000).toISOString();
-  if(mode==='reload'){ try{ localStorage.setItem('rig_credit', JSON.stringify({v:7.4,t:Date.now(),who:{guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6,greeting:'You have $10 for 5 days. Use everything, and give Hector all your feedback.'}})) }catch(e){} }
+  // a reload today: the login names the person (no figure while fal is slow), the figure is remembered under THEIR key
+  if(mode==='reload'){ try{ localStorage.setItem('rig_credit:tanner', JSON.stringify({v:7.4,t:Date.now(),who:{guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6,greeting:'You have $10 for 5 days. Use everything, and give Hector all your feedback.'}})) }catch(e){} }
+  var HITEM=[{url:'data:image/png;base64,iVBORw0KGgo=',filename:'t.png',gen_type:'image',w:10,h:20,seed:1}];
+  if(mode==='switch'){ try{ localStorage.setItem('rig_hist:tanner',JSON.stringify(HITEM)); localStorage.setItem('rig_credit:tanner',JSON.stringify({v:7.4,t:Date.now(),who:{guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6}})); localStorage.setItem('rig_credit',JSON.stringify({v:10,t:Date.now(),who:{guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6}})) }catch(e){} }
+  if(mode==='migrate'){ try{ localStorage.setItem('rig_hist',JSON.stringify(HITEM)); localStorage.setItem('rig_spend','1.5'); localStorage.setItem('rig_credit',JSON.stringify({v:10,t:Date.now(),who:{guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6}})) }catch(e){} }
   var PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAUCAIAAAA7jDsBAAAAGElEQVR4nGM8oaHBgBsw4ZEblR6VJkkaANeKAUD7/NPBAAAAAElFTkSuQmCC';
   var GREET='You have $10 for 5 days. Use everything, and give Hector all your feedback.';
   var GUEST={ok:true,guest:true,user:'tanner',balance:7.4,budget:10,spent:2.6,expires_at:EXP,days_left:6,greeting:(mode==='nogreet'?'':GREET),currency:'USD'};
@@ -38,10 +46,11 @@
       if(mode==='expired') return J(401,{error:'unauthorized',reason:'expired'});
       if(mode==='off') return J(401,{error:'unauthorized',reason:'off'});
       if(mode==='throttle') return J(401,{error:'unauthorized',reason:'wrong'});
-      if(mode==='reload') return J(200,{ok:true});
-      return J(200, mode==='owner' ? OWNER : GUEST);
+      if(mode==='reload') return J(200,{ok:true,guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6,greeting:GREET,currency:'USD'});
+      if(mode==='switch') return J(200,{ok:true,guest:false,user:'hector',balance:null,currency:'USD'});
+      return J(200, (mode==='owner'||mode==='migrate') ? OWNER : GUEST);
     }
-    if(a==='balance'){ calls.balance++; return J(200, mode==='owner' ? OWNER : GUEST) }
+    if(a==='balance'){ calls.balance++; if(mode==='switch') return J(200,{ok:true,guest:false,user:'hector',balance:null}); return J(200, (mode==='owner'||mode==='migrate') ? OWNER : GUEST) }
     if(a==='generate'){ calls.generate++;
       if(mode==='denied') return J(200,{status:'denied',reason:'budget',price:0.06,balance:0.03,budget:10,guest:true,user:'tanner',message:'This run costs $0.06 and you have $0.03 left.'});
       if(mode==='unpriced') return J(200,{status:'denied',reason:'unpriced',price:null,balance:7.4,budget:10,guest:true,user:'tanner',message:'That model has no published price, so it is not available on a credit. Pick another one.'});
@@ -108,8 +117,8 @@
         document.querySelector('#seg-type button[data-v="upscale"]').click();
         T(genHidden()==='Redefine,Standard MAX,Wonder,Wonder 3', 'the four unpriced Topaz models are not offered ('+genHidden()+')');
         T(GEN_UPS_ok(), 'the selected model is a priced one ('+$('upmodel').value+')');
-        var s=null; try{ s=JSON.parse(localStorage.getItem('rig_credit')||'null') }catch(e){}
-        T(!!s && s.who && s.who.guest===true && s.who.budget===10, 'who is logged in is remembered with the credit');
+        var s=null; try{ s=JSON.parse(localStorage.getItem('rig_credit:tanner')||'null') }catch(e){}
+        T(!!s && s.who && s.who.guest===true && s.who.budget===10 && localStorage.getItem('rig_credit')===null, 'who is logged in is remembered with the credit, under THEIR key and no nameless one');
         if(mode!=='nogreet'){
           // the welcome lives on the hub: go back there to see it (the card click above opened the console)
           $('menu-btn').click();
@@ -122,6 +131,24 @@
       }
       if(mode==='nogreet'){
         T(!$('welcome').hidden && /beta testing/.test($('welcome-msg').textContent) && $('welcome-hi').textContent==='Welcome, Tanner.', 'an empty greeting column falls back to the standard beta line ('+$('welcome-msg').textContent+')');
+        done();
+      }
+      if(mode==='switch'){
+        T($('welcome').hidden && !g, 'the owner gets no welcome even though the browser remembered a guest and fal was down');
+        T(el.hidden, 'and no figure at all rather than the guest\'s ('+el.textContent+')');
+        var rec=null; try{ rec=JSON.parse(sessionStorage.getItem('rig_pw')||'null') }catch(e){}
+        T(!!rec && rec.user==='hector' && rec.guest===false, 'the session record names the owner');
+        T(!!document.querySelector('#hist-strip .hist-empty'), 'his history strip is his own (empty), not the guest\'s');
+        T(localStorage.getItem('rig_hist:tanner')!==null && /7\.4/.test(localStorage.getItem('rig_credit:tanner')||''), 'the guest\'s history and credit are untouched under the guest\'s keys');
+        T(localStorage.getItem('rig_credit')===null, 'the nameless credit that leaked is gone');
+        done();
+      }
+      if(mode==='migrate'){
+        T($('welcome').hidden && !g && /\$20\.79 left/.test(el.textContent), 'the owner logs in as the owner ('+el.textContent+')');
+        T(localStorage.getItem('rig_hist')===null && (localStorage.getItem('rig_hist:hector')||'').indexOf('t.png')>0, 'his pre-name history moved under his name');
+        T(localStorage.getItem('rig_spend:hector')==='1.5' && localStorage.getItem('rig_spend')===null, 'so did the spend counter');
+        T(!document.querySelector('#hist-strip .hist-empty'), 'and it is on his strip');
+        T(localStorage.getItem('rig_credit')===null, 'the nameless credit is dropped');
         done();
       }
       if(mode==='owner'){
