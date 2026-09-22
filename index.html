@@ -295,8 +295,9 @@ body.wide .card p{font-size:13px}
 /* ONE ROW, ONE CARD PER MODE. At four columns the fifth mode dropped to a row
    of its own with a wide empty gap beside it. The cap grew with the count so the
    cards stay the same width they were - and because .hub-in is bottom-anchored,
-   losing the second row moves the whole strip DOWN, which is where he wanted it. */
-body.wide .cards{grid-template-columns:repeat(5,minmax(0,1fr));max-width:1950px}
+   losing the second row moves the whole strip DOWN, which is where he wanted it.
+   Six since Video Lite (2026-09-22): still one row, the cap grown in proportion. */
+body.wide .cards{grid-template-columns:repeat(6,minmax(0,1fr));max-width:2340px}
 .card{position:relative;text-align:left;cursor:pointer;padding:17px 16px 15px;
   background:linear-gradient(180deg,rgba(31,24,23,.86),rgba(10,7,8,.9));
   border:1px solid var(--rule);transition:.16s;color:inherit;font:inherit;
@@ -865,6 +866,12 @@ body.typing .ctl-commit{display:none}
             <p>A clip of 3 to 15 seconds. The soundtrack is written from your words, so name the song or the line you want to hear.</p>
             <div class="foot"><span class="from">$0.336</span><span class="wait">about 7 min for 10s</span></div>
           </button>
+          <button class="card" type="button" data-go="lite">
+            <h3>Video Lite</h3>
+            <div class="eng">MiniMax H3 Max</div>
+            <p>The economy clip: 5 to 15 seconds from a still or from words, with sound included free. Good for cartoon scenes made in Image. No characters.</p>
+            <div class="foot"><span class="from">$0.40</span><span class="wait">about a minute</span></div>
+          </button>
         </div>
         <div class="hub-foot" style="gap:10px">
           <button class="go ghost sm" id="hub-guide" type="button" style="max-width:280px">Read the guide first</button>
@@ -985,6 +992,7 @@ body.typing .ctl-commit{display:none}
               <button type="button" data-v="design" aria-pressed="false">Design</button>
               <button type="button" data-v="upscale" aria-pressed="false">Upscale</button>
               <button type="button" data-v="video" aria-pressed="false">Video</button>
+              <button type="button" data-v="lite" aria-pressed="false">Video Lite</button>
             </div>
             <div class="hint" id="mode-hint"></div>
           </div>
@@ -1047,12 +1055,21 @@ body.typing .ctl-commit{display:none}
           <div id="row-vid" hidden>
             <div class="lab">Duration <span class="opt"><b id="dur-read">5</b> seconds</span></div>
             <input type="range" id="dur" min="3" max="15" step="1" value="5" aria-label="Duration in seconds">
-            <div class="hint">Billed per second, so this is the price dial. <b>3s is the cheapest real test at $0.34.</b></div>
-            <label class="check" style="margin-top:9px">
+            <div class="hint" id="dur-hint">Billed per second, so this is the price dial. <b>3s is the cheapest real test at $0.34.</b></div>
+            <label class="check" id="row-audio" style="margin-top:9px">
               <input type="checkbox" id="audio">
               <span>Generate audio</span><b>+50%</b>
             </label>
-            <div class="hint">Kling writes the audio from your words. Name the song, the line, or the room tone or it comes back near-silent.</div>
+            <div class="hint" id="audio-hint">Kling writes the audio from your words. Name the song, the line, or the room tone or it comes back near-silent.</div>
+            <div class="hint" id="lite-audio" hidden style="margin-top:9px"><b>Sound is always included, free.</b> Grok writes the sound cues from your words and the opening frame.</div>
+            <div id="row-vres" hidden style="margin-top:11px">
+              <div class="lab">Resolution <span class="opt">1080P costs double</span></div>
+              <div class="seg" id="seg-vres" role="group" aria-label="Video Lite resolution">
+                <button type="button" data-v="768P" aria-pressed="true">768P</button>
+                <button type="button" data-v="1080P" aria-pressed="false">1080P</button>
+              </div>
+              <div class="hint">768P is H3's native size and the economy setting. 1080P is sharpened up from it.</div>
+            </div>
             <div id="row-endimg" hidden style="margin-top:11px">
               <div class="lab">End on <span class="opt">closes the loop</span></div>
               <select id="end-img" aria-label="End frame"></select>
@@ -1338,6 +1355,7 @@ body.typing .ctl-commit{display:none}
           <tr><td>Design</td><td class="d" colspan="2">Builds the artwork around them, up to three. Your words are set into the artwork, interlocking with the pictures.</td></tr>
           <tr><td>Image</td><td class="d" colspan="2">Borrows their look, if you tick style references. Never copies them in.</td></tr>
           <tr><td>Video</td><td class="d" colspan="2">First source is the opening frame. Any source can be the last one.</td></tr>
+          <tr><td>Video Lite</td><td class="d" colspan="2">The same: first source opens the clip, any source can end it.</td></tr>
           <tr><td>Upscale</td><td class="d" colspan="2">First source, at full resolution.</td></tr>
         </table>
         <div class="note">Photos you add get shrunk a little before being sent, so adding several does not mean a long upload. <b>Upscale is the exception</b> and always sends your original at full size &mdash; shrinking a picture you are about to enlarge would rather defeat the point.</div>
@@ -1388,6 +1406,19 @@ body.typing .ctl-commit{display:none}
         <div class="note">Expect about <b>44 seconds of waiting for every second of video</b>, so a 10 second clip takes roughly 7 minutes. Go and do something else &mdash; it keeps going without you, and you can even close the tab and come back.</div>
         <div class="note"><b>The sound is written from your words.</b> A prompt with no sound cues comes back nearly silent. Name the song, the line of dialogue, the room tone &mdash; whatever you want to hear, say it.</div>
         <div class="note">Start from a photo and the clip <b>copies that photo's shape</b>. The aspect ratio buttons disappear, because Kling has no such setting when it starts from an image. If you want a 9:16 clip, start from a 9:16 picture.</div>
+      </div>
+
+      <div class="spec">
+        <h4>Video Lite &mdash; MiniMax H3 Max</h4>
+        <table class="tbl">
+          <tr><td>768P, per second</td><td class="n">$0.08</td><td class="d">Any whole number of seconds, 5 to 15. Sound always included.</td></tr>
+          <tr><td>1080P, per second</td><td class="n">$0.16</td><td class="d">Sharpened up from 768P.</td></tr>
+        </table>
+        <div class="note"><b>The economy clip.</b> Eleven seconds is $0.88 at 768P, against $1.85 on Kling with audio. That is fal's list price; fal is running it at half price for now, and the rig charges the list price until a real bill proves otherwise.</div>
+        <div class="note"><b>Grok looks at your opening frame</b> and writes the whole brief: who is in it and what they look like, so their faces hold; the room; your shots as timed beats; and the sound. Write it plainly &mdash; the writer does the directing.</div>
+        <div class="note"><b>It is fast.</b> The first test clip was done about half a minute after pressing Generate, against several minutes on Kling.</div>
+        <div class="note"><b>Made for cartoon stories.</b> Make the still in Image, in the style you want, press Use as source, then come here. The writer keeps the frame's style.</div>
+        <div class="note"><b>What it does not have:</b> characters, keep-out words, prompt adherence and the shot-structure switch are Kling-only, so they are hidden here. For those, or for the strongest motion, use Video.</div>
       </div>
 
       <div class="spec">
@@ -2150,12 +2181,13 @@ window.RigMascot=(function(){
 
   // The default mode must match whichever button ships aria-pressed=true, or
   // the console opens with the highlight on one mode and the state on another.
-  var pw='', type='image', dur='5', ar='16:9', res='2K', upf='2';
+  var pw='', type='image', dur='5', ar='16:9', res='2K', upf='2', vres='768P';
   var crea='low', shotType='customize', subjDet='';
   var SHOTS=[], ELS=[];
   // The mode IS the model now, so there is no engine dropdown to read.
   function modelFor(t){
     if(t==='video') return SRC.length ? 'kling-i2v' : 'kling-t2v';
+    if(t==='lite') return 'h3';
     if(t==='image') return 'krea';
     if(t==='compose') return 'nbp';
     if(t==='design') return 'grok';
@@ -2589,10 +2621,10 @@ window.RigMascot=(function(){
   function buildAR(){
     // Kling i2v has NO aspect_ratio parameter - the clip inherits the start
     // image's shape. Showing the control there would be a control that lies.
-    var i2v = type==='video' && SRC.length>0;
+    var i2v = (type==='video'||type==='lite') && SRC.length>0;
     $('row-ar').hidden = (type==='upscale' || i2v);
     if($('row-ar').hidden) return;
-    var list = type==='video' ? AR_VID : (type==='image' ? AR_KREA
+    var list = type==='video' ? AR_VID : type==='lite' ? AR_LITE : (type==='image' ? AR_KREA
              : (type==='design' ? AR_DESIGN : AR_NBP));
     if((type==='compose'||type==='design') && !SRC.length) list=list.filter(function(x){return x[0]!=='auto'});
     if(list.map(function(x){return x[0]}).indexOf(ar)<0) ar=list[0][0];
@@ -2614,15 +2646,18 @@ window.RigMascot=(function(){
     $('ar-hint').textContent = type==='image'
       ? '2.35:1 is anamorphic cinema. Only Krea offers it.'
       : (type==='compose' ? 'Auto keeps the shape of your sources.'
-      : (type==='design' ? '3:4 is a letter-size flyer, 2:3 a classic poster, 1:1 a meme, 9:16 a story.' : 'Kling offers these three.'));
+      : (type==='design' ? '3:4 is a letter-size flyer, 2:3 a classic poster, 1:1 a meme, 9:16 a story.' : (type==='lite' ? 'H3 offers these six.' : 'Kling offers these three.')));
   }
   // Grok's edit endpoint takes a MAXIMUM OF 3 sources. n8n slices to 3 as well,
   // so a stale page can never make fal 422 - but the tray says so up front.
   var DESIGN_MAX_SRC=3;
   var AR_DESIGN=[['3:4','3:4'],['auto','Auto'],['2:3','2:3'],['1:1','1:1'],['4:3','4:3'],['16:9','16:9'],['9:16','9:16']];
+  // MiniMax H3 Max text-to-video shapes; from a source it inherits the source's shape.
+  var AR_LITE=[['16:9','16:9'],['9:16','9:16'],['1:1','1:1'],['4:3','4:3'],['3:4','3:4'],['21:9','21:9']];
   var quality='medium';
   var MODE_HINT={
     video:'Kling 3.0 Pro. Billed per second of output.',
+    lite:'MiniMax H3 Max. The economy clip: sound included, billed per second.',
     image:'Krea 2 Large. Draws from words alone, and will draw anyone.',
     compose:'Nano Banana Pro. Merges the pictures you hand it. Can refuse a famous face.',
     design:'Grok Imagine. Flyers, posters and memes with your words in them. Can refuse a famous character \u2014 and charges when it does.',
@@ -2635,13 +2670,21 @@ window.RigMascot=(function(){
     if((type==='design' && res==='4K') || (type!=='design' && res==='1K')){ res='2K';
       [].slice.call($('seg-res').querySelectorAll('button')).forEach(function(x){
         x.setAttribute('aria-pressed',String(x.dataset.v==='2K'))}); }
-    var isVid=type==='video', isUps=type==='upscale',
+    var isVid=type==='video', isLite=type==='lite', isClip=isVid||isLite, isUps=type==='upscale',
         isKrea=type==='image', isNbp=type==='compose', isDes=type==='design';
     $('mode-hint').textContent=MODE_HINT[type];
     $('row-prompt').hidden = isUps;
     $('row-design').hidden = !isDes;
-    $('row-shots').hidden  = !isVid;
-    $('row-vid').hidden    = !isVid;
+    $('row-shots').hidden  = !isClip;
+    $('row-vid').hidden    = !isClip;
+    // Video Lite (MiniMax H3 Max): sound always on and free, its own resolution, 5 to 15 s.
+    $('row-audio').hidden = isLite; $('audio-hint').hidden = isLite;
+    $('lite-audio').hidden = !isLite; $('row-vres').hidden = !isLite;
+    $('dur').min = isLite ? 5 : 3;
+    if(isLite && parseInt(dur,10)<5){ $('dur').value=5; $('dur').dispatchEvent(new Event('input',{bubbles:true})); }
+    $('dur-hint').innerHTML = isLite
+      ? 'Billed per second, so this is the price dial. <b>5s at 768P is the cheapest real test at $0.40.</b>'
+      : 'Billed per second, so this is the price dial. <b>3s is the cheapest real test at $0.34.</b>';
     $('row-krea').hidden   = !isKrea;
     $('row-nbp').hidden    = !isNbp;
     $('row-res').hidden    = !(isNbp || isDes);
@@ -2659,26 +2702,31 @@ window.RigMascot=(function(){
     // Grok Imagine has no seed at all - showing the box would be a control that lies.
     $('row-seed').hidden   = !(isKrea||isNbp);
     $('row-ups').hidden    = !isUps;
-    $('row-endimg').hidden = !(isVid && SRC.length);
+    $('row-endimg').hidden = !(isClip && SRC.length);
     $('row-stylestr').hidden = !(isKrea && $('use-style').checked);
     $('row-redefine').hidden = !(isUps && $('upmodel').value==='Redefine');
     $('gen-warn').hidden     = !(isUps && isGenUpscale());
     $('adv-vid').hidden  = !isVid;
     $('adv-nbp').hidden  = !isNbp;
     $('adv-ups').hidden  = !isUps;
-    $('adv-none').hidden = !(isKrea||isDes);
-    $('prompt').placeholder = isVid
+    $('adv-none').hidden = !(isKrea||isDes||isLite);
+    $('adv-none').firstElementChild.textContent = isLite
+      ? 'Nothing extra for Video Lite. Characters, keep-out words and prompt adherence are Kling-only.'
+      : "Nothing extra for this one. Krea's controls are all above.";
+    $('prompt').placeholder = isClip
       ? 'Describe the shot. Camera move, subject, light, mood, sound.'
       : (isKrea ? 'Describe the picture. Subject, style, light, framing.'
       : (isDes ? 'Describe the piece. What it is for, the look, the layout \u2014 the words go in the box below.'
                 : 'Say what to build out of the sources. Name them: "the man in image 1 wearing the coat from image 2".'));
-    $('hint').textContent = isVid
+    $('hint').textContent = isLite
+      ? 'Grok looks at your opening frame and writes the full brief for H3, sound cues included. Write it plainly.'
+      : isVid
       ? 'Grok rewrites this into a full cinematic brief before it reaches the model. Kling writes the audio from these words too.'
       : (isKrea ? 'Grok expands this into a full image brief. Krea draws from words only.'
       : (isDes ? 'Grok expands this into a layout brief. Your words in the box below are added afterwards, untouched.'
                 : 'Grok expands this into a full image brief. Order matters, and the tray is numbered so you can point at each one.'));
-    $('tray-note').textContent = isVid
-      ? 'Video uses the first source as its opening frame.'
+    $('tray-note').textContent = isClip
+      ? (isLite ? 'Video Lite' : 'Video')+' uses the first source as its opening frame.'
       : (isUps ? 'Upscale uses the first source, at full resolution.'
                : (isKrea ? 'Krea borrows the look of these, it cannot combine them.'
                : (isDes ? 'Up to '+DESIGN_MAX_SRC+' sources. Anything past that is ignored.' : '')));
@@ -2707,6 +2755,7 @@ window.RigMascot=(function(){
   }
   seg($('seg-type'),function(v){type=v;syncMode();paintCost()});
   seg($('seg-res'),function(v){res=v;paintCost()});
+  seg($('seg-vres'),function(v){vres=v;paintCost()});
   seg($('seg-crea'),function(v){crea=v;paintCost()});
   seg($('seg-shot'),function(v){shotType=v});
   seg($('seg-subj'),function(v){subjDet=v});
@@ -2847,6 +2896,11 @@ window.RigMascot=(function(){
   }
   // Every figure here is quoted from fal's own model pages, not estimated.
   function cost(){
+    if(type==='lite'){
+      // MiniMax H3 Max at fal's LIST rate - its page shows 50% off, unproven against a
+      // balance delta. n8n's priceOf charges exactly this (check-rig-price-parity.js).
+      return +(Math.min(15,Math.max(5,parseInt(dur,10)||5))*(vres==='1080P'?0.16:0.08)).toFixed(3);
+    }
     if(type==='video'){
       var per = hasVoice() ? 0.196 : ($('audio').checked ? 0.168 : 0.112);
       return +(parseInt(dur,10)*per).toFixed(3);
@@ -2882,7 +2936,11 @@ window.RigMascot=(function(){
     el.textContent=(type==='upscale'&&isGenUpscale()&&c?'from $':'$')+money(c);
     el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick');
     var eng,det;
-    if(type==='video'){
+    if(type==='lite'){
+      eng='MiniMax H3 Max';
+      det = dur+'s, '+(SRC.length ? 'from your first source' : 'from words alone — no source')+', '+vres+', sound included';
+      if($('use-shots').checked && SHOTS.length) det += ' · '+SHOTS.length+' shots';
+    }else if(type==='video'){
       eng='Kling 3.0 Pro';
       // Say WHICH KIND of video this is. Text-to-video and image-to-video cost
       // the same and produce completely different things, and the only thing
@@ -3033,10 +3091,10 @@ window.RigMascot=(function(){
     if(type==='image' && !$('prompt').value.trim()){ genErr('Krea draws from words. Write a prompt.'); return }
     if(type==='design' && !$('prompt').value.trim() && !$('exact-text').value.trim() && !SRC.length){
       genErr('Describe the piece, type the words that go on it, or add a source.'); return }
-    if(type==='video' && !$('prompt').value.trim() && !SRC.length && !($('use-shots').checked&&SHOTS.length)){
+    if((type==='video'||type==='lite') && !$('prompt').value.trim() && !SRC.length && !($('use-shots').checked&&SHOTS.length)){
       genErr('Write a prompt, add an opening frame, or write a shot list.'); return;
     }
-    if(type==='video' && $('use-shots').checked && SHOTS.length){
+    if((type==='video'||type==='lite') && $('use-shots').checked && SHOTS.length){
       var tot=SHOTS.reduce(function(a,s){return a+(parseInt(s.duration,10)||0)},0);
       if(tot!==parseInt(dur,10)){ genErr('Shot durations add up to '+tot+'s but the clip is '+dur+'s.'); return }
     }
@@ -3094,15 +3152,20 @@ window.RigMascot=(function(){
       if(s0.file) fd.append('image_0',s0.file,s0.name);
       else fd.append('image_0',dataUrlToBlob(s0.ref),'source.jpg');
 
-    }else if(type==='video'){
+    }else if(type==='video'||type==='lite'){
       fd.append('duration',dur);
-      if($('audio').checked||hasVoice()) fd.append('generate_audio','on');
-      put('cfg_scale', optVal('cfg','use-cfg'));
-      put('negative_prompt', $('neg').value.trim());
-      if(shotType!=='customize') fd.append('shot_type',shotType);
+      // Video Lite (MiniMax H3 Max) generates sound every time and has no characters,
+      // keep-out words, adherence or shot structure - its resolution is its own.
+      if(type==='lite') fd.append('resolution',vres);
+      if(type==='video'){
+        if($('audio').checked||hasVoice()) fd.append('generate_audio','on');
+        put('cfg_scale', optVal('cfg','use-cfg'));
+        put('negative_prompt', $('neg').value.trim());
+        if(shotType!=='customize') fd.append('shot_type',shotType);
+      }
       if($('use-shots').checked && SHOTS.length) fd.append('multi_prompt', JSON.stringify(SHOTS));
       if($('end-img').value!=='') fd.append('end_image_idx', $('end-img').value);
-      if($('use-el').checked && ELS.length){
+      if(type==='video' && $('use-el').checked && ELS.length){
         fd.append('elements', JSON.stringify(ELS.map(function(e){
           return { frontal: e.frontal, refs: e.refs, voice_id: e.voice||'' };
         })));
@@ -3154,7 +3217,8 @@ window.RigMascot=(function(){
     $('p-msg').textContent='Submitting to the queue';
     $('p-sub').textContent='Safe to close this tab. It picks back up when you return.';
     t0=Date.now();over=false;noRow=0;
-    eta = type==='video' ? parseInt(dur,10)*44 : (type==='upscale' ? 40 : 85);
+    // Video Lite measured 2026-09-22 (job 6465): fal inference 3.9 s, done within 32 s of submit.
+    eta = type==='video' ? parseInt(dur,10)*44 : (type==='lite' ? 40 : (type==='upscale' ? 40 : 85));
     startTick();
 
     fetch(BASE,{method:'POST',body:fd})
@@ -3173,7 +3237,7 @@ window.RigMascot=(function(){
         saveJob({id:d.jobId,priced:priced,type:type,t0:t0,eta:eta,seed:seedSent,caption:cap});
         $('p-msg').textContent = type==='upscale' ? 'Enlarging' : 'Rendering';
         chip('Rendering','busy');
-        var first = type==='video' ? 280 : (type==='upscale' ? 20 : 15);
+        var first = type==='video' ? 280 : (type==='lite' ? 25 : (type==='upscale' ? 20 : 15));
         poller=setTimeout(function(){poll(d.jobId)},first*1000);
       })
       .catch(function(e){ bad('Could not submit that run. '+(e.message||'')); });
@@ -3213,7 +3277,7 @@ window.RigMascot=(function(){
        video takes ~11 min), after which the page stops asking and says where the
        render will be if fal finishes it anyway. The row keeps the request id. */
   var noRow=0;
-  function waitCap(){ return (curJob&&curJob.type==='video'?45:30)*60*1000 }
+  function waitCap(){ return (curJob&&(curJob.type==='video'||curJob.type==='lite')?45:30)*60*1000 }
   function gaveUp(jobId,why){
     var mins=Math.round(waitCap()/60000);
     bad(why==='norow'
@@ -3222,7 +3286,7 @@ window.RigMascot=(function(){
   }
   function poll(jobId){
     var again=function(){ if(Date.now()-t0>waitCap()) return gaveUp(jobId,'cap');
-      poller=setTimeout(function(){poll(jobId)},(curJob&&curJob.type==='video'?30:6)*1000) };
+      poller=setTimeout(function(){poll(jobId)},(curJob&&curJob.type==='video'?30:(curJob&&curJob.type==='lite'?10:6))*1000) };
     fetch(BASE+'?jobId='+encodeURIComponent(jobId)+'&p='+encodeURIComponent(pw))
       .then(function(r){
         // A code that no longer opens this job (turned off, or not its owner): stop
@@ -3527,7 +3591,7 @@ window.RigMascot=(function(){
   $('to-src').onclick=function(){
     if(!lastOut) return;
     addUrl(lastOut.url,lastOut.w,lastOut.h);
-    if(type==='video'){type='image';
+    if(type==='video'||type==='lite'){type='image';
       [].slice.call($('seg-type').querySelectorAll('button')).forEach(function(x){
         x.setAttribute('aria-pressed',String(x.dataset.v==='image'))});
       syncMode();paintCost();
@@ -3571,12 +3635,13 @@ window.RigMascot=(function(){
     if(e.indexOf('krea')>-1) return 'image';
     if(e.indexOf('banana')>-1) return 'compose';
     if(e.indexOf('topaz')>-1) return 'upscale';
+    if(e.indexOf('minimax')>-1) return 'lite';
     if(e.indexOf('kling')>-1) return 'video';
     if(e.indexOf('grok')>-1) return 'design';
     if(it.model==='grok') return 'design';
     return it.model==='krea' ? 'image'
          : (it.model==='nbp'||String(it.model).indexOf('nano-banana')===0) ? 'compose'
-         : it.model==='topaz' ? 'upscale' : 'video';
+         : it.model==='topaz' ? 'upscale' : it.model==='h3' ? 'lite' : 'video';
   }
   function paintGallery(){
     var g=$('gal-grid');
@@ -3723,7 +3788,7 @@ window.RigMascot=(function(){
     else openSheet(b.dataset.p);
   });
   function paintTabs(){
-    $('tab-mode').textContent = {video:'Video',image:'Image',compose:'Compose',upscale:'Upscale'}[type]||'';
+    $('tab-mode').textContent = {video:'Video',lite:'Video Lite',image:'Image',compose:'Compose',upscale:'Upscale'}[type]||'';
     $('tab-src').textContent  = SRC.length;
     $('tab-hist').textContent = HIST.length;
   }
@@ -3828,7 +3893,7 @@ window.RigMascot=(function(){
      instruction and the two would compete, which is how this project has been
      bitten before. Hector, 2026-09-18: "why design has to do with depth, lens,
      camera, grade!?" - he was right, it was my overreach. Upscale has no writer. */
-  var LOOK_BY_MODE={image:'all',compose:'all',video:'all',design:[],upscale:[]};
+  var LOOK_BY_MODE={image:'all',compose:'all',video:'all',lite:'all',design:[],upscale:[]};
   var LOOK={};
   function lookFams(){ var m=LOOK_BY_MODE[type]||[];
     return m==='all' ? LOOK_FAMS : LOOK_FAMS.filter(function(f){return m.indexOf(f[0])>-1}) }

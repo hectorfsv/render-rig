@@ -49,7 +49,7 @@ if [ "$WHAT" = all ] || [ "$WHAT" = mobile ]; then
   build "$INJ/mob.txt" "$B/m.html"
   line; echo "MOBILE  (6 viewports x 4 modes)"
   for v in "393 852" "393 700" "360 780" "852 393" "430 900" "932 430"; do
-    for m in video image compose design upscale; do set -- $v
+    for m in video lite image compose design upscale; do set -- $v
       R=$(title "$1" "$2" "file://$B/m.html?m=$m")
       p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
       f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
@@ -65,7 +65,7 @@ if [ "$WHAT" = all ] || [ "$WHAT" = desktop ]; then
   line; echo "DESKTOP  (5 viewports: console x4 modes, hub, guide)"
   dp=0; df=0
   for v in "2560 1400" "2026 1037" "1440 900" "1180 820" "1040 800"; do set -- $v
-    for m in video image compose design upscale; do
+    for m in video lite image compose design upscale; do
       E=$(title "$1" "$2" "file://$B/h.html?s=scr-console&m=$m" 3500 | python3 -c "
 import json,sys
 r=json.load(sys.stdin); bad=[]
@@ -288,6 +288,17 @@ if [ "$WHAT" = all ] || [ "$WHAT" = design ]; then
   df=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
   [ "$df" != 0 ] && { printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
   echo "  -> $dp pass / $df fail"; PASS=$((PASS+dp)); FAIL=$((FAIL+df))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = lite ]; then
+  build "$INJ/lite.txt" "$B/lt.html"
+  line; echo "VIDEO LITE  (MiniMax H3 Max: its controls, list price, what reaches the wire, Kling untouched)"
+  R=$(title 1440 900 "file://$B/lt.html" 120000)
+  lp=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
+  lf=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+  [ "$lf" != 0 ] && { printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  [ "$lp" = 0 ] && echo "     (no assertions ran - the harness never reported)"
+  echo "  -> $lp pass / $lf fail"; PASS=$((PASS+lp)); FAIL=$((FAIL+lf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = revise ]; then
