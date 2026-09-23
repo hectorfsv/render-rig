@@ -130,7 +130,7 @@ if [ "$WHAT" = all ] || [ "$WHAT" = gallery ]; then
   build "$INJ/gallery.txt" "$B/gl.html"
   line; echo "GALLERY  (flagged work, the prompt behind it, and both failure states)"
   gp=0; gf=0
-  for m in ok empty fail http; do
+  for m in ok empty fail http kept stale; do
     for v in "2026 1037" "1440 900" "393 852" "393 700"; do set -- $v
       R=$(title "$1" "$2" "file://$B/gl.html?g=$m" 25000)
       p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')

@@ -9,6 +9,8 @@
 (function(){
   var S=String.fromCharCode(167), out=[], d0='', q=new URLSearchParams(location.search),
       mode=q.get('g')||'ok', galCalls=0;
+  // 2026-09-22: the list is kept on the device for a day. kept = an hour-old list (no fetch), stale = 25 hours old (one fetch)
+  try{ localStorage.removeItem('rig_gallery') }catch(e){}
   function $(i){return document.getElementById(i)}
   function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); document.title=S+out.join('\n')+S}
   window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
@@ -52,6 +54,7 @@
     }
     return Promise.reject(new Error('no net'));
   };
+  if(mode==='kept' || mode==='stale') localStorage.setItem('rig_gallery', JSON.stringify({t:Date.now()-(mode==='kept' ? 1 : 25)*3600000, items:[ITEMS[0], ITEMS[1]]}));
   function go(){
     $('pw').value='x'; $('unlock').click();
     setTimeout(function(){
@@ -122,6 +125,13 @@
         T(galCalls===1, 'the gallery is fetched once per session, not on every open ('+galCalls+' fetches for 3 opens)');
       },300);
     }
+    if(mode==='ok') T((JSON.parse(localStorage.getItem('rig_gallery')||'{}').items||[]).length===ITEMS.length, 'the list is kept on this device for a day, so a new session opens it for nothing');
+    if(mode==='kept'){
+      T(galCalls===0 && frames.length===2, 'a list kept on this device within the day opens with NO fetch ('+galCalls+' fetches, '+frames.length+' frames)');
+      T(!/Ghostface doing Pilates/.test(frames[0].textContent), 'and the kept list shows no prompt either');
+    }
+    if(mode==='stale') T(galCalls===1 && frames.length===ITEMS.length, 'a list kept for more than a day is fetched again, once ('+galCalls+' fetches, '+frames.length+' frames)');
+    if(mode==='fail'||mode==='http') T(localStorage.getItem('rig_gallery')===null, 'a failed lookup is never kept ('+mode+')');
     if(mode==='empty'){
       T(frames.length===0, 'no frames when nothing is flagged');
       var e=document.querySelector('.gal-empty');

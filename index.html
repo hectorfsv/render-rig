@@ -3608,14 +3608,29 @@ window.RigMascot=(function(){
   var GAL=null;
   // The gallery only changes when a row is flagged by hand, so one fetch per
   // session is the honest cadence (42 of 372 rig executions were gallery opens).
-  var GAL_AT=0, GAL_TTL_MS=60*60*1000;
+  // Since 2026-09-22 (Hector's n8n budget: 15 of 872 executions in a week were
+  // gallery opens) the list is also KEPT ON THIS DEVICE, under the person's name,
+  // for a day: a new session within the day opens it for nothing. It holds only
+  // what the gallery already shows - picture, engine, price, date - never a prompt.
+  var GAL_AT=0, GAL_TTL_MS=24*60*60*1000;
+  function galKey(){ return 'rig_gallery'+(K_USER ? ':'+K_USER : '') }
+  function galKept(){
+    try{
+      var s=JSON.parse(localStorage.getItem(galKey())||'null');
+      if(s && Array.isArray(s.items) && s.t && Date.now()-s.t < GAL_TTL_MS){ GAL=s.items; GAL_AT=s.t; return true }
+    }catch(e){}
+    return false;
+  }
   function openGallery(){
     show('scr-gallery'); galGrid();
-    if(GAL_AT && Date.now()-GAL_AT < GAL_TTL_MS){ paintGallery(); return }
+    if((GAL_AT && Date.now()-GAL_AT < GAL_TTL_MS) || galKept()){ paintGallery(); return }
     var f=new FormData(); f.append('action','gallery'); f.append('password',pw);
     fetch(BASE,{method:'POST',body:f})
       .then(function(r){ return r.ok ? r.json() : null })
-      .then(function(d){ GAL=(d&&d.items)||[]; GAL_AT=Date.now(); paintGallery() })
+      .then(function(d){
+        GAL=(d&&d.items)||[]; GAL_AT=Date.now();
+        if(d && Array.isArray(d.items)){ try{ localStorage.setItem(galKey(), JSON.stringify({t:GAL_AT, items:GAL})) }catch(e){} }   // a failed answer is never kept
+        paintGallery() })
       .catch(function(){ GAL=[]; GAL_AT=0; paintGallery() });
   }
   function galGrid(){ if(GZ){ GZ.destroy(); GZ=null } $('gal-one').hidden=true; $('gal-grid').hidden=false;
