@@ -116,7 +116,7 @@
       var f=fields();
       T(/^kling-i2v$/.test(f.model) && f.generate_audio==='on' && f.negative_prompt==='blur','Kling still sends its model, audio and keep-out words');
       T(!('resolution' in f),'and no H3 resolution');
-      flush();
+      out.push('[done]'); flush();
     });
   }
   if(document.readyState==='complete') setTimeout(go,120); else addEventListener('load',function(){setTimeout(go,120)});

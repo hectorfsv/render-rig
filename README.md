@@ -163,8 +163,8 @@ build. It only bites as **strictly inside** (`l>0 && r<W-1`) **on a portrait
 fixture**, the shape that actually overflows; then it fires 13 times. A test that
 cannot fail and a test that never ran look identical from outside.
 
-**2026-09-20 — PER-PERSON CODES WITH A CREDIT (built + proven free on a DEV copy; production deploy and
-the $0.06 paid proof are the morning's first job).** A code is a row in the `rig_codes` table (budget null =
+**2026-09-20 — PER-PERSON CODES WITH A CREDIT (LIVE on production, proven with one $0.06 guest render
+through the live page; the crash notifier fired on a deliberate DEV crash).** A code is a row in the `rig_codes` table (budget null =
 Hector), $10 / 10 days from the first login for the first tester. The rig holds credit on submit, spends it on
 delivery, gives it back on a failure (Grok keeps the charge), refuses over-budget and unpriced runs before the
 writer and before fal, checks the code AND the owner on every poll, and never calls fal's balance for a guest.

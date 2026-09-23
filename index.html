@@ -1290,9 +1290,10 @@ body.typing .ctl-commit{display:none}
             <div class="spec">
         <h4>Start here</h4>
         <div class="note"><b>You describe something, and a few minutes later it exists.</b> A photo of a place that was never photographed. A short film of your dog on the moon. An old picture from a shoebox, sharp again.</div>
-        <div class="note">There are five things this can do, and you pick one before you start:</div>
+        <div class="note">There are six things this can do, and you pick one before you start:</div>
         <table class="tbl">
           <tr><td>Video</td><td class="d">A short clip, with sound, made from a sentence.</td></tr>
+          <tr><td>Video Lite</td><td class="d">A cheaper clip, 5 to 15 seconds, sound always included.</td></tr>
           <tr><td>Image</td><td class="d">A single picture, made from a sentence.</td></tr>
           <tr><td>Compose</td><td class="d">Hand it several photos, get one picture with all of them in it.</td></tr>
           <tr><td>Design</td><td class="d">Artwork with your words set into it &mdash; a flyer, a poster, an invitation, a meme.</td></tr>
@@ -3008,8 +3009,18 @@ window.RigMascot=(function(){
     if(ims[want]) ims[want].classList.add('on');
     pbI=want;
   }
+  /* What each mode runs on, for the labels. The meter (paintCost) says more. */
+  var ENGINE_NAME={video:'Kling 3.0 Pro',lite:'MiniMax H3 Max',image:'Krea 2 Large',compose:'Nano Banana Pro',design:'Grok Imagine 2.0',upscale:'Topaz'};
   function stage(which){
     progBg(which==='prog');
+    // While a render runs, the labels describe THAT render, not the still left
+    // behind it (2026-09-23 audit: a clip in flight read "image / STILL 1776x2368").
+    if(which==='prog'){
+      var jt=(curJob&&curJob.type)||type;
+      $('stage-tag').textContent = (jt==='video'||jt==='lite') ? 'video' : (jt==='upscale' ? 'upscale' : 'image');
+      $('m-engine').textContent = ENGINE_NAME[jt]||'';
+      $('m-time').innerHTML='&nbsp;'; $('m-seed').hidden=true;
+    }
     $('stage-idle').hidden = which!=='idle';
     $('stage-prog').hidden = which!=='prog';
     $('stage-out').hidden  = which!=='out';
@@ -3445,7 +3456,7 @@ window.RigMascot=(function(){
     lastOut=item; TYTAIL=tail||'';
     if(SZ){ SZ.destroy(); SZ=null }
     $('stage-out').innerHTML = isVid
-      ? '<video class="out" src="'+item.url+'" controls playsinline preload="metadata"></video>'
+      ? '<video class="out" src="'+item.url+'#t=0.1" controls playsinline preload="metadata"></video>'
       : '<div class="zview"><img class="out" src="'+item.url+'" alt=""></div>';
     /* A baked still lives in this browser as a blob. The n8n download proxy only
        fetches fal URLs, so a local file links straight to itself - and iOS ignores
@@ -3457,7 +3468,7 @@ window.RigMascot=(function(){
            $('dl').removeAttribute('download'); $('dl').removeAttribute('target');
            $('dl').textContent='Download'; }
     $('add-words').hidden = isVid;
-    $('m-engine').textContent = isVid?'Kling 3.0 Pro':(item.gen_type==='upscale'?'Topaz':'Still');
+    $('m-engine').textContent = isVid?(item.engine||'Video'):(item.gen_type==='upscale'?'Topaz':'Still');
     $('stage-tag').textContent = item.gen_type;
     paintSeed(item.seed);
     paintMeta(item, tail);
@@ -3522,6 +3533,7 @@ window.RigMascot=(function(){
     var item={url:url,filename:d.filename,gen_type:d.gen_type,
               w:d.width||0,h:d.height||0,
               seed:(d.seed===0||d.seed)?d.seed:null};
+    if(curJob && ENGINE_NAME[curJob.type]) item.engine=ENGINE_NAME[curJob.type];
     // Krea reports the seed back and Nano Banana never does; the one we sent is
     // the truth either way, and it is what makes a Nano Banana render revisable.
     if(item.seed===null && curJob && curJob.seed) item.seed=curJob.seed;
@@ -3559,7 +3571,7 @@ window.RigMascot=(function(){
       var c=document.createElement('div');c.className='hcard';
       c.title='Bring back to the stage';
       c.innerHTML=(h.gen_type==='video'
-          ? '<video src="'+h.url+'" muted preload="metadata"></video>'
+          ? '<video src="'+h.url+'#t=0.1" muted playsinline preload="metadata"></video>'
           : '<img src="'+h.url+'" alt="">')
         +'<span class="t">'+(h.gen_type==='video'?'vid':h.gen_type==='upscale'?'up':'img')+'</span>'
         +'<button class="up" type="button" title="Use as a source" aria-label="Use as a source">&uarr;</button>';
@@ -3803,7 +3815,7 @@ window.RigMascot=(function(){
     else openSheet(b.dataset.p);
   });
   function paintTabs(){
-    $('tab-mode').textContent = {video:'Video',lite:'Video Lite',image:'Image',compose:'Compose',upscale:'Upscale'}[type]||'';
+    $('tab-mode').textContent = {video:'Video',lite:'Video Lite',image:'Image',compose:'Compose',design:'Design',upscale:'Upscale'}[type]||'';
     $('tab-src').textContent  = SRC.length;
     $('tab-hist').textContent = HIST.length;
   }
