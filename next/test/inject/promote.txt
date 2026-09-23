@@ -1,0 +1,125 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* THE BUG THIS FILE EXISTS FOR (2026-09-12, real money):
+
+   Hector generated an image, pressed "Use as source" to make a video from it,
+   clicked Generate - and NOTHING HAPPENED. No render, no error. He removed the
+   source to try again, clicked Generate, and bought a text-to-video instead.
+
+   Cause: a promoted render was stored with `ref` set to the fal https URL, while
+   every other source in the tray carries a shrunk data-URL. submit() calls
+   dataUrlToBlob(ref), atob() threw on a URL, and the whole handler died with
+   nothing on screen.
+
+   So this walks the exact sequence: land a render -> Use as source -> Generate. */
+(function(){
+  var S=String.fromCharCode(167), out=[];
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); flush()}
+  function flush(){ try{document.title=S+out.join('\n')+S}catch(e){} }
+  window.onerror=function(m,f,l){ out.push('FAIL  JS ERROR: '+m+' @'+l); flush() };
+
+  /* A real JPEG, served as a blob: URL - the closest honest stand-in for a fal
+     result: cross-origin bytes reached through fetch(), NOT a data URL. */
+  var RESULT_URL=null, W=640, H=360;
+  function makeResult(){
+    var c=document.createElement('canvas');c.width=W;c.height=H;
+    var x=c.getContext('2d');
+    for(var i=0;i<120;i++){ x.fillStyle='hsl('+(i*13%360)+',65%,45%)'; x.fillRect((i*37)%W,(i*29)%H,30,30) }
+    return new Promise(function(res){ c.toBlob(function(b){ RESULT_URL=URL.createObjectURL(b); res() },'image/jpeg',0.9) });
+  }
+
+  var submits=0, lastBody=null;
+  window.fetch=(function(real){
+    return function(u,o){
+      var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+      if(a==='auth')    return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+      if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:3.89,currency:'USD'})}});
+      // the promoted source is fetched back through the REAL fetch
+      if(String(u).indexOf('blob:')===0) return real.apply(window,arguments);
+      if(String(u).indexOf('jobId=')>-1)
+        return Promise.resolve({ok:true,json:function(){return Promise.resolve({
+          status:'done', gen_type:'image', urls:[RESULT_URL], width:W, height:H, seed:123, filename:'r.jpg'})}});
+      submits++; lastBody=b;
+      return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued',jobId:'t1'})}});
+    };
+  })(window.fetch);
+
+  function waitFor(what,test,ms,then){
+    var t0=Date.now();
+    (function tick(){
+      if(test()) return then(true);
+      if(Date.now()-t0>ms){ T(false,'TIMED OUT waiting for '+what+' after '+ms+'ms'); return then(false) }
+      setTimeout(tick,60);
+    })();
+  }
+  function mode(m){ var b=document.querySelector('#seg-type button[data-v="'+m+'"]'); if(b) b.click() }
+  function slots(){ return document.querySelectorAll('#tray .slot').length }
+
+  function go(){ makeResult().then(function(){ $('pw').value='x'; $('unlock').click(); setTimeout(step1,250) }) }
+
+  /* land a render through the app's own submit -> poll -> result path */
+  function step1(){
+    mode('image');
+    $('prompt').value='a test picture';
+    submits=0; $('gen-err').textContent=''; $('submit').disabled=false;
+    $('submit').click();
+    T(submits===1, 'the seed render submitted ('+submits+') err="'+$('gen-err').textContent+'"');
+    waitFor('a result on the stage', function(){
+        return $('out-actions') && !$('out-actions').hidden;
+      }, 30000, function(ok){
+        T(ok, 'a render lands and offers "Use as source"'+(ok?'':' [stage-out hidden='+$('stage-out').hidden+']'));
+        if(!ok) return flush();
+        step2();
+      });
+  }
+
+  /* the exact click that did nothing */
+  function step2(){
+    $('to-src').click();
+    T(slots()===1, 'the render goes into the tray ('+slots()+' slot)');
+    // it must RESOLVE into a real source, not sit there as a bare URL
+    waitFor('the promoted source to resolve', function(){
+      var im=document.querySelector('#tray .slot img');
+      return im && im.naturalWidth>0 && String(im.src).indexOf('data:')===0;
+    }, 20000, function(ok){
+      T(ok, 'the promoted render becomes a usable source');
+      if(!ok) return flush();
+      step3();
+    });
+  }
+
+  /* Generate must now actually submit, as an image-to-video */
+  function step3(){
+    mode('video');
+    $('prompt').value='he jumps and celebrates with fists up';
+    T(/from your first source/.test($('cost-sub').textContent||''),
+      'the cost line says it is coming FROM THE SOURCE ("'+($('cost-sub').textContent||'').trim()+'")');
+    submits=0; $('gen-err').textContent=''; $('submit').disabled=false;
+    $('submit').click();
+    setTimeout(function(){
+      var msg=$('gen-err').textContent;
+      T(submits===1, 'Generate actually submits with a promoted source ('+submits+' submits)');
+      T(msg==='', 'and shows no error ("'+(msg||'none')+'")');
+      if(lastBody && lastBody.get){
+        T(lastBody.get('model')==='kling-i2v',
+          'it is an IMAGE-to-video, not text-to-video (model='+lastBody.get('model')+')');
+        T(!!lastBody.get('image_0'), 'the source image is actually attached');
+      } else T(false,'no request body captured');
+      step4();
+    },400);
+  }
+
+  /* with an empty tray the same button buys a DIFFERENT product - say so */
+  function step4(){
+    [].slice.call(document.querySelectorAll('#tray .slot .x')).forEach(function(b){b.click()});
+    setTimeout(function(){
+      var det=$('cost-sub').textContent||'';
+      T(/no source/.test(det), 'an empty tray says "no source" before you buy it ("'+det.trim()+'")');
+      flush();
+    },200);
+  }
+
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

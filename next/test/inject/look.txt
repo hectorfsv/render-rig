@@ -1,0 +1,142 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* THE LOOK CONTROLS - a closed menu of looks, instead of adjectives in a caption
+   the writer may drop.
+
+   The contract these assertions defend:
+     - AUTO SENDS NOTHING. Not an empty string, not "auto" - the field is absent
+       from the payload, because omission is meaningful all the way to fal and
+       n8n's recipe is byte-identical when nothing is chosen.
+     - Design gets the GRADE ONLY. "Shot on 16mm" on a flyer brief is noise;
+       upscale has no prompt writer at all and gets none.
+     - Every option offered here exists in n8n's vocabulary. A control the
+       workflow does not understand is a control that lies - the exact bug that
+       shipped as "Krea ignores the seed".
+   The last one is cross-checked against scripts/build-rig-look.py by the shell. */
+(function(){
+  var S=String.fromCharCode(167), out=[];
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); flush()}
+  function flush(){ try{document.title=S+out.join('\n')+S}catch(e){} }
+  window.onerror=function(m,f,l){ out.push('FAIL  JS ERROR: '+m+' @'+l); flush() };
+
+  var lastBody=null, submits=0;
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth')    return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:21.55})}});
+    if(String(u).indexOf('jobId=')>-1) return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued'})}});
+    submits++; lastBody=b;
+    return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued',jobId:'l1'})}});
+  };
+  function mode(m){ var b=document.querySelector('#seg-type button[data-v="'+m+'"]'); if(b)b.click() }
+  function press(){ lastBody=null; $('gen-err').textContent=''; $('submit').disabled=false; $('submit').click() }
+  function keysWithPrefix(p){ var k=[]; if(!lastBody||!lastBody.forEach) return k;
+    lastBody.forEach(function(v,n){ if(n.indexOf(p)===0) k.push(n+'='+v) }); return k.sort() }
+  /* A condition poll, never a guessed delay - a fixed pause here passed alone and
+     failed inside the full suite, reporting false failures against a good page. */
+  function afterSubmit(then){
+    /* press() nulls lastBody before it clicks, so lastBody landing IS the signal.
+       Counting submits here cannot work - the click is synchronous, so the count
+       has already moved by the time this function captures it. */
+    var n=0;
+    (function tick(){
+      if(lastBody) return then();
+      if(++n>400){ T(false,'TIMED OUT waiting for the submit'); out.push('[done]'); flush(); return }
+      setTimeout(tick,50);
+    })();
+  }
+  function sel(f){ return $('look-'+f) }
+  function pick(f,v){ var s=sel(f); s.value=v; s.dispatchEvent(new Event('change',{bubbles:true})) }
+
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){ document.querySelector('.card[data-go="image"]').click(); setTimeout(step,260) });
+  }
+
+  function step(){
+    var api=window.__rigLook;
+    T(!!api,'the look controls are present');
+    if(!api){ out.push('[done]'); flush(); return }
+
+    /* --- which modes offer what --- */
+    mode('image');
+    T(!$('look').hidden,'Image offers the look panel');
+    T(api.fams.length===5 && sel('format') && sel('palette'),'and all five families');
+    mode('compose'); T(!!sel('format')&&!!sel('palette'),'Compose offers all five');
+    mode('video');   T(!!sel('format')&&!!sel('palette'),'Video offers all five');
+    mode('design');
+    T($('look').hidden,
+      'Design offers NO look at all - it is a graphic, and its recipe already owns the palette');
+    mode('upscale');
+    T($('look').hidden,'Upscale offers no look at all - it has no prompt writer');
+
+    /* --- auto sends NOTHING --- */
+    mode('image'); $('prompt').value='a fox';
+    press();
+    afterSubmit(function(){
+      T(submits>0,'a run submitted');
+      T(keysWithPrefix('look_').length===0,
+        'everything on Auto sends no look field at all (got '+keysWithPrefix('look_').join(',')+')');
+
+      /* --- chosen looks reach the wire --- */
+      pick('format','35mm'); pick('lens','anamorphic'); pick('aperture','f4');
+      pick('light','contre'); pick('palette','teal');
+      press();
+      afterSubmit(function(){
+        var got=keysWithPrefix('look_');
+        T(got.length===5,'five choices send five fields (got '+got.length+')');
+        T(got.indexOf('look_format=35mm')>-1,'the camera choice reaches the wire');
+        T(got.indexOf('look_palette=teal')>-1,'so does the grade');
+        T(got.join(',').indexOf('auto')===-1,'and the word "auto" is never sent');
+
+        /* the summary tells him what is on without opening the panel */
+        var sum=$('look-sum').textContent;
+        T(sum.indexOf('35mm')>-1 && sum.indexOf('Teal')>-1,
+          'the summary names what is on ("'+sum+'")');
+        T($('look-sum').classList.contains('live'),'and marks itself as set');
+
+        /* --- Design sends NOTHING, even with looks remembered from another mode --- */
+        mode('design');
+        $('prompt').value='a flyer'; if($('exact-text')) $('exact-text').value='PARTY';
+        press();
+        afterSubmit(function(){
+          var dg=keysWithPrefix('look_');
+          T(dg.length===0,
+            'Design sends no look field even with five remembered (got '+dg.join(',')+')');
+
+          /* --- upscale sends none ---
+             Upscale cannot be submitted without a source, so ask the builder
+             directly rather than pressing a button that correctly refuses. */
+          mode('upscale');
+          (function(){
+            var fd=new FormData(); api.fields(fd);
+            var got=[]; fd.forEach(function(v,n){ got.push(n) });
+            T(got.length===0,'Upscale contributes no look field ('+got.join(',')+')');
+          })();
+          (function(){
+
+            /* --- back to auto clears everything --- */
+            mode('image');
+            $('look-clear').click();
+            T($('look-sum').textContent==='auto','Back to auto resets the summary');
+            T(sel('format').value==='' && sel('palette').value==='','and every menu');
+            press();
+            afterSubmit(function(){
+              T(keysWithPrefix('look_').length===0,'and then nothing is sent again');
+              var st={}; try{ st=JSON.parse(localStorage.getItem('rig_look')||'{}') }catch(e){}
+              T(Object.keys(st).length===0,'the cleared state is remembered too');
+              /* every select is >=16px or iOS zooms the page and stays there */
+              var small=[].slice.call(document.querySelectorAll('.look-sel')).filter(function(s){
+                return parseFloat(getComputedStyle(s).fontSize)<16 });
+              T(small.length===0,'no look menu is under 16px ('+small.length+' were)');
+              out.push('[done]'); flush();
+            });
+          })();
+        });
+      });
+    });
+  }
+  if(document.readyState==='complete') setTimeout(go,60); else window.addEventListener('load',function(){setTimeout(go,60)});
+})();
+</script>

@@ -1,0 +1,88 @@
+<script>
+(function(){
+  var S=String.fromCharCode(167), q=new URLSearchParams(location.search),
+      scr=q.get('s')||'scr-guide', mode=q.get('m')||'';
+  // Honest stub: only the auth POST is answered, and only as the real endpoint would.
+  var realFetch=window.fetch;
+  window.fetch=function(u,o){
+    var body=o&&o.body, act=(body&&body.get)?body.get('action'):'';
+    if(act==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    return Promise.reject(new Error('harness: no network'));
+  };
+  function go(){
+    document.getElementById('pw').value='x';
+    document.getElementById('unlock').click();          // runs the app's real enter()
+    setTimeout(function(){
+      if(mode){
+        var b=document.querySelector('#seg-type button[data-v="'+mode+'"]');
+        if(b) b.click();
+      }
+      if(scr!=='scr-hub'){
+        ['scr-login','scr-guide'].forEach(function(i){document.getElementById(i).classList.toggle('on',i===scr)});
+        document.getElementById('scr-hub').classList.toggle('on',scr==='scr-hub');
+        document.getElementById('scr-console').classList.toggle('on',scr==='scr-console');
+      }
+      setTimeout(report,200);
+    },120);
+  }
+  function box(el){var r=el.getBoundingClientRect();
+    return {t:Math.round(r.top),l:Math.round(r.left),w:Math.round(r.width),h:Math.round(r.height),b:Math.round(r.bottom)};}
+  function hit(el){var r=el.getBoundingClientRect();
+    if(r.width<1||r.height<1) return 'zero';
+    if(r.top<0||r.top>window.innerHeight-4||r.left<0||r.left>window.innerWidth-4) return 'offscreen';
+    var e=document.elementFromPoint(r.left+r.width/2, r.top+Math.min(12,r.height/2));
+    return e&&(el.contains(e)||e.contains(el))?'yes':'NO';}
+  function report(){
+    var d=document.documentElement, R={vw:innerWidth,vh:innerHeight,
+      wide:document.body.classList.contains('wide'),
+      hscroll:d.scrollWidth-innerWidth, vscroll:d.scrollHeight-innerHeight, scr:scr, mode:mode};
+    if(scr==='scr-console'){
+      R.src=box(document.getElementById('pane-src'));
+      R.stage=box(document.getElementById('pane-stage'));
+      R.ctl=box(document.getElementById('pane-ctl'));
+      R.hist=box(document.querySelector('.hist'));
+      R.gen=box(document.getElementById('submit'));
+      R.cmp=box(document.getElementById('composer'));
+      R.genHit=hit(document.getElementById('submit'));
+      R.cost=(document.getElementById('cost')||{}).textContent;
+      R.modeHint=(document.getElementById('mode-hint')||{}).textContent;
+      var vis=[];
+      ['row-prompt','row-shots','row-ar','row-res','row-vid','row-krea','row-nbp','row-seed','row-ups','adv']
+        .forEach(function(i){var e=document.getElementById(i); if(e&&!e.hidden&&e.offsetParent!==null) vis.push(i);});
+      R.rows=vis.join(' ');
+      // reading order down the page (matters on phone)
+      var order=[];
+      [].forEach.call(document.querySelectorAll('#pane-src,#pane-stage,#pane-ctl,.hist'),function(e){
+        order.push([Math.round(e.getBoundingClientRect().top), e.id||e.className]);});
+      order.sort(function(a,b){return a[0]-b[0]});
+      R.order=order.map(function(x){return x[1]+'@'+x[0]}).join(' > ');
+    }
+    if(scr==='scr-guide'){
+      var g=document.getElementById('scr-guide');
+      R.guideH=Math.round(g.getBoundingClientRect().height);
+      R.noteW=Math.round(g.querySelector('.note').getBoundingClientRect().width);
+      R.specs=g.querySelectorAll('.spec').length;
+    }
+    // The header strip: type sizes and the pinned heights (2026-09-19, the 9->11px round).
+    (function(){
+      var hd=document.querySelector('.head'), mk=document.querySelector('.mark'), hr=document.querySelector('.head-r');
+      var fs=function(sel){var e=document.querySelector(sel); return e?parseFloat(getComputedStyle(e).fontSize):0};
+      R.head={h:Math.round(hd.getBoundingClientRect().height), mkI:fs('.mark i'), btn:fs('.gbtn'), chip:fs('.chip'),
+        btnH:Math.round(document.getElementById('guide-btn').getBoundingClientRect().height),
+        gap:Math.round(hr.getBoundingClientRect().left-mk.getBoundingClientRect().right),
+        mkSpill:mk.scrollWidth-Math.ceil(mk.getBoundingClientRect().width)};
+    })();
+    if(scr==='scr-hub'){
+      var cards=[].slice.call(document.querySelectorAll('.card'));
+      R.cards=cards.length; R.hit=cards.map(hit).join(',');
+      // Report the mode count so the checker can compare the two instead of
+      // hard-coding a number that goes stale the day a mode is added.
+      R.modes=document.querySelectorAll('#seg-type button').length;
+      R.cardH=cards.map(function(c){return Math.round(c.getBoundingClientRect().height)}).join(',');
+      R.lastCardBottom=Math.round(cards[cards.length-1].getBoundingClientRect().bottom);
+    }
+    document.title=S+JSON.stringify(R)+S;
+  }
+  if(document.readyState==='complete') go(); else addEventListener('load',go);
+})();
+</script>

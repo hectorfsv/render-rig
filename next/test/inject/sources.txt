@@ -1,0 +1,182 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* The source pipeline, driven through the app's OWN file input.
+
+   Two facts this file protects:
+
+   1. THE SOURCES ARE THE IDENTITY in a Compose. Hector's selfie reached fal at
+      839x1536 (exec 5145) and Nano Banana Pro had nothing finer to rebuild his
+      face from, because shrink() capped the long edge at 1536 - a number chosen
+      before Compose existed, purely to keep six photos small.
+   2. RAISING THAT CAP RAISES THE PAYLOAD, and a payload too big for the webhook
+      fails downstream with nothing useful on screen. So there is a cap on the
+      cap, and it must REFUSE rather than send.
+
+   Upscale is exempt from both: it sends the original file at full size.
+
+   Every wait here is a POLL with its own timeout result. Decoding three 4MB
+   photos takes far longer than any fixed delay you would guess, and a fixed
+   delay that expires looks exactly like a product that did nothing. */
+(function(){
+  var S=String.fromCharCode(167), out=[];
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); flush()}
+  function flush(){ try{document.title=S+out.join('\n')+S}catch(e){} }
+  window.onerror=function(m,f,l){ out.push('FAIL  JS ERROR: '+m+' @'+l); flush() };
+
+  var submits=0;
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth')    return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:4.64,currency:'USD'})}});
+    if(String(u).indexOf('jobId=')>-1)
+      return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued'})}});
+    submits++;
+    return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued',jobId:'t1'})}});
+  };
+
+  /* Poll until true. Reports a timeout as its own distinct failure so a slow
+     decode can never be mistaken for a broken feature. */
+  function waitFor(what, test, ms, then){
+    var t0=Date.now();
+    (function tick(){
+      if(test()) return then(true);
+      if(Date.now()-t0 > ms){ T(false,'TIMED OUT waiting for '+what+' after '+ms+'ms'); return then(false) }
+      setTimeout(tick,60);
+    })();
+  }
+
+  /* Blocks: cheap to draw, for the checks where only DIMENSIONS matter. */
+  function blocks(w,h){
+    var c=document.createElement('canvas');c.width=w;c.height=h;
+    var x=c.getContext('2d');
+    for(var i=0;i<400;i++){
+      x.fillStyle='hsl('+(i*11%360)+',70%,'+(20+i%60)+'%)';
+      x.fillRect((i*137)%w,(i*89)%h,Math.max(8,w/24),Math.max(8,h/24));
+    }
+    return c;
+  }
+  /* Per-pixel noise is the only thing that makes a genuinely large JPEG, so it
+     is the only thing that can exercise the payload cap. Built ONCE and reused. */
+  function noisy(w,h){
+    var c=document.createElement('canvas');c.width=w;c.height=h;
+    var x=c.getContext('2d'), d=x.createImageData(w,h), p=d.data, seed=7;
+    for(var i=0;i<p.length;i+=4){
+      seed=(seed*1103515245+12345)&0x7fffffff;
+      p[i]=seed&255; p[i+1]=(seed>>>8)&255; p[i+2]=(seed>>>16)&255; p[i+3]=255;
+    }
+    x.putImageData(d,0,0);
+    return c;
+  }
+  function fileOf(cv,name){
+    return new Promise(function(res){
+      cv.toBlob(function(b){ res(new File([b],name,{type:'image/jpeg'})) },'image/jpeg',0.95);
+    });
+  }
+  function drop(files){
+    var dt=new DataTransfer();
+    files.forEach(function(f){dt.items.add(f)});
+    var inp=$('file'); inp.files=dt.files;
+    inp.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  function slots(){ return document.querySelectorAll('#tray .slot').length }
+  function trayImgs(){ return [].slice.call(document.querySelectorAll('#tray .slot img')) }
+  function clearTray(){
+    [].slice.call(document.querySelectorAll('#tray .slot .x')).forEach(function(b){b.click()});
+  }
+  function mode(m){ var b=document.querySelector('#seg-type button[data-v="'+m+'"]'); if(b) b.click() }
+  /* The app disables Generate while a run is in flight. The harness fires several
+     independent submits, so it clears that between phases. */
+  function press(){ submits=0; $('gen-err').textContent=''; $('submit').disabled=false; $('submit').click() }
+
+  function go(){ $('pw').value='x'; $('unlock').click(); setTimeout(step1,250) }
+
+  /* ---- 1. the cap, measured on what the tray actually holds ---- */
+  function step1(){
+    mode('compose');
+    Promise.all([fileOf(blocks(4000,3000),'big.jpg'), fileOf(blocks(800,600),'small.jpg')])
+      .then(function(fs){
+        drop(fs);
+        waitFor('two files in the tray', function(){
+          var im=trayImgs();
+          return im.length===2 && im.every(function(i){return i.naturalWidth>0});
+        }, 30000, function(ok){
+          if(!ok) return finish();
+          T(true,'both files landed in the tray');
+          // addFiles resolves each file asynchronously, so tray ORDER is not
+          // input order. Identify them by size, not by index.
+          var im=trayImgs().sort(function(x,y){
+            return (y.naturalWidth*y.naturalHeight)-(x.naturalWidth*x.naturalHeight) });
+          var a=im[0], b=im[1], longEdge=Math.max(a.naturalWidth,a.naturalHeight);
+          T(longEdge===2048, 'a 4000px photo is resampled to a 2048px long edge (got '+longEdge+')');
+          T(Math.abs((a.naturalWidth/a.naturalHeight)-(4000/3000))<0.02,
+            'the resample keeps its shape ('+a.naturalWidth+'x'+a.naturalHeight+')');
+          T(b.naturalWidth===800 && b.naturalHeight===600,
+            'a picture already under the cap is left alone ('+b.naturalWidth+'x'+b.naturalHeight+')');
+          T(a.src.indexOf('data:image/jpeg')===0, 'sources ride as jpeg');
+          T(longEdge>1536, 'the cap is ABOVE the old 1536 that cost him his face');
+          step2();
+        });
+      })
+      .catch(function(e){ T(false,'source pipeline threw: '+e.message); finish() });
+  }
+
+  /* ---- 2. the everyday case is untouched ---- */
+  function step2(){
+    clearTray();
+    fileOf(blocks(1200,900),'ok.jpg').then(function(f){
+      drop([f]);
+      waitFor('one ordinary source', function(){return slots()===1}, 20000, function(ok){
+        if(!ok) return finish();
+        mode('compose'); $('prompt').value='combine these';
+        press();
+        setTimeout(function(){
+          var msg=$('gen-err').textContent;
+          T(msg.indexOf('too large')<0, 'an ordinary compose is not refused (msg: "'+(msg||'none')+'")');
+          T(submits===1, 'an ordinary compose still submits ('+submits+')');
+          step3();
+        },200);
+      });
+    });
+  }
+
+  /* ---- 3. the payload guard refuses, and says something useful ---- */
+  function step3(){
+    clearTray();
+    fileOf(noisy(2048,2048),'n.jpg').then(function(one){
+      T(one.size>1e6, 'the noise fixture is genuinely heavy ('+(one.size/1e6).toFixed(1)+'MB each, x3)');
+      var fs=[]; for(var i=0;i<3;i++) fs.push(new File([one],'n'+i+'.jpg',{type:'image/jpeg'}));
+      drop(fs);
+      waitFor('three heavy sources', function(){return slots()===3}, 90000, function(ok){
+        if(!ok) return finish();
+        T(true,'three heavy sources in the tray');
+        mode('compose'); $('prompt').value='combine these';
+        press();
+        setTimeout(function(){
+          var msg=$('gen-err').textContent;
+          T(msg.indexOf('too large')>=0, 'an oversized payload is REFUSED (msg: "'+(msg||'none')+'")');
+          T(/\d+(\.\d+)?MB/.test(msg), 'the refusal says how big it actually is');
+          T(msg.indexOf('Remove one')>=0, 'the refusal says what to do about it');
+          T(submits===0, 'nothing reached the network ('+submits+' submits)');
+          step4();
+        },200);
+      });
+    }).catch(function(e){ T(false,'guard setup threw: '+e.message); finish() });
+  }
+
+  /* ---- 4. upscale is exempt: it sends the original file, not the shrunk ref ---- */
+  function step4(){
+    mode('upscale');
+    press();
+    setTimeout(function(){
+      var msg=$('gen-err').textContent;
+      T(msg.indexOf('too large')<0, 'upscale is exempt from the cap (msg: "'+(msg||'none')+'")');
+      T(submits===1, 'upscale still submits with the same heavy tray ('+submits+')');
+      finish();
+    },200);
+  }
+
+  function finish(){ flush() }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

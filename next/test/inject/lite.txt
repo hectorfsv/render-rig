@@ -1,0 +1,132 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* VIDEO LITE - MiniMax H3 Max, the economy video engine (2026-09-22).
+   What this proves, from the page's side:
+   1. The hub has a sixth card and it opens the console in Lite mode.
+   2. Only H3's controls show: shots, 5-15 s, end frame, its own 768P/1080P; the audio
+      checkbox gives way to "sound always included"; the Kling-only Advanced block hides.
+   3. The meter charges fal's LIST price, the same figures n8n's priceOf uses.
+   4. What reaches the wire: model=h3, resolution, duration, shots, end frame - and none of
+      Kling's fields (generate_audio, cfg_scale, negative_prompt, shot_type, elements).
+   5. Kling Video is untouched: switching back restores its controls, and its submit still
+      carries its own fields and no resolution. */
+(function(){
+  var S=String.fromCharCode(167), out=[];
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); flush()}
+  function flush(){ try{document.title=S+out.join('\n')+S}catch(e){} }
+  window.onerror=function(m,f,l){ out.push('FAIL  JS ERROR: '+m+' @'+l); flush() };
+  var lastBody=null, submits=0;
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:5,currency:'USD'})}});
+    if(String(u).indexOf('jobId=')>-1) return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued'})}});
+    submits++; lastBody=b;
+    return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued',jobId:'L1'})}});
+  };
+  function photo(n){ var c=document.createElement('canvas');c.width=1600;c.height=900;var x=c.getContext('2d');
+    for(var i=0;i<50;i++){x.fillStyle='hsl('+((i*29+n*80)%360)+',60%,50%)';x.fillRect((i*53)%1600,(i*41)%900,80,80)}
+    return new Promise(function(r){c.toBlob(function(b){r(new File([b],'f'+n+'.jpg',{type:'image/jpeg'}))},'image/jpeg',0.9)}) }
+  function drop(files){var dt=new DataTransfer();files.forEach(function(f){dt.items.add(f)});var i=$('file');i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}))}
+  function mode(m){document.querySelector('#seg-type button[data-v="'+m+'"]').click()}
+  function pick(seg,v){var b=document.querySelector('#'+seg+' button[data-v="'+v+'"]');if(b)b.click()}
+  function shown(id){ var e=$(id); if(!e||e.hidden) return false;
+    /* the director's console (2026-09-23): a setting lives behind its chip. Shown =
+       its chip is on the composer and, once tapped, the control is on screen. */
+    var row=e; while(row && row.parentNode && !(row.parentNode.classList && row.parentNode.classList.contains('ctl-scroll'))) row=row.parentNode;
+    if(row && row.parentNode && row.id){
+      var c=document.querySelector('#chips .chip-s[data-row="'+row.id+'"]'); if(!c) return false;
+      if(c.getAttribute('aria-pressed')!=='true') c.click();
+    }
+    return e.offsetParent!==null }
+  function money(){return ($('cost').textContent||'').trim()}
+  function setRange(id,v){var e=$(id);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}))}
+  function press(){submits=0;lastBody=null;$('gen-err').textContent='';$('submit').disabled=false;$('submit').click()}
+  function waitFor(w,t,ms,then){var t0=Date.now();(function tick(){ if(t())return then(true);
+    if(Date.now()-t0>ms){T(false,'TIMED OUT waiting for '+w);return then(false)} setTimeout(tick,60)})()}
+  function fields(){var o={}; if(lastBody) lastBody.forEach(function(v,k){ o[k]=(typeof v==='string')?v:'[file]' }); return o}
+  var P=[];
+
+  function go(){
+    Promise.all([photo(0),photo(1)]).then(function(f){ P=f; $('pw').value='x'; $('unlock').click();
+      setTimeout(hub,300) });
+  }
+  function hub(){
+    var card=document.querySelector('.card[data-go="lite"]');
+    T(!!card,'the hub has a Video Lite card');
+    T(card && /MiniMax H3 Max/.test(card.textContent) && /\$0\.40/.test(card.textContent),'it names MiniMax H3 Max and starts at $0.40');
+    T(document.querySelectorAll('.card').length===document.querySelectorAll('#seg-type button').length,'one card per mode (6)');
+    // start from Kling at 3 s, so the switch has to clamp the length
+    document.querySelector('.card[data-go="video"]').click();
+    setTimeout(function(){ setRange('dur',3); card.click(); setTimeout(controls,200) },200);
+  }
+  function controls(){
+    T($('scr-console').classList.contains('on') && document.querySelector('#seg-type button[data-v="lite"]').getAttribute('aria-pressed')==='true','the card opens the console in Video Lite');
+    T($('tab-mode').textContent==='Video Lite','the setup tab says Video Lite');
+    T($('dur').min==='5' && $('dur-read').textContent==='5','Kling\'s 3 s became 5 s, H3\'s minimum');
+    T(shown('row-vid') && shown('row-shots'),'length and the shot list are shown');
+    T(!shown('row-audio') && shown('lite-audio') && /always included/.test($('lite-audio').textContent),'no audio checkbox: sound is always included');
+    T(shown('row-vres') && document.querySelector('#seg-vres button[data-v="768P"]').getAttribute('aria-pressed')==='true','its own resolution, 768P by default');
+    T($('adv-vid').hidden && !$('adv-none').hidden && /Kling-only/.test($('adv-none').textContent),'the Kling-only Advanced block is hidden, and it says why');
+    T($('row-seed').hidden,'no seed box');
+    T(shown('row-ar') && document.querySelectorAll('#seg-ar button').length===6,'from words alone: six shapes');
+    T(/MiniMax H3 Max/.test($('cost-sub').textContent) && /sound included/.test($('cost-sub').textContent),'the meter names H3 and says the sound is included');
+    T(window.__rigLook && window.__rigLook.byMode.lite==='all','the Look menu applies');
+    prices();
+  }
+  function prices(){
+    T(money()==='$0.40','5 s at 768P = $0.40 (list $0.08/s)');
+    setRange('dur',11); T(money()==='$0.88','11 s at 768P = $0.88');
+    pick('seg-vres','1080P'); T(money()==='$1.76','11 s at 1080P = $1.76 (list $0.16/s)');
+    setRange('dur',15); T(money()==='$2.40','15 s at 1080P = $2.40');
+    pick('seg-vres','768P'); setRange('dur',11);
+    drop([P[0],P[1]]);
+    waitFor('two sources',function(){return document.querySelectorAll('#tray .slot').length===2},4000,function(){
+      T(!shown('row-ar'),'from a source: no shape buttons (it inherits the frame)');
+      T(shown('row-endimg'),'an end frame can be picked');
+      T(/Video Lite uses the first source/.test($('tray-note').textContent),'the tray says the first source opens the clip');
+      submitWords();
+    });
+  }
+  function submitWords(){
+    $('prompt').value='a fight between Kratos and the jacket guy';
+    $('use-shots').click();
+    var sh=document.querySelectorAll('#shots .shot');
+    function fill(i,t,d){ var r=document.querySelectorAll('#shots .shot')[i]; var a=r.querySelector('[data-k="prompt"]'), b=r.querySelector('[data-k="duration"]');
+      a.value=t; a.dispatchEvent(new Event('input',{bubbles:true})); b.value=d; b.dispatchEvent(new Event('input',{bubbles:true})) }
+    fill(0,'Kratos throws the first punch','4');
+    $('add-shot').click(); fill(1,'the jacket guy takes him down','3');
+    $('add-shot').click(); fill(2,'arm bar, full victory','4');
+    $('end-img').value='1'; $('end-img').dispatchEvent(new Event('change',{bubbles:true}));
+    press();
+    waitFor('the submit',function(){return submits>0},6000,function(){
+      var f=fields();
+      T(f.model==='h3' && f.mode==='generate','model=h3');
+      T(f.duration==='11' && f.resolution==='768P','duration and resolution sent');
+      var s=[]; try{ s=JSON.parse(f.multi_prompt||'[]') }catch(e){}
+      T(s.length===3 && s[0].duration==='4' && s[2].prompt==='arm bar, full victory','the three shots ride along');
+      T(f.end_image_idx==='1' && f.image_0==='[file]' && f.image_1==='[file]','end frame by tray position, the sources attached');
+      ['generate_audio','cfg_scale','negative_prompt','shot_type','elements','aspect_ratio'].forEach(function(k){ T(!(k in f),'no '+k+' for H3') });
+      setTimeout(kling,300);
+    });
+  }
+  function kling(){
+    // stop the run the Lite submit started, then prove Kling Video is as it was
+    try{ $('stop') && $('stop').click() }catch(e){}
+    mode('video');
+    T($('dur').min==='3' && shown('row-audio') && !shown('row-vres') && !$('adv-vid').hidden,'back on Video: 3 s minimum, the audio checkbox, Kling\'s Advanced, no H3 resolution');
+    T(/Kling 3\.0 Pro/.test($('cost-sub').textContent),'the meter names Kling again');
+    if(!$('audio').checked) $('audio').click();
+    $('neg').value='blur';
+    press();
+    waitFor('the Kling submit',function(){return submits>0},6000,function(){
+      var f=fields();
+      T(/^kling-i2v$/.test(f.model) && f.generate_audio==='on' && f.negative_prompt==='blur','Kling still sends its model, audio and keep-out words');
+      T(!('resolution' in f),'and no H3 resolution');
+      out.push('[done]'); flush();
+    });
+  }
+  if(document.readyState==='complete') setTimeout(go,120); else addEventListener('load',function(){setTimeout(go,120)});
+})();
+</script>

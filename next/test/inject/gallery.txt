@@ -1,0 +1,170 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* The gallery is the one screen strangers will see. Since 2026-09-20 (Hector) it
+   shows the picture, what made it and what it cost - NO prompt, NO seed, NO
+   settings and no "make one like this", for anyone. The fixtures still CARRY
+   prompts and seeds, so the checks prove the page hides them even when sent. Checked with the REAL payload shape
+   the n8n endpoint returns, plus the two states nobody looks at: empty, and a
+   lookup that fails. */
+(function(){
+  var S=String.fromCharCode(167), out=[], d0='', q=new URLSearchParams(location.search),
+      mode=q.get('g')||'ok', galCalls=0;
+  // 2026-09-22: the list is kept on the device for a day. kept = an hour-old list (no fetch), stale = 25 hours old (one fetch)
+  try{ localStorage.removeItem('rig_gallery') }catch(e){}
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); document.title=S+out.join('\n')+S}
+  window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
+  function vis(el){ if(!el||el.hidden) return false;
+    var c=getComputedStyle(el); if(c.display==='none') return false;
+    var r=el.getBoundingClientRect(); return r.width>0&&r.height>0; }
+  var PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAUCAYAAACXtf2DAAAAHElEQVQoz2NgoBQwUqifYdSAUQNGDRg1YNQAhgAABJoAAWgmWQ8AAAAASUVORK5CYII=';
+  var ITEMS=[
+    {url:PNG,gen_type:'image',model:'krea',engine:'Krea 2 Large',prompt:'Ghostface doing Pilates on the beach',
+     price:0.06,seed:'166030281',created_at:'2026-09-10T23:18:19',specs:{aspect_ratio:'4:5',resolution:'2K',creativity:'medium',w:928,h:1152}},
+    // THE ROW THAT MATTERS: picked krea, actually ran on nano-banana-pro
+    {url:PNG,gen_type:'image',model:'krea',engine:'Nano Banana Pro',prompt:'make this image real',
+     price:0.15,seed:'',created_at:'2026-09-08T15:10:37',specs:{resolution:'2K',w:2080,h:2048}},
+    {url:PNG,gen_type:'image',model:'nano-banana-pro',engine:'',prompt:'',
+     price:null,seed:'',created_at:'2026-03-27T00:07:28',specs:{}},
+    // A DESIGN ROW. Its words live in specs, not in the caption - exec 5238's
+    // real shape, straight out of the jobs table.
+    {url:PNG,gen_type:'image',model:'grok',engine:'Grok Imagine 2.0',
+     prompt:'a flyer for a halloween party, bloody with some neon touches',
+     price:0.08,seed:'',created_at:'2026-09-13T03:23:55',
+     specs:{aspect_ratio:'4:3',resolution:'2K',quality:'medium',w:2368,h:1776,
+            exact_text:'Halloween Fest'+String.fromCharCode(10)+'Saturday October 24th'}},
+    // A VIDEO ROW - exec 5372's real shape. The page drew every item as an <img>,
+    // so the first video flagged would have been a broken card. Image-to-video
+    // stores the UI's default aspect_ratio but takes the START PICTURE's shape.
+    {url:'data:video/mp4;base64,AAAA',gen_type:'video',model:'kling-i2v',engine:'Kling 3.0 Pro',
+     prompt:'make the man turn around nod at the camera as saying "Hi"',price:0.56,seed:'',
+     created_at:'2026-09-13T17:30:44',
+     specs:{aspect_ratio:'16:9',resolution:'2K',duration:'5',image_count:1,w:1292,h:1604}}
+  ];
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:4.95,currency:'USD'})}});
+    if(a==='gallery'){
+      galCalls++;
+      if(mode==='fail') return Promise.reject(new Error('offline'));
+      if(mode==='http') return Promise.resolve({ok:false,status:500,json:function(){return Promise.resolve({})}});
+      var items = mode==='empty' ? [] : ITEMS;
+      return Promise.resolve({ok:true,json:function(){return Promise.resolve({items:items,count:items.length})}});
+    }
+    return Promise.reject(new Error('no net'));
+  };
+  if(mode==='kept' || mode==='stale') localStorage.setItem('rig_gallery', JSON.stringify({t:Date.now()-(mode==='kept' ? 1 : 25)*3600000, items:[ITEMS[0], ITEMS[1]]}));
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){
+      T(vis($('hub-gallery')), 'the hub offers a way into the gallery');
+      $('hub-gallery').click();
+      setTimeout(check,600);
+    },250);
+  }
+  function check(){
+    T($('scr-gallery').classList.contains('on'), 'the gallery screen opened');
+    var frames=document.querySelectorAll('.frame');
+    if(mode==='ok'){
+      T(frames.length===ITEMS.length, 'one frame per item ('+frames.length+' of '+ITEMS.length+')');
+      T($('gal-count').textContent.indexOf(ITEMS.length+' picture')===0,
+        'the count is shown ('+$('gal-count').textContent+')');
+      var c0=frames[0].textContent;
+      T(!/Ghostface doing Pilates/.test(c0) && !frames[0].querySelector('.pr'), 'no prompt on the card, even though the payload carried one');
+      T(/Krea 2 Large/.test(c0), 'the card names the MODEL that made it ('+
+        (c0.match(/Krea 2 Large|Nano Banana Pro|Image|Compose/)||[''])[0]+')');
+      T(/\$0\.06/.test(c0), 'the price is shown');
+      // the bug Hector spotted: a picture made on NBP was being labelled by the
+      // mode the user picked, so it read the same as a Krea one
+      T(/Nano Banana Pro/.test(frames[1].textContent) && !/Krea/.test(frames[1].textContent),
+        'a row that ran on NBP says so, even though krea was picked');
+      T(/Krea 2 Large/.test(d0=frames[0].textContent), 'and a real Krea row still says Krea');
+      T(!/\$/.test(frames[2].textContent), 'an item with no known price shows no price, not $0.00');
+      T(!/prompt/i.test(frames[2].textContent), 'a promptless item is just the picture and its model, no note about prompts');
+      // A VIDEO ROW is drawn as a video, and its facts are a video's facts
+      var vf=frames[4], vv=vf&&vf.querySelector('video');
+      T(!!vv && !vf.querySelector('img'), 'a video row is drawn as a video, not a broken picture');
+      T(!!vv && vv.muted && vv.hasAttribute('playsinline'), 'the grid video is muted and inline (iOS would open it full screen)');
+      T(!!vv && vv.getBoundingClientRect().height>40, 'the grid video takes its real shape ('+(vv?Math.round(vv.getBoundingClientRect().height):0)+'px tall)');
+      T(!!vf && /Kling 3\.0 Pro/.test(vf.textContent) && /\$0\.56/.test(vf.textContent), 'the video card names the model and the price');
+      if(vf){
+        vf.click();
+        var ov=$('gal-one').querySelector('video'), vd=$('gal-one').textContent;
+        T(!!ov && ov.hasAttribute('controls') && !$('gal-one').querySelector('img'), 'the detail view plays the video, with controls');
+        T(/Length\s*5s/.test(vd), 'the length is listed');
+        T(!/16:9/.test(vd), 'the stored default shape is NOT listed - image-to-video takes the start picture\'s shape');
+        T(!/start picture/i.test(vd) && !/nod at the camera/.test(vd), 'no copy hint and no prompt on a video either');
+        $('gal-back').click();
+      }
+      // the detail view
+      frames[0].click();
+      T(vis($('gal-one')) && !vis($('gal-grid')), 'tapping a frame opens the detail view');
+      var d=$('gal-one').textContent;
+      T(!/Ghostface doing Pilates/.test(d) && !/Someone typed/.test(d), 'the prompt is NOT in the detail view');
+      T(!/166030281/.test(d), 'the seed is NOT listed');
+      T(!/4:5/.test(d) && !/2K/.test(d) && !/medium/.test(d), 'settings are NOT listed');
+      T(/Krea 2 Large/.test(d), 'what made it is listed');
+      T(/\$0\.06/.test(d), 'the cost is listed');
+      var img=$('gal-one').querySelector('img');
+      T(img && img.getBoundingClientRect().width<=$('gal-one').getBoundingClientRect().width+1,
+        'the detail image fits its column');
+      T(!$('gal-use'), 'there is no "make one like this" (removed 2026-09-20)');
+      // A DESIGN ROW carries its words in specs; none of them may show either.
+      $('gal-back').click();
+      var dsn=document.querySelectorAll('.frame')[3];
+      T(!!dsn, 'the design row has a frame');
+      dsn.click();
+      var dd=$('gal-one').textContent;
+      T(!$('gal-use') && !/Halloween Fest/.test(dd) && !/halloween party/.test(dd), 'a design row shows neither its words nor its caption nor a copy button');
+      T(/Grok Imagine 2\.0/.test(dd) && /\$0\.08/.test(dd), 'it shows what made it and what it cost');
+      // three opens by now: the gallery is fetched ONCE per session (each fetch is an execution)
+      $('gal-back').click(); $('menu-btn').click(); $('hub-gallery').click();
+      $('gal-back').click(); $('hub-gallery').click();
+      setTimeout(function(){
+        T(galCalls===1, 'the gallery is fetched once per session, not on every open ('+galCalls+' fetches for 3 opens)');
+      },300);
+    }
+    if(mode==='ok') T((JSON.parse(localStorage.getItem('rig_gallery')||'{}').items||[]).length===ITEMS.length, 'the list is kept on this device for a day, so a new session opens it for nothing');
+    if(mode==='kept'){
+      T(galCalls===0 && frames.length===2, 'a list kept on this device within the day opens with NO fetch ('+galCalls+' fetches, '+frames.length+' frames)');
+      T(!/Ghostface doing Pilates/.test(frames[0].textContent), 'and the kept list shows no prompt either');
+    }
+    if(mode==='stale') T(galCalls===1 && frames.length===ITEMS.length, 'a list kept for more than a day is fetched again, once ('+galCalls+' fetches, '+frames.length+' frames)');
+    if(mode==='fail'||mode==='http') T(localStorage.getItem('rig_gallery')===null, 'a failed lookup is never kept ('+mode+')');
+    if(mode==='empty'){
+      T(frames.length===0, 'no frames when nothing is flagged');
+      var e=document.querySelector('.gal-empty');
+      T(vis(e), 'an empty gallery says something');
+      T(/first/i.test(e.textContent), 'and invites you to act rather than just reporting emptiness');
+      T($('gal-count').textContent==='', 'no count is shown for an empty gallery');
+    }
+    if(mode==='fail'||mode==='http'){
+      T(vis(document.querySelector('.gal-empty')), 'a failed lookup shows the empty state, not a broken screen ('+mode+')');
+      T($('scr-gallery').classList.contains('on'), 'the screen still works');
+    }
+    // The bug Hector reported: Safari's multicol balancer left a whole empty
+    // column between the 2nd and 3rd picture. The columns are explicit now, so
+    // assert the two things that can never be true again.
+    if(mode==='ok'||mode==='empty'){
+      var cols=[].slice.call(document.querySelectorAll('.gal-col'));
+      var emptyCols=cols.filter(function(c){return !c.querySelector('.frame')}).length;
+      var holes=0;
+      cols.forEach(function(c){
+        var prev=null;
+        [].forEach.call(c.querySelectorAll('.frame'),function(f){
+          var r=f.getBoundingClientRect();
+          if(prev!==null && Math.round(r.top-prev)>24) holes++;
+          prev=r.bottom;});
+      });
+      T(emptyCols===0, 'no column is left empty ('+cols.length+' columns, '+emptyCols+' empty)');
+      T(holes===0, 'no hole between pictures inside a column ('+holes+')');
+    }
+    // every mode
+    var dd=document.documentElement;
+    T(dd.scrollWidth<=innerWidth, 'no horizontal overflow ('+dd.scrollWidth+'<='+innerWidth+')');
+    document.title=S+out.join('\n')+S;
+  }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

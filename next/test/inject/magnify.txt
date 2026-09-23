@@ -1,0 +1,237 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* ZOOM - Hector, 2026-09-14: "we need zoom options, make the image bigger to
+   check quality", on the stage AND in the gallery. Drives the app's own
+   submit -> poll -> land path with a real 1600x2000 picture, then zooms it every
+   way the page offers and asserts what is ON SCREEN: the scale the picture is
+   actually drawn at, the file pixel under the centre, the box the zoom lives in,
+   and that nothing else on the page moved. ?ro=1 is passed only by the WebKit
+   runner - headless Chromium never runs ResizeObserver. */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search), RO=q.get('ro')==='1';
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); flush()}
+  function flush(){ try{document.title=S+out.join('\n')+S}catch(e){} }
+  function done(){ out.push('      [done]'); flush() }
+  window.onerror=function(m,f,l){ out.push('FAIL  JS ERROR: '+m+' @'+l); flush() };
+  function vis(el){ if(!el||el.hidden) return false;
+    var c=getComputedStyle(el); if(c.display==='none'||c.visibility==='hidden') return false;
+    var r=el.getBoundingClientRect(); return r.width>0 && r.height>0; }
+  function wait(ok,then,what){ var n=0; (function w(){
+    if(ok()) return then();
+    if(++n>240){ T(false,'TIMED OUT waiting for '+what); return done() }
+    setTimeout(w,250); })() }
+
+  // a real-sized picture, 100px checks so a wrong scale cannot hide
+  var NW=1600, NH=2000, cv=document.createElement('canvas'); cv.width=NW; cv.height=NH;
+  var g=cv.getContext('2d');
+  for(var y=0;y<NH;y+=100) for(var x=0;x<NW;x+=100){ g.fillStyle=((x+y)/100)%2?'#c33':'#39c'; g.fillRect(x,y,100,100) }
+  var PIC=cv.toDataURL('image/png');
+
+  var ITEMS=[
+    {url:PIC,gen_type:'image',model:'nbp',engine:'Nano Banana Pro',prompt:'make him kratos, the god of war.',
+     price:0.15,seed:'995237757',created_at:'2026-09-14T11:55:46',specs:{aspect_ratio:'4:5',resolution:'2K',w:NW,h:NH}},
+    {url:'data:video/mp4;base64,AAAA',gen_type:'video',model:'kling-i2v',engine:'Kling 3.0 Pro',
+     prompt:'make the man turn around',price:0.56,seed:'',created_at:'2026-09-13T17:30:44',
+     specs:{duration:'5',image_count:1,w:1292,h:1604}}
+  ];
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:4.95,currency:'USD'})}});
+    if(a==='gallery') return Promise.resolve({ok:true,json:function(){return Promise.resolve({items:ITEMS,count:ITEMS.length})}});
+    if(String(u).indexOf('jobId=')>-1) return Promise.resolve({ok:true,json:function(){return Promise.resolve({
+      status:'done', gen_type:'image', urls:[PIC], width:null, height:null, seed:995237757, filename:'ai-image.jpg'})}});
+    return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued',jobId:'zoom1'})}});
+  };
+
+  var dp=window.devicePixelRatio||1;
+  // the scale the picture is DRAWN at, and where its top-left pixel is - read off
+  // the element and its object-fit, independently of the code under test
+  function drawn(img){
+    var r=img.getBoundingClientRect(), f=getComputedStyle(img).objectFit, w=img.clientWidth, h=img.clientHeight;
+    var sc = f==='cover' ? Math.max(w/NW,h/NH) : f==='fill' ? w/NW : Math.min(w/NW,h/NH);
+    return {s:sc, x:r.left+img.clientLeft+(w-NW*sc)/2, y:r.top+img.clientTop+(h-NH*sc)/2};
+  }
+  function pixelAt(img,px,py){ var d=drawn(img); return {x:(px-d.x)/d.s, y:(py-d.y)/d.s} }
+  function btn(bar,z){ return bar.querySelector('[data-z="'+z+'"]') }
+  function pct(bar){ return parseInt(bar.querySelector('.zpct').textContent,10) }
+  function centre(el){ var r=el.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2} }
+  function inside(a,b){ return a.left>=b.left-1 && a.right<=b.right+1 && a.top>=b.top-1 && a.bottom<=b.bottom+1 }
+  function noOverflow(m){ T(document.documentElement.scrollWidth<=innerWidth, 'no horizontal page overflow '+m) }
+
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){
+      document.querySelector('.card[data-go="image"]').click();
+      setTimeout(function(){
+        $('prompt').value='a test'; $('submit').click();
+        // naturalWidth is set one task BEFORE the load event is dispatched, and
+        // this poll can land in between; give the page that task before judging it
+        wait(function(){ var i=$('stage-out').querySelector('img'); return i && i.complete && i.naturalWidth===NW },
+             function(){ setTimeout(stageChecks,60) }, 'the render to land and decode');
+      },200);
+    },150);
+  }
+
+  function stageChecks(){
+    out.push('      ['+innerWidth+'x'+innerHeight+' @'+dp+'x, wide='+document.body.classList.contains('wide')+']');
+    var st=$('stage'), bar=$('stage-zbar'), img=$('stage-out').querySelector('img'), view=img.parentNode;
+    T(vis(bar), 'a zoom bar is on the stage with a picture up');
+    T(view.classList.contains('zview') && getComputedStyle(view).display==='contents',
+      'at rest the wrapper has no box, so the stage lays out as before');
+    var r0=st.getBoundingClientRect(), d0=drawn(img);
+    T(Math.abs(pct(bar)-Math.round(d0.s*dp*100))<=1,
+      'the readout is the real scale in SCREEN pixels ('+bar.querySelector('.zpct').textContent+' vs '+Math.round(d0.s*dp*100)+'%)');
+    T(btn(bar,'out').disabled && btn(bar,'fit').disabled, 'at rest there is nothing to zoom out of');
+    T(inside(bar.getBoundingClientRect(), r0), 'the bar sits inside the stage');
+    var fb=$('fitbtn');
+    if(vis(fb)){ var fr=fb.getBoundingClientRect(), br=bar.getBoundingClientRect();
+      T(fr.bottom<=br.top||fr.top>=br.bottom||fr.right<=br.left||fr.left>=br.right, 'the bar does not cover the phone Fit button') }
+    [].forEach.call(bar.querySelectorAll('button'),function(b){
+      T(b.scrollWidth<=b.clientWidth+1, 'bar button "'+b.textContent+'" fits its label') });
+    noOverflow('with the bar up');
+
+    // + : 1.5x, and the pixel under the centre stays under the centre
+    var c=centre(img), p0=pixelAt(img,c.x,c.y);
+    btn(bar,'in').click();
+    var d1=drawn(img);
+    T(view.classList.contains('on') && st.classList.contains('zoomed'), 'pressing + zooms');
+    T(Math.abs(d1.s/d0.s-1.5)<0.02, 'the picture is drawn 1.5x bigger ('+(d1.s/d0.s).toFixed(3)+'x)');
+    var p1=pixelAt(img,c.x,c.y);
+    T(Math.abs(p1.x-p0.x)<NW*0.02 && Math.abs(p1.y-p0.y)<NH*0.02,
+      'the pixel under the centre stays under it ('+Math.round(p0.x)+','+Math.round(p0.y)+' -> '+Math.round(p1.x)+','+Math.round(p1.y)+')');
+    var r1=st.getBoundingClientRect();
+    T(Math.abs(r1.width-r0.width)<=2 && Math.abs(r1.height-r0.height)<=2,
+      'the stage does not change size when zoomed ('+Math.round(r0.width)+'x'+Math.round(r0.height)+' -> '+Math.round(r1.width)+'x'+Math.round(r1.height)+')');
+    T(inside(view.getBoundingClientRect(), r1), 'the zoomed picture stays inside the stage box');
+    T(!btn(bar,'out').disabled && !btn(bar,'fit').disabled && vis(bar), 'zoomed, the bar offers the way back');
+    if(!document.body.classList.contains('wide')) T(!vis(fb), 'the phone Fit/Fill toggle steps aside while zoomed');
+    noOverflow('while zoomed');
+
+    // 1:1 = one file pixel per SCREEN pixel. Unless the picture already RESTS at
+    // or above actual pixels (a 3x phone on its side, cropped to fill): then 1:1
+    // would be a zoom OUT, rest is the floor, and the button must say so.
+    var canOne = 1/dp > d0.s*1.002;
+    btn(bar,'one').click();
+    var d2=drawn(img);
+    if(canOne){
+      T(Math.abs(d2.s*dp-1)<0.001, '1:1 draws one file pixel per screen pixel ('+(d2.s*dp).toFixed(3)+')');
+      T(btn(bar,'one').getAttribute('aria-pressed')==='true' && pct(bar)===100, '1:1 shows as on and reads 100%');
+      T(view.scrollHeight>view.clientHeight+1, 'at 1:1 there is more picture than box, so it scrolls ('+view.scrollHeight+' > '+view.clientHeight+')');
+    } else {
+      T(!view.classList.contains('on') && Math.abs(d2.s-d0.s)<1e-4,
+        'rest is above actual pixels ('+(d0.s*dp).toFixed(3)+'), so 1:1 lands at rest rather than below it');
+      T(btn(bar,'one').disabled && btn(bar,'one').getAttribute('aria-pressed')==='false',
+        'and at rest the 1:1 button is off, because it would be a zoom out');
+      // get a zoomed, scrolling picture for the pan and tap checks below
+      for(var k=0;k<10 && !(view.classList.contains('on') && view.scrollHeight>view.clientHeight+1);k++) btn(bar,'in').click();
+      T(view.classList.contains('on') && view.scrollHeight>view.clientHeight+1, '+ still reaches a scrolling zoom');
+    }
+
+    // a mouse drag moves around it
+    var t0=view.scrollTop, m=centre(view);
+    function pe(t,x,y){ view.dispatchEvent(new PointerEvent(t,{bubbles:true,cancelable:true,pointerId:1,
+      pointerType:'mouse',button:0,buttons:1,clientX:x,clientY:y})) }
+    pe('pointerdown',m.x,m.y); pe('pointermove',m.x-30,m.y-60); pe('pointerup',m.x-30,m.y-60);
+    T(Math.abs(view.scrollTop-t0-60)<=2, 'dragging with a mouse pans the picture ('+t0+' -> '+view.scrollTop+')');
+
+    // the phone's tap-to-fill must not fire on a zoomed picture
+    var hadFit=st.classList.contains('fit');
+    $('stage-out').click();
+    T(st.classList.contains('fit')===hadFit && view.classList.contains('on'), 'a tap on a zoomed picture neither flips Fit/Fill nor un-zooms');
+
+    // - walks back to EXACTLY how it looked at rest
+    for(var i=0;i<30 && view.classList.contains('on');i++) btn(bar,'out').click();
+    T(!view.classList.contains('on') && !st.classList.contains('zoomed'), '- walks all the way back to rest');
+    T(img.style.width==='' && img.style.height==='' && view.style.width==='', 'at rest every inline size is gone');
+    T(Math.abs(drawn(img).s-d0.s)<1e-4, 'and the picture is drawn exactly as before');
+
+    // the top limit
+    for(i=0;i<60 && !btn(bar,'in').disabled;i++) btn(bar,'in').click();
+    T(btn(bar,'in').disabled, '+ stops at a limit');
+    T(drawn(img).s*dp>=3.99, 'the limit is at least 4x actual pixels ('+(drawn(img).s*dp).toFixed(2)+'x)');
+
+    // Fit = the whole frame
+    btn(bar,'fit').click();
+    T(!view.classList.contains('on'), 'Fit returns from any zoom');
+    if(!document.body.classList.contains('wide') && $('scr-console').classList.contains('sheet-shut'))
+      T(st.classList.contains('fit') && getComputedStyle(img).objectFit==='contain', 'on the phone, Fit shows the whole frame, not the crop');
+
+    // wheel: plain scroll is not a zoom; ctrl+scroll (a Chrome trackpad pinch) is
+    var cc=centre(img);
+    img.dispatchEvent(new WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY:-40,clientX:cc.x,clientY:cc.y}));
+    T(!view.classList.contains('on'), 'a plain scroll wheel does not zoom');
+    var we=new WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY:-40,ctrlKey:true,clientX:cc.x,clientY:cc.y});
+    img.dispatchEvent(we);
+    T(view.classList.contains('on') && we.defaultPrevented, 'ctrl + scroll zooms the picture, and not the page');
+    btn(bar,'fit').click();
+
+    // Safari's pinch: gesture events
+    var rs=drawn(img).s, gc=centre(img);
+    function ge(t,sc){ var e=new Event(t,{bubbles:true,cancelable:true}); e.scale=sc; e.clientX=gc.x; e.clientY=gc.y;
+      img.dispatchEvent(e); return e }
+    var gs=ge('gesturestart',1); ge('gesturechange',2); ge('gestureend',2);
+    T(view.classList.contains('on') && gs.defaultPrevented, 'a Safari pinch zooms the picture and not the page');
+    T(Math.abs(drawn(img).s/rs-2)<0.02, 'by the amount pinched ('+(drawn(img).s/rs).toFixed(3)+'x)');
+
+    if(!RO) return afterRO();
+    // the box changes size under a zoom (window, sheet, rotation): back to rest
+    st.style.minHeight=Math.round(st.getBoundingClientRect().height+90)+'px';
+    wait(function(){ return !view.classList.contains('on') }, function(){
+      T(true, 'when the stage changes size, a zoom goes back to rest');
+      st.style.minHeight=''; afterRO();
+    }, 'the zoom to reset when the stage resized');
+  }
+
+  function afterRO(){
+    var st=$('stage'), bar=$('stage-zbar');
+    // recalling from This Session starts the picture at rest
+    document.querySelector('.hcard').click();
+    var v2=$('stage-out').querySelector('.zview');
+    T(!!v2 && !v2.classList.contains('on') && !st.classList.contains('zoomed'), 'a render recalled from the session starts at rest');
+    T(vis(bar), 'and still has its zoom bar');
+    $('clear-stage').click();
+    T(!vis(bar), 'Clear takes the zoom bar away with the picture');
+    gallery();
+  }
+
+  function gallery(){
+    $('menu-btn').click(); $('hub-gallery').click();
+    wait(function(){ return document.querySelectorAll('.frame').length===ITEMS.length }, function(){
+      document.querySelectorAll('.frame')[0].click();
+      wait(function(){ var i=$('gal-one').querySelector('img'); return i && i.complete && i.naturalWidth===NW },
+           function(){ setTimeout(galChecks,60) }, 'the gallery picture to decode');
+    }, 'the gallery grid');
+  }
+
+  function galChecks(){
+    var gp=$('gal-one').querySelector('.gal-pic'), bar=gp&&gp.querySelector('.zbar'), img=gp&&gp.querySelector('img');
+    T(vis(bar), 'the gallery picture has a zoom bar');
+    T(bar && !bar.id && document.querySelectorAll('#stage-zbar').length===1, 'the cloned bar does not duplicate the stage bar id');
+    var ir=img.getBoundingClientRect(), br=bar.getBoundingClientRect();
+    T(br.top>=ir.bottom-1, 'the bar sits under the picture, not over the art');
+    var g0=drawn(img);
+    T(Math.abs(pct(bar)-Math.round(g0.s*dp*100))<=1, 'the gallery readout is the real scale ('+bar.querySelector('.zpct').textContent+')');
+    btn(bar,'in').click();
+    var view=img.parentNode, vr=view.getBoundingClientRect();
+    T(view.classList.contains('on') && Math.abs(drawn(img).s/g0.s-1.5)<0.02, '+ zooms the gallery picture 1.5x');
+    T(Math.abs(vr.width-ir.width)<=1.5 && Math.abs(vr.height-ir.height)<=1.5,
+      'inside a box the size the picture had ('+Math.round(ir.width)+'x'+Math.round(ir.height)+' -> '+Math.round(vr.width)+'x'+Math.round(vr.height)+')');
+    T(vr.right<=$('gal-one').getBoundingClientRect().right+1, 'the zoom box stays in its column');
+    T(Math.abs(bar.getBoundingClientRect().top-br.top)<=2, 'the bar does not jump when it zooms');
+    noOverflow('in a zoomed gallery picture');
+    btn(bar,'one').click();
+    T(Math.abs(drawn(img).s*dp-1)<0.001, '1:1 in the gallery is actual pixels too');
+    $('gal-back').click();
+    T(vis($('gal-grid')), 'back to the grid from a zoomed picture');
+    document.querySelectorAll('.frame')[0].click();
+    var v3=$('gal-one').querySelector('.zview');
+    T(!!v3 && !v3.classList.contains('on'), 'reopening the picture starts at rest');
+    $('gal-back').click(); document.querySelectorAll('.frame')[1].click();
+    T(!$('gal-one').querySelector('.zbar') && !!$('gal-one').querySelector('video'), 'a video has no zoom bar - it keeps its own controls');
+    done();
+  }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

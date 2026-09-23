@@ -1,0 +1,184 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* DESIGN mode - Grok Imagine. Flyers, posters, invitations, memes.
+
+   Two things here are not like the rest of the rig and both cost real money:
+
+   1. GROK BILLS FOR A REFUSAL. Every other engine's refusal is free - Google
+      turned down a whole 4K compose on 2026-09-12 and charged $0.00. So the
+      cost line has to say so, every time, and there is an assertion for it.
+
+   2. GROK'S EDIT TAKES A MAXIMUM OF 3 SOURCES. The tray does not. If the page
+      sent 5 and quoted for 3, the price on the button would be a lie - so the
+      payload is sliced to 3 to match the quote, and n8n slices again.
+
+   Plus the one that matters most: the words. They are appended by n8n AFTER the
+   rewrite, so what this file proves is that the field reaches the wire intact. */
+(function(){
+  var S=String.fromCharCode(167), out=[];
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); flush()}
+  function flush(){ try{document.title=S+out.join('\n')+S}catch(e){} }
+  window.onerror=function(m,f,l){ out.push('FAIL  JS ERROR: '+m+' @'+l); flush() };
+
+  var submits=0, lastBody=null;
+  window.fetch=(function(real){
+    return function(u,o){
+      var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+      if(a==='auth')    return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+      if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:3.40,currency:'USD'})}});
+      if(String(u).indexOf('jobId=')>-1) return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued'})}});
+      submits++; lastBody=b;
+      return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued',jobId:'d1'})}});
+    };
+  })(window.fetch);
+
+  function photo(n){
+    var c=document.createElement('canvas');c.width=800;c.height=1000;
+    var x=c.getContext('2d');
+    for(var i=0;i<60;i++){x.fillStyle='hsl('+((i*23+n*70)%360)+',60%,50%)';x.fillRect((i*37)%800,(i*31)%1000,50,50)}
+    return new Promise(function(r){c.toBlob(function(b){r(new File([b],'p'+n+'.jpg',{type:'image/jpeg'}))},'image/jpeg',0.9)});
+  }
+  function drop(files){var dt=new DataTransfer();files.forEach(function(f){dt.items.add(f)});
+    var i=$('file');i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}))}
+  function slots(){return document.querySelectorAll('#tray .slot').length}
+  function mode(m){var b=document.querySelector('#seg-type button[data-v="'+m+'"]');if(b)b.click()}
+  function pick(seg,v){var b=document.querySelector('#'+seg+' button[data-v="'+v+'"]');if(b)b.click()}
+  function press(){submits=0;$('gen-err').textContent='';$('submit').disabled=false;$('submit').click()}
+  function shown(id){ var e=$(id); if(!e||e.hidden) return false;
+    /* the director's console (2026-09-23): a setting lives behind its chip. Shown =
+       its chip is on the composer and, once tapped, the control is on screen. */
+    var row=e; while(row && row.parentNode && !(row.parentNode.classList && row.parentNode.classList.contains('ctl-scroll'))) row=row.parentNode;
+    if(row && row.parentNode && row.id){
+      var c=document.querySelector('#chips .chip-s[data-row="'+row.id+'"]'); if(!c) return false;
+      if(c.getAttribute('aria-pressed')!=='true') c.click();
+    }
+    return e.offsetParent!==null }
+  function money(){return ($('cost').textContent||'').trim()}
+  function waitFor(w,t,ms,then){var t0=Date.now();(function tick(){
+    if(t())return then(true);
+    if(Date.now()-t0>ms){T(false,'TIMED OUT waiting for '+w);return then(false)}
+    setTimeout(tick,60)})()}
+
+  var P=[];
+  function go(){
+    Promise.all([photo(0),photo(1),photo(2),photo(3)]).then(function(f){
+      P=f; $('pw').value='x'; $('unlock').click();
+      setTimeout(function(){ document.querySelector('.card[data-go="design"]').click(); step1() },250);
+    });
+  }
+
+  function step1(){
+    T($('scr-console').classList.contains('on'),'the Design hub card opens the console');
+    T(document.querySelector('#seg-type button[data-v="design"]').getAttribute('aria-pressed')==='true',
+      'and Design is the selected mode');
+    T(shown('row-design'),'the Words box is shown');
+    T(shown('row-res'),'the resolution row is shown');
+    T(!shown('row-seed'),'no seed box - Grok has no seed, so the control would lie');
+    T($('btn-4k').hidden,'no 4K - Grok tops out at 2K');
+    T(!$('btn-1k').hidden,'1K IS offered here, because Grok really charges less for it');
+    T(/Grok Imagine/.test($('cost-sub').textContent||''),'the meter names Grok');
+    T(/Charged even if it refuses/.test($('cost-sub').textContent||''),
+      'and warns that a refusal still bills - nothing else in the rig does this');
+    step2();
+  }
+
+  /* every rung of Grok's price grid */
+  function step2(){
+    pick('seg-res','1K'); pick('seg-quality','low');
+    T(money()==='$0.04','1K low  = $0.04  (got '+money()+')');
+    pick('seg-quality','medium');
+    T(money()==='$0.06','1K med  = $0.06  (got '+money()+')');
+    pick('seg-res','2K'); pick('seg-quality','low');
+    T(money()==='$0.06','2K low  = $0.06  (got '+money()+')');
+    pick('seg-quality','medium');
+    T(money()==='$0.08','2K med  = $0.08  (got '+money()+')');
+    drop([P[0]]);
+    waitFor('one source',function(){return slots()===1},20000,function(ok){
+      if(!ok)return flush();
+      T(money()==='$0.09','one source adds $0.01  (got '+money()+')');
+      drop([P[1],P[2],P[3]]);
+      waitFor('four sources',function(){return slots()===4},25000,function(ok2){
+        if(!ok2)return flush();
+        T(money()==='$0.11','a FOURTH source adds nothing - only 3 are sent  (got '+money()+')');
+        step3();
+      });
+    });
+  }
+
+  /* the payload */
+  function step3(){
+    $('prompt').value='a gig poster, high contrast, riso print';
+    $('exact-text').value='SUMMER JAM\nFriday 9pm\nfree entry';
+    press();
+    setTimeout(function(){
+      T(submits===1,'Design submits ('+submits+') err="'+$('gen-err').textContent+'"');
+      if(!lastBody||!lastBody.get){T(false,'no body captured');return flush()}
+      T(lastBody.get('mode')==='design','mode=design - the enhancer branches on the JOB, not the engine');
+      T(lastBody.get('model')==='grok','model=grok');
+      T(lastBody.get('quality')==='medium','quality rides along');
+      T(lastBody.get('resolution')==='2K','resolution rides along');
+      T(lastBody.get('exact_text')==='SUMMER JAM\nFriday 9pm\nfree entry',
+        'the words reach the wire EXACTLY, line breaks and all');
+      T(lastBody.getAll('image_0').length===1 && !!lastBody.get('image_2'),'three sources attached');
+      T(!lastBody.get('image_3'),'the FOURTH source is not sent - Grok takes 3, and the quote said 3');
+      T(!lastBody.get('seed'),'no seed is sent to an engine that has none');
+      step4();
+    },500);
+  }
+
+  /* it must not bleed into the other modes */
+  function step4(){
+    mode('compose');
+    T(!shown('row-design'),'Compose does not show the Words box');
+    T($('btn-1k').hidden,'and 1K disappears again');
+    T(!$('btn-4k').hidden,'while 4K comes back');
+    mode('image');  T(!shown('row-design'),'Image does not show it');
+    mode('video');  T(!shown('row-design'),'Video does not show it');
+    mode('upscale');T(!shown('row-design'),'Upscale does not show it');
+    mode('design');
+    // nothing to go on at all
+    [].slice.call(document.querySelectorAll('#tray .slot .x')).forEach(function(b){b.click()});
+    setTimeout(function(){
+      $('prompt').value=''; $('exact-text').value='';
+      press();
+      setTimeout(function(){
+        T(submits===0,'an empty Design does not submit');
+        T(/Describe the piece/.test($('gen-err').textContent||''),
+          'and says what is missing ("'+($('gen-err').textContent||'').slice(0,40)+'")');
+        // words alone are enough - a plain typographic poster is a real thing
+        $('exact-text').value='JUST WORDS';
+        press();
+        setTimeout(function(){
+          T(submits===1,'words alone are enough to submit');
+          step5();
+        },400);
+      },300);
+    },300);
+  }
+  /* the Words box warns when the caption plainly wants words and the box is empty
+     (exec 5460: an "infographic" with an empty box came back wordless, correctly) */
+  function step5(){
+    function warn(){var h=$('words-hint'); return !!(h&&h.classList.contains('warn'))}
+    function txt(){var h=$('words-hint'); return h?h.textContent:''}
+    $('exact-text').value=''; $('prompt').value='a portrait of a cat'; $('prompt').dispatchEvent(new Event('input',{bubbles:true}));
+    T(!warn() && /exactly as typed/.test(txt()),'a caption with no text in it keeps the plain hint');
+    $('prompt').value='Infographic about ghostface killer life and halloween'; $('prompt').dispatchEvent(new Event('input',{bubbles:true}));
+    T(warn() && /no text at all/.test(txt()),'"infographic" with an empty Words box warns that it will carry no text');
+    $('prompt').value='a flyer for a halloween party'; $('prompt').dispatchEvent(new Event('input',{bubbles:true}));
+    T(warn(),'"flyer" warns too');
+    $('prompt').value='a poster that says "BOO" in big letters'; $('prompt').dispatchEvent(new Event('input',{bubbles:true}));
+    T(warn() && /will NOT be rendered/.test(txt()),'quoted words in the caption warn that they are not rendered here');
+    $('exact-text').value='BOO'; $('exact-text').dispatchEvent(new Event('input',{bubbles:true}));
+    T(!warn() && /exactly as typed/.test(txt()),'typing the words clears the warning');
+    $('exact-text').value=''; $('exact-text').dispatchEvent(new Event('input',{bubbles:true}));
+    T(warn(),'emptying the box brings it back');
+    mode('compose');
+    T(!warn(),'the warning belongs to Design only');
+    mode('design');
+    T(warn(),'and returns when Design does');
+    flush();
+  }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

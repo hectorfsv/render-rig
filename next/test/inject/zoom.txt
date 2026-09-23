@@ -1,0 +1,72 @@
+<script>
+/* iOS Safari zooms the page when a focused field computes under 16px and never
+   zooms back out. Every text-entry control must sit on or above the threshold -
+   on every screen, in every mode, including the ones built by script. */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search),
+      MIN=16, CHECKED=0, SEL='input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),select,textarea';
+  window.fetch=function(u,o){var b=o&&o.body,a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth')return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    return Promise.reject(new Error('no net'));};
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m)}
+  function sweep(where){
+    var bad=[], n=0;
+    [].forEach.call(document.querySelectorAll(SEL),function(e){
+      if(e.offsetParent===null && e.type!=='hidden') return;      // only what is on screen
+      n++;
+      var fs=parseFloat(getComputedStyle(e).fontSize);
+      if(fs < MIN - 0.01) bad.push((e.id||e.className||e.type)+' '+fs+'px');
+    });
+    CHECKED += n;
+    T(bad.length===0, where+': '+n+' field'+(n===1?'':'s')+', all >= '+MIN+'px'+
+      (bad.length?' -- UNDER: '+bad.join(', '):''));
+  }
+  function go(){
+    sweep('login');                       // the field that caused this
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){
+      sweep('hub');
+      var modes=['video','image','compose','upscale'], i=0;
+      (function next(){
+        if(i>=modes.length) return done();
+        var m=modes[i++];
+        var card=document.querySelector('.card[data-go="'+m+'"]');
+        if(card) card.click(); else {
+          var b=document.querySelector('#seg-type button[data-v="'+m+'"]'); if(b) b.click();
+        }
+        setTimeout(function(){
+          // open every collapsed group so nothing hides under <details>
+          [].forEach.call(document.querySelectorAll('details'),function(d){d.open=true});
+          // the shot list and the character editor are built by script and only
+          // exist once their checkbox is on - the .sd number input lives there.
+          if(m==='video'){ ['use-shots','use-el'].forEach(function(id){
+            var c=$(id); if(c){ c.checked=true; c.dispatchEvent(new Event('change')); } });
+            ['add-shot','add-el'].forEach(function(id){ var b=$(id); if(b) b.click(); }); }
+          // the director's console (2026-09-23): each setting lives behind its chip,
+          // so open every chip in turn and sweep what it shows - as a person would
+          setTimeout(function(){
+            sweep(m);
+            [].map.call(document.querySelectorAll('#chips .chip-s:not(.ph)'),function(c){return c.dataset.row})
+              .forEach(function(id){
+                var c=document.querySelector('#chips .chip-s[data-row="'+id+'"]');
+                if(c && c.getAttribute('aria-pressed')!=='true') c.click();
+                sweep(m+' / '+id);
+              });
+            next();
+          },120);
+        },160);
+      })();
+    },150);
+  }
+  function done(){
+    // the viewport itself must still allow pinch-zoom out (accessibility)
+    var v=document.querySelector('meta[name=viewport]').content;
+    T(!/user-scalable\s*=\s*no/.test(v) && !/maximum-scale/.test(v),
+      'the fix is the font size, not a locked viewport ('+v+')');
+    T(CHECKED>=10, 'the sweep actually reached the controls ('+CHECKED+' fields seen)');
+    document.title=S+out.join('\n')+S;
+  }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

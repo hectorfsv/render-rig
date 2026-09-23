@@ -1,0 +1,202 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* PER-PERSON CODES (2026-09-20). A code on a credit logs in as a GUEST: the reply
+   carries guest:true, the budget and the expiry, and the page shows THAT credit,
+   never the account balance. The rig prices every run server-side and can answer
+   a submit with status:'denied'; a poll can answer 401 for a code that may not
+   read that job. Wrong tries and expired codes are stopped on the device, because
+   every request that reaches the rig is an execution.
+     guest     login as a guest: credit "of $10", days left, generative Topaz hidden
+     owner     login as Hector: plain balance, everything offered
+     denied    a run over the credit: message stays, no poll, credit updated, Generate back
+     unpriced  a model with no price: its message
+     expired   401 reason expired: message, the code is never sent again
+     off       401 reason off
+     throttle  three wrong tries lock the button; the fourth try sends nothing
+     land      a finished poll carries only the expiry: the days stay on the credit line
+     poll401   a poll answered 401 stops the polling and locks the screen
+     reload    a remembered guest credit paints without a lookup
+     nogreet   a guest whose row has no greeting gets the standard beta line
+     switch    the owner logs in on a browser that remembers a guest, and fal's balance is DOWN:
+               no welcome, no figure, the guest's history and credit untouched under the guest's keys
+     migrate   the owner's pre-name history moves under his name; a leaked nameless credit is dropped */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search),
+      mode=q.get('c')||'guest', calls={auth:0,balance:0,generate:0,poll:0};
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); document.title=S+out.join('\n')+S}
+  function done(){ out.push('[done]'); document.title=S+out.join('\n')+S }
+  window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
+  try{ ['rig_credit','rig_tries','rig_expired','rig_job','rig_hist','rig_spend','rig_last','rig_hist:tanner','rig_credit:tanner','rig_hist:hector','rig_credit:hector','rig_spend:hector','rig_job:hector','rig_last:hector'].forEach(function(k){ localStorage.removeItem(k) }) }catch(e){}
+  try{ sessionStorage.removeItem('rig_pw') }catch(e){}
+  var EXP=new Date(Date.now()+6*86400000).toISOString();
+  // a reload today: the login names the person (no figure while fal is slow), the figure is remembered under THEIR key
+  if(mode==='reload'){ try{ localStorage.setItem('rig_credit:tanner', JSON.stringify({v:7.4,t:Date.now(),who:{guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6,greeting:'You have $10 for 5 days. Use everything, and give Hector all your feedback.'}})) }catch(e){} }
+  var HITEM=[{url:'data:image/png;base64,iVBORw0KGgo=',filename:'t.png',gen_type:'image',w:10,h:20,seed:1}];
+  if(mode==='switch'){ try{ localStorage.setItem('rig_hist:tanner',JSON.stringify(HITEM)); localStorage.setItem('rig_credit:tanner',JSON.stringify({v:7.4,t:Date.now(),who:{guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6}})); localStorage.setItem('rig_credit',JSON.stringify({v:10,t:Date.now(),who:{guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6}})) }catch(e){} }
+  if(mode==='migrate'){ try{ localStorage.setItem('rig_hist',JSON.stringify(HITEM)); localStorage.setItem('rig_spend','1.5'); localStorage.setItem('rig_credit',JSON.stringify({v:10,t:Date.now(),who:{guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6}})) }catch(e){} }
+  var PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAUCAIAAAA7jDsBAAAAGElEQVR4nGM8oaHBgBsw4ZEblR6VJkkaANeKAUD7/NPBAAAAAElFTkSuQmCC';
+  var GREET='You have $10 for 5 days. Use everything, and give Hector all your feedback.';
+  var GUEST={ok:true,guest:true,user:'tanner',balance:7.4,budget:10,spent:2.6,expires_at:EXP,days_left:6,greeting:(mode==='nogreet'?'':GREET),currency:'USD'};
+  var OWNER={ok:true,guest:false,user:'hector',balance:20.79,currency:'USD'};
+  function J(status,body){ return Promise.resolve({ok:status<400,status:status,json:function(){return Promise.resolve(body)}}) }
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth'){ calls.auth++;
+      if(mode==='expired') return J(401,{error:'unauthorized',reason:'expired'});
+      if(mode==='off') return J(401,{error:'unauthorized',reason:'off'});
+      if(mode==='throttle') return J(401,{error:'unauthorized',reason:'wrong'});
+      if(mode==='reload') return J(200,{ok:true,guest:true,user:'tanner',budget:10,expires_at:EXP,days_left:6,greeting:GREET,currency:'USD'});
+      if(mode==='switch') return J(200,{ok:true,guest:false,user:'hector',balance:null,currency:'USD'});
+      return J(200, (mode==='owner'||mode==='migrate') ? OWNER : GUEST);
+    }
+    if(a==='balance'){ calls.balance++; if(mode==='switch') return J(200,{ok:true,guest:false,user:'hector',balance:null}); return J(200, (mode==='owner'||mode==='migrate') ? OWNER : GUEST) }
+    if(a==='generate'){ calls.generate++;
+      if(mode==='denied') return J(200,{status:'denied',reason:'budget',price:0.06,balance:0.03,budget:10,guest:true,user:'tanner',message:'This run costs $0.06 and you have $0.03 left.'});
+      if(mode==='unpriced') return J(200,{status:'denied',reason:'unpriced',price:null,balance:7.4,budget:10,guest:true,user:'tanner',message:'That model has no published price, so it is not available on a credit. Pick another one.'});
+      return J(200,{status:'submitted',jobId:'j1'});
+    }
+    if(String(u).indexOf('jobId=')>-1){ calls.poll++;
+      if(mode==='poll401') return J(401,{error:'unauthorized',reason:'wrong'});
+      return J(200,{status:'done',gen_type:'image',urls:[PNG],width:null,height:null,seed:1,filename:'ai-image.png',balance:7.34,guest:true,budget:10,user:'tanner',expires_at:EXP});
+    }
+    return Promise.reject(new Error('no net'));
+  };
+  function vis(el){ if(!el||el.hidden) return false; var c=getComputedStyle(el); if(c.display==='none') return false;
+    var r=el.getBoundingClientRect(); return r.width>0&&r.height>0; }
+  function genHidden(){ return [].filter.call($('upmodel').options,function(o){ return o.hidden&&o.disabled }).map(function(o){return o.value}).sort().join(',') }
+  function go(){
+    if(mode==='expired'||mode==='off'||mode==='throttle'){
+      $('pw').value='abc'; $('unlock').click();
+      setTimeout(function(){
+        var msg=$('pw-err').textContent;
+        if(mode==='expired'){
+          T(/expired/i.test(msg), 'the expired reason is said out loud ('+msg+')');
+          T($('scr-login').classList.contains('on'), 'still on the lock screen');
+          var n=calls.auth; $('unlock').click();
+          setTimeout(function(){
+            T(calls.auth===n, 'the same code is not sent again: refused on the device ('+calls.auth+' requests total)');
+            T(/expired/i.test($('pw-err').textContent), 'and it still says so');
+            var ex=null; try{ ex=JSON.parse(localStorage.getItem('rig_expired')||'[]') }catch(e){}
+            T(!!ex && ex.length===1 && !/abc/.test(localStorage.getItem('rig_expired')), 'the expired code is remembered as a tag, not in clear');
+            done();
+          },200);
+        }
+        if(mode==='off'){ T(/turned off/i.test(msg), 'a switched-off code says so ('+msg+')'); done() }
+        if(mode==='throttle'){
+          T(/not right/i.test(msg) && !/wait/i.test(msg), 'first wrong try: plain message ('+msg+')');
+          $('unlock').click();
+          setTimeout(function(){ $('unlock').click();
+            setTimeout(function(){
+              var m3=$('pw-err').textContent;
+              T(calls.auth===3, 'three tries reached the rig ('+calls.auth+')');
+              T(/wait/i.test(m3), 'the third wrong try locks the button ('+m3+')');
+              $('pw').value='another'; $('unlock').click();
+              setTimeout(function(){
+                T(calls.auth===3, 'the fourth try sends NOTHING ('+calls.auth+' requests)');
+                T(/wait|too many/i.test($('pw-err').textContent), 'and says to wait');
+                var tr=null; try{ tr=JSON.parse(localStorage.getItem('rig_tries')||'null') }catch(e){}
+                T(!!tr && tr.until>Date.now(), 'the lock is timed, on the device');
+                done();
+              },200);
+            },200);
+          },200);
+        }
+      },250);
+      return;
+    }
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){
+      var el=$('credit'), g=document.body.classList.contains('guest');
+      document.querySelector('.card[data-go="image"]').click();
+      if(mode==='guest'||mode==='reload'||mode==='nogreet'){
+        T(calls.balance===0, 'no standalone lookup ('+calls.balance+')');
+        T(vis(el) && /\$7\.40 of \$10\.00 left/.test(el.textContent), 'a guest sees his own credit against his budget ('+el.textContent+')');
+        T(/6 days/.test(el.textContent), 'and the days left ('+el.textContent+')');
+        T(g, 'the page knows it is a guest');
+        document.querySelector('#seg-type button[data-v="upscale"]').click();
+        T(genHidden()==='Redefine,Standard MAX,Wonder,Wonder 3', 'the four unpriced Topaz models are not offered ('+genHidden()+')');
+        T(GEN_UPS_ok(), 'the selected model is a priced one ('+$('upmodel').value+')');
+        var s=null; try{ s=JSON.parse(localStorage.getItem('rig_credit:tanner')||'null') }catch(e){}
+        T(!!s && s.who && s.who.guest===true && s.who.budget===10 && localStorage.getItem('rig_credit')===null, 'who is logged in is remembered with the credit, under THEIR key and no nameless one');
+        if(mode!=='nogreet'){
+          // the welcome lives on the hub: go back there to see it (the card click above opened the console)
+          $('menu-btn').click();
+          var wv=$('welcome');
+          T(!!wv && !wv.hidden && vis(wv), 'the hub greets the guest');
+          T($('welcome-hi').textContent==='Welcome, Tanner.', 'by name, capitalised ('+$('welcome-hi').textContent+')');
+          T($('welcome-msg').textContent===GREET, 'with the greeting Hector wrote in the row');
+          done();
+        }
+      }
+      if(mode==='nogreet'){
+        T(!$('welcome').hidden && /beta testing/.test($('welcome-msg').textContent) && $('welcome-hi').textContent==='Welcome, Tanner.', 'an empty greeting column falls back to the standard beta line ('+$('welcome-msg').textContent+')');
+        done();
+      }
+      if(mode==='switch'){
+        T($('welcome').hidden && !g, 'the owner gets no welcome even though the browser remembered a guest and fal was down');
+        T(el.hidden, 'and no figure at all rather than the guest\'s ('+el.textContent+')');
+        var rec=null; try{ rec=JSON.parse(sessionStorage.getItem('rig_pw')||'null') }catch(e){}
+        T(!!rec && rec.user==='hector' && rec.guest===false, 'the session record names the owner');
+        T(!!document.querySelector('#hist-strip .hist-empty'), 'his history strip is his own (empty), not the guest\'s');
+        T(localStorage.getItem('rig_hist:tanner')!==null && /7\.4/.test(localStorage.getItem('rig_credit:tanner')||''), 'the guest\'s history and credit are untouched under the guest\'s keys');
+        T(localStorage.getItem('rig_credit')===null, 'the nameless credit that leaked is gone');
+        done();
+      }
+      if(mode==='migrate'){
+        T($('welcome').hidden && !g && /\$20\.79 left/.test(el.textContent), 'the owner logs in as the owner ('+el.textContent+')');
+        T(localStorage.getItem('rig_hist')===null && (localStorage.getItem('rig_hist:hector')||'').indexOf('t.png')>0, 'his pre-name history moved under his name');
+        T(localStorage.getItem('rig_spend:hector')==='1.5' && localStorage.getItem('rig_spend')===null, 'so did the spend counter');
+        T(!document.querySelector('#hist-strip .hist-empty'), 'and it is on his strip');
+        T(localStorage.getItem('rig_credit')===null, 'the nameless credit is dropped');
+        done();
+      }
+      if(mode==='owner'){
+        T($('welcome').hidden, 'no welcome line for the owner');
+        T(vis(el) && /\$20\.79 left/.test(el.textContent) && !/ of /.test(el.textContent), 'the owner sees the plain balance ('+el.textContent+')');
+        T(!g, 'not a guest');
+        document.querySelector('#seg-type button[data-v="upscale"]').click();
+        T(genHidden()==='', 'every Topaz model is offered to the owner');
+        done();
+      }
+      if(mode==='denied'||mode==='unpriced'){
+        $('prompt').value='a test'; $('submit').click();
+        setTimeout(function(){
+          var e=$('gen-err').textContent;
+          T(calls.generate===1, 'one submit went up');
+          T(mode==='denied' ? /costs \$0\.06 and you have \$0\.03/.test(e) : /no published price/.test(e), 'the rig\'s reason is on screen ('+e+')');
+          T(!document.body.classList.contains('rendering'), 'nothing is rendering');
+          T(!$('submit').disabled, 'Generate is back');
+          T(calls.poll===0, 'no poll was started');
+          if(mode==='denied'){
+            T(/\$0\.03 of \$10\.00/.test(el.textContent), 'the credit updated from the refusal ('+el.textContent+')');
+            T(el.classList.contains('low'), 'and reads low against a $0.06 run');
+          }
+          setTimeout(function(){ T($('gen-err').textContent===e, 'the message is still there 8 s later'); done() },8000);
+        },400);
+      }
+      if(mode==='land'){
+        $('prompt').value='a test'; $('submit').click();
+        setTimeout(function(){
+          T(calls.poll===1 && document.body.classList.contains('done'), 'the render landed ('+calls.poll+' poll)');
+          T(/\$7\.34 of \$10\.00 left/.test(el.textContent), 'the credit updated from the finished poll ('+el.textContent+')');
+          T(/6 days/.test(el.textContent), 'the days survive a render whose reply carries only the expiry ('+el.textContent+')');
+          done();
+        },16500);
+      }
+      if(mode==='poll401'){
+        $('prompt').value='a test'; $('submit').click();
+        setTimeout(function(){
+          T(calls.poll===1, 'one poll went up and was refused ('+calls.poll+')');
+          T($('scr-login').classList.contains('on'), 'back on the lock screen');
+          T(!document.body.classList.contains('rendering'), 'nothing is rendering');
+          T(localStorage.getItem('rig_job')===null, 'the in-flight job is forgotten');
+          setTimeout(function(){ T(calls.poll===1, 'no further poll ('+calls.poll+')'); done() },13000);
+        },16500);
+      }
+    },300);
+  }
+  function GEN_UPS_ok(){ return ['Redefine','Wonder','Wonder 3','Standard MAX'].indexOf($('upmodel').value)<0 }
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

@@ -1,0 +1,172 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* WHAT THIS FILE EXISTS FOR (2026-09-12)
+
+   The Nano Banana Pro EDIT recipe used to end with a fork the MODEL had to
+   judge from Hector's caption:
+
+     "If he only TRANSFORMS the subject ... close with 'leave everything else in
+      the image exactly as it is.'  If he changes the SETTING or ADDS a person,
+      do NOT write that clause."
+
+   The enhancer cannot see the picture. A blind model guessing between two
+   options is exactly how the pin got appended to a request that added somebody,
+   and a pinned frame with something new in it makes the model paint over what
+   was already there - that is how Lenin got painted over (exec 5140).
+
+   The fix is to take the judgement away from the model: Hector sets it, the
+   recipe reads the flag. This proves the control exists, appears only where it
+   means something, and actually reaches the wire.
+
+   It also covers a bug found while wiring it: paintTray() never called
+   syncMode(), so every row keyed on SRC.length went stale until a mode change
+   happened to rebuild it. */
+(function(){
+  var S=String.fromCharCode(167), out=[];
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m); flush()}
+  function flush(){ try{document.title=S+out.join('\n')+S}catch(e){} }
+  window.onerror=function(m,f,l){ out.push('FAIL  JS ERROR: '+m+' @'+l); flush() };
+
+  var submits=0, lastBody=null;
+  window.fetch=(function(real){
+    return function(u,o){
+      var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+      if(a==='auth')    return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+      if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:3.55,currency:'USD'})}});
+      if(String(u).indexOf('jobId=')>-1)
+        return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued'})}});
+      submits++; lastBody=b;
+      return Promise.resolve({ok:true,json:function(){return Promise.resolve({status:'queued',jobId:'t1'})}});
+    };
+  })(window.fetch);
+
+  function photo(n,w,h){
+    var c=document.createElement('canvas');c.width=w;c.height=h;
+    var x=c.getContext('2d');
+    for(var i=0;i<80;i++){ x.fillStyle='hsl('+((i*17+n*90)%360)+',60%,50%)'; x.fillRect((i*41)%w,(i*23)%h,40,40) }
+    return new Promise(function(res){ c.toBlob(function(b){
+      res(new File([b],'p'+n+'.jpg',{type:'image/jpeg'})) },'image/jpeg',0.9) });
+  }
+  function drop(files){
+    var dt=new DataTransfer(); files.forEach(function(f){dt.items.add(f)});
+    var inp=$('file'); inp.files=dt.files;
+    inp.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  function slots(){ return document.querySelectorAll('#tray .slot').length }
+  function clearTray(){ [].slice.call(document.querySelectorAll('#tray .slot .x')).forEach(function(b){b.click()}) }
+  function mode(m){ var b=document.querySelector('#seg-type button[data-v="'+m+'"]'); if(b) b.click() }
+  /* Unlocking lands on the HUB, and the console is display:none there - so every
+     row inside it reports offsetParent null and height 0. A card opens it. */
+  function openConsole(m){ document.querySelector('.card[data-go="'+m+'"]').click() }
+  function press(){ submits=0; $('gen-err').textContent=''; $('submit').disabled=false; $('submit').click() }
+  function shown(id){ var e=$(id); if(!e||e.hidden) return false;
+    /* the director's console (2026-09-23): a setting lives behind its chip. Shown =
+       its chip is on the composer and, once tapped, the control is on screen. */
+    var row=e; while(row && row.parentNode && !(row.parentNode.classList && row.parentNode.classList.contains('ctl-scroll'))) row=row.parentNode;
+    if(row && row.parentNode && row.id){
+      var c=document.querySelector('#chips .chip-s[data-row="'+row.id+'"]'); if(!c) return false;
+      if(c.getAttribute('aria-pressed')!=='true') c.click();
+    }
+    return e.offsetParent!==null }
+  function waitFor(what,test,ms,then){
+    var t0=Date.now();
+    (function tick(){
+      if(test()) return then(true);
+      if(Date.now()-t0>ms){ T(false,'TIMED OUT waiting for '+what+' after '+ms+'ms'); return then(false) }
+      setTimeout(tick,60);
+    })();
+  }
+
+  var P=[];
+  function go(){
+    Promise.all([photo(0,900,1200),photo(1,900,1200)]).then(function(f){
+      P=f; $('pw').value='x'; $('unlock').click(); setTimeout(function(){
+        openConsole('compose');
+        T($('scr-console').classList.contains('on'), 'the console is actually open (otherwise every row measures 0)');
+        step0();
+      },250);
+    });
+  }
+
+  /* nothing in the tray: there is no frame to keep */
+  function step0(){
+    T(!shown('row-framing'), 'Compose with an empty tray hides the framing control');
+    drop([P[0]]);
+    waitFor('one source', function(){return slots()===1}, 20000, function(ok){
+      if(!ok) return flush(); step1();
+    });
+  }
+
+  /* exactly one source: the only case the question means anything */
+  function step1(){
+    T(shown('row-framing'), 'ONE source shows the framing control');
+    T($('keep-framing').checked===true, 'and it defaults to KEEPING the framing');
+    var h=$('framing-hint').textContent||'';
+    T(/left exactly as it was/.test(h), 'the hint explains what keeping it does ("'+h.slice(0,46)+'...")');
+    $('prompt').value='turn him into a viking';
+    press();
+    setTimeout(function(){
+      T(submits===1, 'a pinned edit submits');
+      T(lastBody&&lastBody.get('keep_framing')==='on', 'and sends keep_framing=on (got '+(lastBody?lastBody.get('keep_framing'):'no body')+')');
+      step2();
+    },350);
+  }
+
+  /* released: the case that overwrote Lenin */
+  function step2(){
+    $('keep-framing').checked=false;
+    $('keep-framing').dispatchEvent(new Event('change',{bubbles:true}));
+    var h=$('framing-hint').textContent||'';
+    T(/ADDING somebody/.test(h), 'unchecking explains WHEN to do it ("'+h.slice(0,46)+'...")');
+    press();
+    setTimeout(function(){
+      T(submits===1, 'a released edit submits');
+      T(lastBody&&lastBody.get('keep_framing')==='off', 'and sends keep_framing=off (got '+(lastBody?lastBody.get('keep_framing'):'no body')+')');
+      drop([P[1]]);
+      waitFor('two sources', function(){return slots()===2}, 20000, function(ok){
+        if(!ok) return flush(); step3();
+      });
+    },350);
+  }
+
+  /* two or more sources: a compose. The frame is ALWAYS released - asking would
+     be offering a setting that must never be turned on. */
+  function step3(){
+    T(!shown('row-framing'), 'TWO sources hide the framing control again');
+    press();
+    setTimeout(function(){
+      T(submits===1, 'a two-source compose submits');
+      T(lastBody && lastBody.get('keep_framing')===null,
+        'and sends NO keep_framing at all (got '+(lastBody?JSON.stringify(lastBody.get('keep_framing')):'no body')+')');
+      step4();
+    },350);
+  }
+
+  /* it belongs to Nano Banana Pro alone */
+  function step4(){
+    clearTray();
+    setTimeout(function(){
+      drop([P[0]]);
+      waitFor('one source again', function(){return slots()===1}, 20000, function(ok){
+        if(!ok) return flush();
+        mode('image');
+        T(!shown('row-framing'), 'Krea never shows it - it cannot edit a photo at all');
+        mode('upscale');
+        T(!shown('row-framing'), 'Upscale never shows it');
+        mode('video');
+        T(!shown('row-framing'), 'Video never shows it');
+        /* the staleness bug: with a source in the tray, Kling i2v has no
+           aspect_ratio, so that row must already be gone - it used to wait for
+           a mode change because paintTray never called syncMode. */
+        T(!shown('row-ar'), 'adding a source in Video mode hides Aspect ratio immediately (i2v has none)');
+        mode('compose');
+        T(shown('row-framing'), 'and it comes back on Compose');
+        flush();
+      });
+    },200);
+  }
+
+  if(document.readyState==='complete')go();else addEventListener('load',go);
+})();
+</script>

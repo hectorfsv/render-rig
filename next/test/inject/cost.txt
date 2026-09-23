@@ -1,0 +1,83 @@
+<script>
+(function(){
+  var S=String.fromCharCode(167), out=[];
+  var realFetch=window.fetch;
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    return Promise.reject(new Error('harness: no network'));
+  };
+  function $(i){return document.getElementById(i)}
+  function mode(m){document.querySelector('#seg-type button[data-v="'+m+'"]').click()}
+  function cost(){return $('cost').textContent}
+  function t(label,expect){var got=cost(); out.push((got===expect?'PASS':'FAIL')+'  '+label+'  expected '+expect+' got '+got);}
+  function setRange(id,v){var e=$(id); e.value=v; e.dispatchEvent(new Event('input',{bubbles:true}));}
+  function check(id,on){var e=$(id); if(e.checked!==on) e.click();}
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    setTimeout(function(){
+      // guide: "Per second $0.112 ... 3 to 15" and "3 seconds audio off = $0.34"
+      mode('video'); setRange('dur',3);           t('video 3s, audio off  (guide: $0.336)','$0.336');
+      setRange('dur',5);                           t('video 5s, audio off  (guide: $0.112/s)','$0.56');
+      check('audio',true); setRange('dur',5);      t('video 5s + audio     (guide: $0.168/s)','$0.84');
+      setRange('dur',15);                          t('video 15s + audio    (guide: $2.52)','$2.52');
+      check('audio',false);
+      // guide: "Video Lite - 768P $0.08/s, 1080P $0.16/s, 5 to 15 s" (fal list price)
+      mode('lite'); setRange('dur',5);             t('video lite 5s 768P   (guide: $0.08/s)','$0.40');
+      setRange('dur',11);                          t('video lite 11s 768P  (guide: $0.88)','$0.88');
+      document.querySelector('#seg-vres button[data-v="1080P"]').click();
+                                                   t('video lite 11s 1080P (guide: $0.16/s)','$1.76');
+      document.querySelector('#seg-vres button[data-v="768P"]').click();
+      // guide: "Image $0.06" and "style references +$0.005"
+      mode('image');                               t('image, no sources   (guide: $0.06)','$0.06');
+      // guide: "Compose $0.15", "4K is double", "web search +$0.015"
+      mode('compose');                             t('compose 2K          (guide: $0.15)','$0.15');
+      document.querySelector('#seg-res button[data-v="4K"]').click();
+      t('compose 4K          (guide: $0.30)','$0.30');
+      document.querySelector('#seg-res button[data-v="2K"]').click();
+      check('websearch',true);                     t('compose + websearch (guide: +$0.015)','$0.165');
+      check('websearch',false);
+      // guide: generative Topaz models show "from"
+      mode('upscale');
+      $('upmodel').value='Redefine'; $('upmodel').dispatchEvent(new Event('change',{bubbles:true}));
+      out.push((/from/i.test(cost())||cost()==='$0.00'?'PASS':'FAIL')+'  upscale Redefine shows a floor, not a quote  got '+cost());
+      out.push((!$('gen-warn').hidden?'PASS':'FAIL')+'  upscale generative price warning is visible');
+      $('upmodel').value='Standard V2'; $('upmodel').dispatchEvent(new Event('change',{bubbles:true}));
+      out.push(($('gen-warn').hidden?'PASS':'FAIL')+'  ...and hidden again on a precision model');
+      // guide: "Image and Compose both take a seed. Video and Upscale have none."
+      var seed={};
+      ['video','image','compose','upscale'].forEach(function(m){mode(m); seed[m]=!$('row-seed').hidden;});
+      out.push((seed.image&&seed.compose&&!seed.video&&!seed.upscale?'PASS':'FAIL')+
+        '  seed row: image='+seed.image+' compose='+seed.compose+' video='+seed.video+' upscale='+seed.upscale);
+      // guide: "2.35:1 ... Only Krea offers it"
+      mode('image'); var kr=[].map.call(document.querySelectorAll('#seg-ar button'),function(b){return b.dataset.v});
+      mode('compose'); var nb=[].map.call(document.querySelectorAll('#seg-ar button'),function(b){return b.dataset.v});
+      mode('video');  var kl=[].map.call(document.querySelectorAll('#seg-ar button'),function(b){return b.dataset.v});
+      out.push((kr.length===8&&kr.indexOf('2.35:1')>=0&&nb.indexOf('2.35:1')<0&&kl.indexOf('2.35:1')<0?'PASS':'FAIL')+
+        '  eight Krea ratios incl 2.35:1, and only Krea  krea='+kr.length+' nbp='+nb.length+' kling='+kl.length);
+      // The guide says "there is no 1K button" - true on Nano Banana Pro, where 1K
+      // and 2K are billed identically. It is NOT true in Design: Grok charges less
+      // for 1K, so hiding it there would hide a real saving. The rung list is now
+      // per engine, so the assertion is per engine too.
+      function rungs(){ return [].filter.call(document.querySelectorAll('#seg-res button'),
+        function(b){return !b.hidden}).map(function(b){return b.dataset.v}) }
+      function mode(m){ var b=document.querySelector('#seg-type button[data-v="'+m+'"]'); if(b) b.click() }
+      mode('compose');
+      var rc=rungs();
+      out.push((rc.join(',')==='2K,4K'?'PASS':'FAIL')+'  Compose offers 2K and 4K, no 1K  ['+rc.join(',')+']');
+      mode('design');
+      var rd=rungs();
+      out.push((rd.join(',')==='1K,2K'?'PASS':'FAIL')+'  Design offers 1K and 2K, no 4K  ['+rd.join(',')+']');
+      // and switching back must not leave 1K selected on an engine that cannot use it
+      mode('design');
+      var b1=document.querySelector('#seg-res button[data-v="1K"]'); if(b1) b1.click();
+      mode('compose');
+      var sel=[].filter.call(document.querySelectorAll('#seg-res button'),
+        function(b){return b.getAttribute('aria-pressed')==='true'}).map(function(b){return b.dataset.v});
+      out.push((sel.join(',')==='2K'?'PASS':'FAIL')+'  leaving Design clamps 1K back to 2K  ['+sel.join(',')+']');
+      document.title=S+out.join('\n')+S;
+    },200);
+  }
+  if(document.readyState==='complete') go(); else addEventListener('load',go);
+})();
+</script>

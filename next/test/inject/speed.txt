@@ -1,0 +1,23 @@
+<script>
+(function(){
+  var S=String.fromCharCode(167);
+  window.fetch=function(u,o){var b=o&&o.body,a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth')return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    return Promise.reject(new Error('x'));};
+  addEventListener('load',function(){
+    document.getElementById('pw').value='x';document.getElementById('unlock').click();
+    setTimeout(function(){
+      var t=document.querySelector('.tape'), cs=getComputedStyle(t);
+      var shift=parseFloat(cs.getPropertyValue('--shift'))||0;
+      var dur=parseFloat(cs.animationDuration.split(',')[0])||0;
+      document.title=S+JSON.stringify({
+        shift:shift.toFixed(2)+'px', duration:dur+'s',
+        speed:(shift/dur).toFixed(1)+' px/s',
+        secondsToCrossTheRail:(document.querySelector('.rail').getBoundingClientRect().height/(shift/dur)).toFixed(1),
+        timing:cs.animationTimingFunction.split(',')[0],
+        iteration:cs.animationIterationCount.split(',')[0]
+      })+S;
+    },300);
+  });
+})();
+</script>
