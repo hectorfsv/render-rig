@@ -27,7 +27,7 @@ from PIL import Image
 
 Image.MAX_IMAGE_PIXELS = None
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SOURCE = os.path.join(os.path.dirname(os.path.dirname(ROOT)), 'Gargantua.png')  # 10400x6500, not in the repo
+SOURCE = os.path.join(os.path.dirname(os.path.dirname(ROOT)), 'assets', 'Gargantua.png')  # 10400x6500, not in the repo
 CX, CY, R = 5090, 2905, 853
 MARGIN = 2.6
 
