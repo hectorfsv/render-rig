@@ -965,8 +965,11 @@ body:not(.wide) .console.director .composer[data-open]{min-height:0}
 body:not(.wide) .console.director .composer > #pane-ctl{flex:0 1 auto;min-height:0}
 body:not(.wide) .console.director .cmp-main,
 body:not(.wide) .console.director .ctl-commit{flex:0 0 auto}
+}
 
-/* ---- the gallery rules (2026-09-23) ---- */
+/* ---- the gallery rules (2026-09-23) ----
+   (Outside the phone block above since 2026-09-24: inside it, a phone on its side
+   under 561px tall got none of them, so a guest could long-press to save there.) */
 .galflag[aria-pressed=true]{color:var(--amber);border-color:rgba(232,163,61,.55)}
 .galflag:disabled{opacity:.55;cursor:default}
 .gal-own{display:none;gap:8px;margin-top:14px;grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -976,7 +979,129 @@ body.owner .gal-own{display:grid}
 /* not the owner: nothing in the gallery offers a native save */
 body:not(.owner) #scr-gallery img,body:not(.owner) #scr-gallery video{-webkit-touch-callout:none;
   -webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+
+
+/* ---- pass 2 (2026-09-24): THE BIG SCREEN ----
+   Hector on his 27" (2560x1440): "resize the buttons". Every size in the console was a
+   fixed px, so a 2560 window got the same 11-13px controls as a laptop. One number, --k,
+   set by the window's size, scales type, padding and the side columns together: 1 up to
+   a laptop, 1.22 on his monitor. The phone never sees it (body.wide only). */
+body.wide{--k:1}
+@media (min-width:1700px) and (min-height:900px){body.wide{--k:1.08}}
+@media (min-width:2000px) and (min-height:1000px){body.wide{--k:1.14}}
+@media (min-width:2300px) and (min-height:1150px){body.wide{--k:1.22}}
+
+/* the header strip: 55px on a laptop, 55 x k here, and the mode tabs ride it */
+body.wide .head{min-height:calc(55px * var(--k));padding:calc(15px * var(--k)) calc(18px * var(--k))}
+body.wide .mark b{font-size:calc(18px * var(--k))}
+body.wide .mark i{font-size:calc(11px * var(--k))}
+body.wide .head-r{gap:calc(8px * var(--k))}
+body.wide .gbtn,body.wide .chip{font-size:calc(11px * var(--k));line-height:calc(13px * var(--k));
+  padding:calc(4px * var(--k)) calc(11px * var(--k))}
+body.wide .panel::before{font-size:calc(8.5px * var(--k))}
+body.wide .console.director .modebar{left:calc(230px * var(--k));right:calc(330px * var(--k));height:calc(55px * var(--k))}
+body.wide .console.director #seg-type.seg-modes{height:calc(55px * var(--k))}
+@media (min-width:1561px){
+  body.wide .console.director #seg-type.seg-modes button{font-size:calc(13.5px * var(--k));
+    padding:calc(9px * var(--k)) calc(18px * var(--k)) calc(7px * var(--k))}
+  body.wide .console.director #seg-type.seg-modes button small{font-size:calc(11px * var(--k))}
 }
+body.wide .console.director .bay{height:calc(100dvh - 76px - 55px * var(--k));
+  grid-template-columns:clamp(186px,calc(11.5vw * var(--k)),calc(300px * var(--k))) minmax(0,1fr)}
+
+/* the left column: sources and this session */
+body.wide .pane-h{font-size:calc(12px * var(--k))}
+body.wide .pane-h b{font-size:calc(10.5px * var(--k))}
+body.wide .tray-note{font-size:calc(12px * var(--k))}
+body.wide .tray-empty,body.wide .hist-empty{font-size:calc(13px * var(--k))}
+body.wide .slot .n{font-size:calc(9.5px * var(--k))}
+body.wide .slot .d{font-size:calc(9px * var(--k))}
+body.wide .slot .x{width:calc(22px * var(--k));height:calc(22px * var(--k));font-size:calc(14px * var(--k))}
+body.wide .add{font-size:calc(22px * var(--k))}
+body.wide .hcard .t{font-size:calc(8.5px * var(--k))}
+body.wide .hcard .up{width:calc(20px * var(--k));height:calc(20px * var(--k))}
+body.wide .hclear{font-size:calc(11px * var(--k))}
+
+/* the composer: the prompt, the chips, the price and the button */
+body.wide .composer{gap:calc(14px * var(--k));
+  grid-template-columns:minmax(0,1fr) clamp(250px,16vw,calc(330px * var(--k)))}
+body.wide .chips{gap:calc(7px * var(--k))}
+body.wide .chip-s{gap:calc(8px * var(--k));font-size:calc(12.5px * var(--k));
+  padding:calc(8px * var(--k)) calc(12px * var(--k)) calc(7px * var(--k))}
+body.wide .chip-s b{font-size:calc(11.5px * var(--k))}
+body.wide .console.director .cmp-main #prompt{font-size:calc(16.5px * var(--k));
+  padding:calc(13px * var(--k)) calc(15px * var(--k))}
+body.wide .hint{font-size:calc(13px * var(--k))}
+body.wide .meter-top{padding:calc(11px * var(--k)) calc(13px * var(--k)) calc(9px * var(--k))}
+body.wide .meter-v{font-size:calc(27px * var(--k))}
+body.wide .credit{font-size:calc(10.5px * var(--k))}
+body.wide .meter-sub{font-size:calc(11.5px * var(--k))}
+body.wide .bars{padding:0 calc(13px * var(--k)) calc(11px * var(--k))}
+body.wide .console.director .ctl-commit .go{font-size:calc(14px * var(--k));padding:calc(14px * var(--k))}
+body.wide .err{font-size:calc(12px * var(--k))}
+
+/* an open setting */
+body.wide .console.director #pane-ctl{width:min(calc(560px * var(--k)),100%);
+  max-height:min(calc(640px * var(--k)),calc(100dvh - 240px * var(--k)));
+  padding:calc(14px * var(--k)) calc(16px * var(--k))}
+body.wide .pop-h{font-size:calc(12px * var(--k));margin-bottom:calc(10px * var(--k))}
+body.wide .pop-x{width:calc(30px * var(--k));height:calc(30px * var(--k));font-size:calc(18px * var(--k))}
+body.wide .lab{font-size:calc(12.5px * var(--k))}
+body.wide .lab .opt{font-size:calc(11.5px * var(--k))}
+body.wide .seg button{font-size:calc(13px * var(--k));padding:calc(10px * var(--k)) 6px}
+body.wide .seg-wrap button{font-size:calc(11.5px * var(--k));padding:calc(9px * var(--k)) 4px}
+body.wide .check{padding:calc(10px * var(--k)) calc(13px * var(--k))}
+body.wide .check span{font-size:calc(13px * var(--k))}
+body.wide .check b{font-size:calc(10.5px * var(--k))}
+body.wide .check.tiny{padding:calc(7px * var(--k)) calc(10px * var(--k))}
+body.wide .check.tiny span{font-size:calc(12px * var(--k))}
+body.wide .adv>summary{font-size:calc(12px * var(--k));padding:calc(11px * var(--k)) calc(13px * var(--k))}
+body.wide .note-amber{font-size:calc(12px * var(--k))}
+body.wide .rowlab{font-size:calc(9.5px * var(--k))}
+body.wide select,body.wide textarea,body.wide input[type=text],body.wide input[type=number]{font-size:calc(16px * var(--k))}
+body.wide select,body.wide input[type=text]{padding:calc(11px * var(--k)) calc(13px * var(--k))}
+body.wide input[type=range]{height:calc(26px * var(--k))}
+body.wide input[type=range]::-webkit-slider-thumb{width:calc(15px * var(--k));height:calc(15px * var(--k));
+  margin-top:calc((3px - 15px * var(--k)) / 2)}
+
+/* the stage: its empty state, its facts line and the result's buttons */
+body.wide .stage-idle h3{font-size:calc(15px * var(--k))}
+body.wide .stage-idle p{font-size:calc(13.5px * var(--k))}
+body.wide .stage-foot{font-size:calc(10px * var(--k))}
+body.wide .seedbtn{font-size:calc(9.5px * var(--k));padding:calc(3px * var(--k)) calc(7px * var(--k))}
+body.wide .console.director #out-actions{width:calc(560px * var(--k))}
+body.wide .go.sm{font-size:calc(11px * var(--k));padding:calc(10px * var(--k))}
+body.wide .zbar{font-size:calc(10px * var(--k))}
+body.wide .zbar button{min-width:calc(34px * var(--k));height:calc(32px * var(--k))}
+
+/* the hub */
+body.wide .hub-in h2{font-size:calc(28px * var(--k))}
+body.wide .hub-head p{font-size:calc(14px * var(--k))}
+body.wide .card{padding:calc(20px * var(--k)) calc(19px * var(--k)) calc(17px * var(--k))}
+body.wide .card h3{font-size:calc(16px * var(--k))}
+body.wide .card p{font-size:calc(13px * var(--k))}
+
+/* ---- pass 2: Upscale on the Mac. It has no prompt, so its settings take the prompt's place ----
+   Hector: "on upscale the options are literally buried at the bottom to the left" - two
+   small chips in the corner of an empty bar, a screen's width from the Upscale button.
+   Now Enlarge and Model sit in the bar at full size beside the button, and the rest
+   opens under Advanced in the same place. Add words (typing) still opens as a popover. */
+body.wide:not(.typing) .console.director.inline-set .cmp-main{display:none}
+body.wide:not(.typing) .console.director.inline-set #pane-ctl{display:flex;position:static;grid-area:main;
+  width:auto;max-height:42dvh;padding:0;background:none;border:none;box-shadow:none;clip-path:none;align-self:end}
+body.wide:not(.typing) .console.director.inline-set #pop-h{display:none}
+body.wide:not(.typing) .console.director.inline-set #pane-ctl .ctl-scroll > #row-ups{display:grid!important;
+  grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);column-gap:calc(30px * var(--k));align-items:start}
+body.wide:not(.typing) .console.director.inline-set #row-ups > :nth-child(1){grid-column:1;grid-row:1}
+body.wide:not(.typing) .console.director.inline-set #row-ups > :nth-child(2){grid-column:1;grid-row:2;align-self:center}
+body.wide:not(.typing) .console.director.inline-set #row-ups > :nth-child(3){grid-column:1;grid-row:3}
+body.wide:not(.typing) .console.director.inline-set #row-ups > :nth-child(4){grid-column:2;grid-row:1;margin-top:0!important}
+body.wide:not(.typing) .console.director.inline-set #row-ups > :nth-child(5){grid-column:2;grid-row:2}
+body.wide:not(.typing) .console.director.inline-set #row-ups > :nth-child(6){grid-column:2;grid-row:3}
+body.wide:not(.typing) .console.director.inline-set #row-ups > #gen-warn{grid-column:1 / -1;grid-row:4}
+body.wide:not(.typing) .console.director.inline-set #row-ups > #row-redefine{grid-column:1 / -1;grid-row:5}
+body.wide:not(.typing) .console.director.inline-set #pane-ctl .ctl-scroll > #adv{display:block!important;
+  margin-top:calc(12px * var(--k))}
 
 /* THIS IS THE PREVIEW (render-rig/next/). A pseudo-element in the header's top padding,
    so it cannot change the title's measured width. It goes when next/ replaces the Rig. */
@@ -2885,6 +3010,7 @@ window.RigMascot=(function(){
         isKrea=type==='image', isNbp=type==='compose', isDes=type==='design';
     $('mode-hint').textContent=MODE_HINT[type];
     $('row-prompt').hidden = isUps;
+    $('scr-console').classList.toggle('inline-set', isUps);   // Upscale: settings in the bar (Mac)
     $('row-design').hidden = !isDes;
     $('row-shots').hidden  = !isClip;
     $('row-vid').hidden    = !isClip;
@@ -4177,7 +4303,8 @@ window.RigMascot=(function(){
     t.style.height='auto';
     var focused=(document.activeElement===t);
     var side=!wide && innerWidth>innerHeight && innerHeight<560;
-    var min=wide?62:44, max=wide?190:(focused ? Math.round(innerHeight*(side?0.3:0.24)) : ((chipOpen()||side||!$('scr-console').classList.contains('sheet-shut')) ? 44 : 92));
+    var K=wide ? (parseFloat(getComputedStyle(document.body).getPropertyValue('--k'))||1) : 1;
+    var min=wide?Math.round(62*K):44, max=wide?Math.round(190*K):(focused ? Math.round(innerHeight*(side?0.3:0.24)) : ((chipOpen()||side||!$('scr-console').classList.contains('sheet-shut')) ? 44 : 92));
     t.style.height=Math.max(min,Math.min(max,t.scrollHeight+2))+'px';
   }
   $('prompt').addEventListener('input',growPrompt);

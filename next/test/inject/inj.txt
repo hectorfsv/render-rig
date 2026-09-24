@@ -70,7 +70,23 @@
       R.head={h:Math.round(hd.getBoundingClientRect().height), mkI:fs('.mark i'), btn:fs('.gbtn'), chip:fs('.chip'),
         btnH:Math.round(document.getElementById('guide-btn').getBoundingClientRect().height),
         gap:Math.round(hr.getBoundingClientRect().left-mk.getBoundingClientRect().right),
-        mkSpill:mk.scrollWidth-Math.ceil(mk.getBoundingClientRect().width)};
+        mkSpill:mk.scrollWidth-Math.ceil(mk.getBoundingClientRect().width),
+        // pass 2 (2026-09-24): the strip is 55px x the big-screen scale, and the mode tabs ride it
+        k:parseFloat(getComputedStyle(document.body).getPropertyValue('--k'))||1,
+        modeH:Math.round(document.getElementById('seg-type').getBoundingClientRect().height)};
+      // Upscale on the Mac: its settings sit in the bar, on screen, beside the button (pass 2)
+      var su=document.getElementById('scr-console');
+      if(document.body.classList.contains('wide') && su.classList.contains('on') && su.classList.contains('inline-set')){
+        var bx=function(e){var r=e.getBoundingClientRect();return {l:Math.round(r.left),r:Math.round(r.right),t:Math.round(r.top),b:Math.round(r.bottom),w:Math.round(r.width),h:Math.round(r.height)}};
+        var cm=document.getElementById('composer').getBoundingClientRect();
+        R.ups={upf:bx(document.getElementById('upf')), model:bx(document.getElementById('upmodel')),
+               adv:bx(document.querySelector('#adv > summary')), gen:bx(document.getElementById('submit')),
+               stage:bx(document.getElementById('pane-stage')),
+               upfHit:hit(document.getElementById('upf')), modelHit:hit(document.getElementById('upmodel')),
+               advHit:hit(document.querySelector('#adv > summary')),
+               inCmp:[document.getElementById('upf'),document.getElementById('upmodel')].every(function(e){
+                 var r=e.getBoundingClientRect(); return r.top>=cm.top-1 && r.bottom<=cm.bottom+1})};
+      }
     })();
     if(scr==='scr-hub'){
       var cards=[].slice.call(document.querySelectorAll('.card'));
