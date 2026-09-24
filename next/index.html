@@ -1169,6 +1169,21 @@ body.wide:not(.typing) .console.director.inline-set #row-talk > .hint{grid-colum
 body.wide:not(.typing) .console.director.inline-set #row-talk > .check{margin-top:0!important}
 body.wide:not(.typing) .console.director.inline-set #row-sound{margin-top:calc(10px * var(--k))}
 
+
+/* ---- small laptop windows (2026-09-24): the stage keeps its room ----
+   Under 1500px the chips shared a line with the hint, which squeezed them into one
+   column 7-8 chips deep (313px in Video Lite at 1040x800, the stage down to 31%). The
+   hint goes under the chips; Camera's moves become one scrolling row; the long helper
+   text under Camera and Talk steps aside (the meter says the same in one line). */
+@media (max-width:1500px){
+  body.wide .console.director .cmp-main{grid-template-columns:minmax(0,1fr);grid-template-areas:"prompt" "chips" "hint"}
+  body.wide .console.director .cmp-main #hint{text-align:left;max-width:none}
+  body.wide:not(.typing) .console.director.inline-set #row-cam > .hint,
+  body.wide:not(.typing) .console.director.inline-set #row-talk > .hint{display:none}
+  body.wide:not(.typing) .console.director.inline-set .cam-moves{display:flex;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+  body.wide:not(.typing) .console.director.inline-set .cam-moves button{flex:0 0 auto;min-width:88px}
+}
+
 /* THIS IS THE PREVIEW (render-rig/next/). A pseudo-element in the header's top padding,
    so it cannot change the title's measured width. It goes when next/ replaces the Rig. */
 .panel::before{content:'PREVIEW · THE DIRECTOR’S CONSOLE';position:absolute;top:4px;left:18px;z-index:7;

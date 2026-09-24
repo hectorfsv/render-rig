@@ -9,7 +9,8 @@
      setting, and the chosen mode's tab is in view. */
   var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search);
   window.fetch=function(u,o){var b=o&&o.body,a=(b&&b.get)?b.get('action'):'';
-    if(a==='auth')return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    // as the owner since 2026-09-24: Talk is the owner's mode
+    if(a==='auth')return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve({guest:false,user:'hector'})},text:function(){return Promise.resolve('')}});
     return Promise.reject(new Error('no net'));};
   function $(i){return document.getElementById(i)}
   function vis(el){ if(!el) return false; var r=el.getBoundingClientRect();
@@ -54,8 +55,9 @@
         T(hit($('submit'))==='yes', 'Generate is tappable ('+hit($('submit'))+')');
         T(onScreen($('cost')), 'cost meter is on screen');
         T(vis($('pane-stage')), 'stage is visible');
-        T(m==='upscale' ? !vis($('prompt')) : (vis($('prompt')) && onScreen($('prompt'))),
-          m==='upscale' ? 'Upscale shows no prompt (it needs none)' : 'the prompt is on screen');
+        var noWords=(m==='upscale'||m==='camera'||m==='talk');
+        T(noWords ? !vis($('prompt')) : (vis($('prompt')) && onScreen($('prompt'))),
+          noWords ? m+' shows no prompt (it needs none)' : 'the prompt is on screen');
         T(vis($('chips')) && $('chips').children.length>0, 'the settings chips are on screen ('+$('chips').children.length+')');
         // the chosen mode's tab is pressed and fully inside the strip
         var strip=$('seg-type'), tb=strip.querySelector('button[aria-pressed=true]'),

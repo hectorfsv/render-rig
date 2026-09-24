@@ -6,7 +6,8 @@
   var realFetch=window.fetch;
   window.fetch=function(u,o){
     var body=o&&o.body, act=(body&&body.get)?body.get('action'):'';
-    if(act==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    // as the owner since 2026-09-24: Talk is the owner's mode
+    if(act==='auth') return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve({guest:false,user:'hector'})},text:function(){return Promise.resolve('')}});
     return Promise.reject(new Error('harness: no network'));
   };
   function go(){
@@ -76,7 +77,8 @@
         modeH:Math.round(document.getElementById('seg-type').getBoundingClientRect().height)};
       // Upscale on the Mac: its settings sit in the bar, on screen, beside the button (pass 2)
       var su=document.getElementById('scr-console');
-      if(document.body.classList.contains('wide') && su.classList.contains('on') && su.classList.contains('inline-set')){
+      var upOn=(document.querySelector('#seg-type button[aria-pressed=true]')||{dataset:{}}).dataset.v==='upscale';
+      if(document.body.classList.contains('wide') && su.classList.contains('on') && su.classList.contains('inline-set') && upOn){
         var bx=function(e){var r=e.getBoundingClientRect();return {l:Math.round(r.left),r:Math.round(r.right),t:Math.round(r.top),b:Math.round(r.bottom),w:Math.round(r.width),h:Math.round(r.height)}};
         var cm=document.getElementById('composer').getBoundingClientRect();
         R.ups={upf:bx(document.getElementById('upf')), model:bx(document.getElementById('upmodel')),

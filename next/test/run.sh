@@ -11,6 +11,7 @@
 #   ./test/run.sh mascot     the duel rides the render, cameos only in empty space, never over a click
 #   ./test/run.sh credit     credit left on screen, and every way the lookup fails
 #   ./test/run.sh gallery    the gallery: flagged work, prompts, empty and failed states
+#   ./test/run.sh h3         the H3 family: Video Lite's Style/Turbo/audio, Camera, Talk
 #   ./test/run.sh arrange    Hector orders the gallery (owner only), and Compose keeps the source's shape
 #   ./test/run.sh segs       every segmented control reacts to the click that made it
 #   ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays)
@@ -50,7 +51,7 @@ if [ "$WHAT" = all ] || [ "$WHAT" = mobile ]; then
   build "$INJ/mob.txt" "$B/m.html"
   line; echo "MOBILE  (6 viewports x 4 modes)"
   for v in "393 852" "393 700" "360 780" "852 393" "430 900" "932 430"; do
-    for m in video lite image compose design upscale; do set -- $v
+    for m in video lite image compose design upscale camera talk; do set -- $v
       R=$(title "$1" "$2" "file://$B/m.html?m=$m")
       p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
       f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
@@ -66,7 +67,7 @@ if [ "$WHAT" = all ] || [ "$WHAT" = desktop ]; then
   line; echo "DESKTOP  (5 viewports: console x4 modes, hub, guide)"
   dp=0; df=0
   for v in "2560 1400" "2026 1037" "1440 900" "1180 820" "1040 800"; do set -- $v
-    for m in video lite image compose design upscale; do
+    for m in video lite image compose design upscale camera talk; do
       E=$(title "$1" "$2" "file://$B/h.html?s=scr-console&m=$m" 3500 | python3 -c "
 import json,sys
 r=json.load(sys.stdin); bad=[]
@@ -181,6 +182,21 @@ if [ "$WHAT" = all ] || [ "$WHAT" = arrange ]; then
     [ "$f" != 0 ] && { echo "  ratio ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
   done
   echo "  -> $ap pass / $af fail"; PASS=$((PASS+ap)); FAIL=$((FAIL+af))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = h3 ]; then
+  build "$INJ/h3.txt" "$B/h3.html"
+  line; echo "H3 FAMILY  (Style / Turbo / his audio in Video Lite; Camera; Talk - the meter and what is sent)"
+  hp=0; hf=0
+  for w in owner guest; do for v in "2026 1037" "393 852"; do set -- $v
+    # in REAL WebKit (his engine): headless Chromium's virtual clock never finishes decoding audio
+    R=$(node "$ROOT/test/webkit.js" "$B/h3.html?who=$w" "$1" "$2")
+    echo "$R" | grep -q '\[done\]' || R="$R FAIL  harness never finished ($w ${1}x${2})"
+    p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    hp=$((hp+p)); hf=$((hf+f))
+    [ "$f" != 0 ] && { echo "  $w ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  done; done
+  echo "  -> $hp pass / $hf fail"; PASS=$((PASS+hp)); FAIL=$((FAIL+hf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = credit ]; then
