@@ -11,6 +11,7 @@
 #   ./test/run.sh mascot     the duel rides the render, cameos only in empty space, never over a click
 #   ./test/run.sh credit     credit left on screen, and every way the lookup fails
 #   ./test/run.sh gallery    the gallery: flagged work, prompts, empty and failed states
+#   ./test/run.sh arrange    Hector orders the gallery (owner only), and Compose keeps the source's shape
 #   ./test/run.sh segs       every segmented control reacts to the click that made it
 #   ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays)
 #   ./test/run.sh magnify    zoom on the stage and in the gallery (Chromium + WebKit)
@@ -157,6 +158,29 @@ if [ "$WHAT" = all ] || [ "$WHAT" = gallery ]; then
     done
   done
   echo "  -> $gp pass / $gf fail"; PASS=$((PASS+gp)); FAIL=$((FAIL+gf))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = arrange ]; then
+  build "$INJ/arrange.txt" "$B/ar.html"; build "$INJ/ratio.txt" "$B/ra.html"
+  line; echo "ARRANGE  (Hector orders the gallery; nobody else can) + RATIO (Compose keeps the source's shape)"
+  ap=0; af=0
+  for w in "owner ok" "owner refuse" "guest ok"; do set -- $w; who=$1; o=$2
+    for v in "2026 1037" "1440 900" "393 852"; do set -- $v
+      R=$(title "$1" "$2" "file://$B/ar.html?who=$who&o=$o" 20000)
+      echo "$R" | grep -q '\[done\]' || R="$R FAIL  harness never finished ($who/$o ${1}x${2})"
+      p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+      ap=$((ap+p)); af=$((af+f))
+      [ "$f" != 0 ] && { echo "  $who/$o ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+    done
+  done
+  for v in "2026 1037 auto" "393 852 auto" "2026 1037 hand" "393 852 hand"; do set -- $v
+    R=$(title "$1" "$2" "file://$B/ra.html?case=$3" 20000)
+    echo "$R" | grep -q '\[done\]' || R="$R FAIL  harness never finished (ratio ${1}x${2})"
+    p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    ap=$((ap+p)); af=$((af+f))
+    [ "$f" != 0 ] && { echo "  ratio ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  done
+  echo "  -> $ap pass / $af fail"; PASS=$((PASS+ap)); FAIL=$((FAIL+af))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = credit ]; then

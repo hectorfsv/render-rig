@@ -1103,6 +1103,30 @@ body.wide:not(.typing) .console.director.inline-set #row-ups > #row-redefine{gri
 body.wide:not(.typing) .console.director.inline-set #pane-ctl .ctl-scroll > #adv{display:block!important;
   margin-top:calc(12px * var(--k))}
 
+
+/* ---- arrange the gallery (Hector only, 2026-09-24) ---- */
+.gal-tools{display:none;gap:8px;margin-left:auto;flex:0 0 auto}
+body.owner .gal-tools{display:flex}
+.gal-tools .go{width:auto;margin:0;padding:9px 14px}
+#gal-save,#gal-cancel{display:none}
+#scr-gallery.arranging #gal-save,#scr-gallery.arranging #gal-cancel{display:block}
+#scr-gallery.arranging #gal-arrange{display:none}
+#scr-gallery:not(.arranging) #gal-arr-note{display:none}
+.gal-arr{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+body.wide .gal-arr{grid-template-columns:repeat(auto-fill,minmax(calc(170px * var(--k)),1fr));gap:12px}
+.gal-tile{position:relative;aspect-ratio:1;background:#000;border:1px solid var(--rule);overflow:hidden;
+  cursor:grab;-webkit-user-select:none;user-select:none}
+.gal-tile img,.gal-tile video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.gal-tile .n{position:absolute;top:0;left:0;font-family:var(--mono);font-size:11px;font-weight:600;
+  color:var(--ink);background:rgba(0,0,0,.75);padding:3px 7px}
+.gal-tile .mv{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between}
+.gal-tile .mv button{background:rgba(0,0,0,.75);border:0;color:var(--ink);width:38px;height:34px;
+  font-size:13px;cursor:pointer}
+.gal-tile .mv button:hover{color:var(--red-hot)}
+.gal-tile .mv button:disabled{opacity:.25;cursor:default}
+.gal-tile.dragging{opacity:.35}
+.gal-tile.over{outline:2px solid var(--red);outline-offset:-2px}
+
 /* THIS IS THE PREVIEW (render-rig/next/). A pseudo-element in the header's top padding,
    so it cannot change the title's measured width. It goes when next/ replaces the Rig. */
 .panel::before{content:'PREVIEW · THE DIRECTOR’S CONSOLE';position:absolute;top:4px;left:18px;z-index:7;
@@ -1610,8 +1634,15 @@ body.wide:not(.typing) .console.director.inline-set #pane-ctl .ctl-scroll > #adv
              what made it and what it cost.</p>
         </div>
         <span class="gal-count" id="gal-count"></span>
+        <div class="gal-tools">
+          <button class="go ghost sm" id="gal-arrange" type="button" title="Put the pictures in the order you want">Arrange</button>
+          <button class="go sm" id="gal-save" type="button">Save order</button>
+          <button class="go ghost sm" id="gal-cancel" type="button">Cancel</button>
+        </div>
       </div>
       <div class="gal-grid" id="gal-grid"></div>
+      <div class="gal-arr" id="gal-arr" hidden></div>
+      <div class="gal-note" id="gal-arr-note"></div>
       <div class="gal-one" id="gal-one" hidden></div>
       <div style="margin-top:20px;max-width:340px">
         <button class="go ghost sm" id="gal-back" type="button">Back</button>
@@ -2516,6 +2547,7 @@ window.RigMascot=(function(){
 
   // The default mode must match whichever button ships aria-pressed=true, or
   // the console opens with the highlight on one mode and the state on another.
+  var arHand='';   // the mode in which a ratio was last picked by hand
   var pw='', type='image', dur='5', ar='16:9', res='2K', upf='2', vres='768P';
   var crea='low', shotType='customize', subjDet='';
   var SHOTS=[], ELS=[];
@@ -2963,6 +2995,11 @@ window.RigMascot=(function(){
     var list = type==='video' ? AR_VID : type==='lite' ? AR_LITE : (type==='image' ? AR_KREA
              : (type==='design' ? AR_DESIGN : AR_NBP));
     if((type==='compose'||type==='design') && !SRC.length) list=list.filter(function(x){return x[0]!=='auto'});
+    // Compose with a source keeps the source's shape (Auto) unless he picked a ratio IN
+    // COMPOSE by hand. Until 2026-09-24 a Compose opened with an empty tray fell back to
+    // 1:1, and the 1:1 survived the source arriving: his 3:4 flyer came back square
+    // (job 6640) with the brisket over "in Town!".
+    if(type==='compose' && SRC.length && arHand!=='compose') ar='auto';
     if(list.map(function(x){return x[0]}).indexOf(ar)<0) ar=list[0][0];
     $('seg-ar').innerHTML=list.map(function(x){
       var s=arShape(x[0]);
@@ -3101,7 +3138,7 @@ window.RigMascot=(function(){
   // aria-pressed, so the highlight did not move until syncMode() happened to
   // rebuild the row. seg() delegates from the container, so it keeps working
   // even though buildAR() replaces these buttons on every mode change.
-  seg($('seg-ar'),function(v){ar=v; $('ar-shape').textContent=arShape(v).word});
+  seg($('seg-ar'),function(v){ar=v; arHand=type; $('ar-shape').textContent=arShape(v).word});
 
   // sliders: each one shows its value, and an unchecked "set it myself" means
   // the field is never sent at all so fal keeps its own default.
@@ -3974,7 +4011,7 @@ window.RigMascot=(function(){
     return false;
   }
   function openGallery(){
-    show('scr-gallery'); galGrid();
+    show('scr-gallery'); if(arranging()) arrClose(); galGrid();
     if((GAL_AT && Date.now()-GAL_AT < GAL_TTL_MS) || galKept()){ paintGallery(); return }
     var f=new FormData(); f.append('action','gallery'); f.append('password',pw);
     fetch(BASE,{method:'POST',body:f})
@@ -4013,6 +4050,7 @@ window.RigMascot=(function(){
   function paintGallery(){
     var g=$('gal-grid');
     $('gal-count').textContent = GAL.length ? GAL.length+(GAL.length===1?' picture':' pictures') : '';
+    $('gal-arrange').hidden = GAL.length<2;
     if(!GAL.length){
       g.innerHTML='<div class="gal-empty"><h3>Nothing here yet</h3>'+
         '<p>Renders show up here once they are added to the gallery. '+
@@ -4067,7 +4105,7 @@ window.RigMascot=(function(){
   // the column count is a function of width, so it has to be recomputed on resize
   var galTimer=null;
   window.addEventListener('resize',function(){
-    if(!$('scr-gallery').classList.contains('on') || !GAL || !GAL.length) return;
+    if(!$('scr-gallery').classList.contains('on') || !GAL || !GAL.length || arranging()) return;
     clearTimeout(galTimer); galTimer=setTimeout(paintGallery,160);
   });
   function galOne(i){
@@ -4123,12 +4161,93 @@ window.RigMascot=(function(){
   }
   $('hub-gallery').onclick=openGallery;
 
+  /* ---------- ARRANGE THE GALLERY (Hector only, 2026-09-24) ----------
+     "can you give me acces to organize the images in the gallery, just me". Arrange
+     shows every picture as an even tile in the gallery's order: drag one onto another
+     (the Mac) or nudge it with the arrows (anywhere). Save sends the whole order in one
+     request (action=order, 1 execution); the rig refuses it for anyone but the owner
+     (Order Allowed?). The masonry then lays them out in that order, and anything added
+     to the gallery later comes first until it is placed. */
+  var ARR=null, arrDrag=-1;
+  function arranging(){ return $('scr-gallery').classList.contains('arranging') }
+  function arrPaint(){
+    $('gal-arr').innerHTML=ARR.map(function(it,i){
+      var isVid=it.gen_type==='video';
+      return '<div class="gal-tile" draggable="true" data-i="'+i+'">'+
+        (isVid ? '<video muted playsinline preload="metadata" src="'+esc(it.url)+'#t=0.1"></video>'
+               : '<img alt="" draggable="false" loading="lazy" src="'+esc(it.url)+'">')+
+        '<span class="n">'+(i+1)+'</span><div class="mv">'+
+        '<button type="button" data-mv="-1" aria-label="Move earlier"'+(i?'':' disabled')+'>&#9664;</button>'+
+        '<button type="button" data-mv="1" aria-label="Move later"'+(i<ARR.length-1?'':' disabled')+'>&#9654;</button></div></div>';
+    }).join('');
+  }
+  function arrMove(from,to){
+    if(!ARR || from===to || to<0 || to>=ARR.length || from<0 || from>=ARR.length) return;
+    var x=ARR.splice(from,1)[0]; ARR.splice(to,0,x); arrPaint();
+  }
+  function arrOpen(){
+    if(!isOwner() || !GAL || !GAL.length) return;
+    ARR=GAL.slice(); galGrid();
+    $('scr-gallery').classList.add('arranging');
+    $('gal-grid').hidden=true; $('gal-arr').hidden=false; $('gal-arr-note').textContent='';
+    $('gal-title').textContent='Arrange the gallery';
+    $('gal-sub').textContent='Drag a picture onto another to put it there, or use the arrows. Save when it looks right.';
+    arrPaint();
+  }
+  function arrClose(){
+    ARR=null; arrDrag=-1;
+    $('scr-gallery').classList.remove('arranging');
+    $('gal-arr').hidden=true; $('gal-arr').innerHTML=''; $('gal-arr-note').textContent='';
+    $('gal-sub').textContent=GAL_SUB;
+    galGrid(); if(GAL) paintGallery();
+  }
+  function arrSave(){
+    var b=$('gal-save'); if(!ARR || b.disabled) return;
+    b.disabled=true; b.textContent='Saving…';
+    var fd=new FormData(); fd.append('action','order'); fd.append('password',pw);
+    fd.append('order', JSON.stringify(ARR.map(function(x){ return x.url })));
+    fetch(BASE,{method:'POST',body:fd}).then(function(r){
+      return r.json().catch(function(){ return {} }).then(function(d){
+        if(!r.ok || !d.ok) throw new Error(d.error==='owner only' ? 'Only Hector can arrange the gallery.'
+          : 'The order did not save (HTTP '+r.status+'). Nothing changed.');
+        GAL=ARR.slice(); GAL_AT=Date.now();
+        try{ localStorage.setItem(galKey(), JSON.stringify({t:GAL_AT, items:GAL})) }catch(e){}
+        b.disabled=false; b.textContent='Save order'; arrClose();
+      });
+    }).catch(function(e){ b.disabled=false; b.textContent='Save order'; $('gal-arr-note').textContent=e.message });
+  }
+  var GAL_SUB=$('gal-sub').textContent;
+  $('gal-arrange').onclick=arrOpen;
+  $('gal-cancel').onclick=arrClose;
+  $('gal-save').onclick=arrSave;
+  $('gal-arr').addEventListener('click',function(e){
+    var b=e.target.closest('[data-mv]'); if(!b || b.disabled) return;
+    var i=+b.closest('.gal-tile').dataset.i; arrMove(i, i+(+b.dataset.mv));
+  });
+  $('gal-arr').addEventListener('dragstart',function(e){
+    var t=e.target.closest('.gal-tile'); if(!t) return;
+    arrDrag=+t.dataset.i; t.classList.add('dragging');
+    try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', String(arrDrag)) }catch(x){}
+  });
+  $('gal-arr').addEventListener('dragover',function(e){
+    var t=e.target.closest('.gal-tile'); if(!t || arrDrag<0) return;
+    e.preventDefault();
+    [].forEach.call(this.querySelectorAll('.over'),function(x){ if(x!==t) x.classList.remove('over') });
+    t.classList.add('over');
+  });
+  $('gal-arr').addEventListener('drop',function(e){
+    var t=e.target.closest('.gal-tile'); if(!t || arrDrag<0) return;
+    e.preventDefault(); var from=arrDrag; arrDrag=-1; arrMove(from, +t.dataset.i);
+  });
+  $('gal-arr').addEventListener('dragend',function(){ if(arrDrag>=0){ arrDrag=-1; arrPaint() } });
+
   ['contextmenu','dragstart'].forEach(function(ev){
     $('scr-gallery').addEventListener(ev,function(e){
       if(!isOwner() && e.target.closest('img,video')) e.preventDefault();
     });
   });
   $('gal-back').onclick=function(){
+    if(arranging()){ arrClose(); return }
     if($('gal-one').hidden) show(picked?'scr-console':'scr-hub'); else galGrid();
   };
   $('guide-btn').onclick=function(){show('scr-guide')};

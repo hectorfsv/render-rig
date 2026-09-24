@@ -1,0 +1,61 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* COMPOSE KEEPS THE SOURCE'S SHAPE (2026-09-24). Job 6640: Hector put his 3:4 Design
+   flyer into Compose and it came back SQUARE with the brisket over "in Town!". Compose
+   opened with an empty tray, where Auto is not offered, fell back to 1:1, and the 1:1
+   survived the source arriving. Now a source makes it Auto - unless he picked a ratio
+   in Compose by hand, which is kept. Proven on what is SENT, not on the button. */
+(function(){
+  var S=String.fromCharCode(167), out=[], sent=[], CASE=new URLSearchParams(location.search).get('case')||'auto';
+  try{ localStorage.clear() }catch(e){}
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m)}
+  window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    // the poll: the job ends at once, so Generate is free for the next check
+    if(/jobId=/.test(String(u))) return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve({status:'error',message:'harness'})}});
+    if(a==='auth') return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve({guest:false,user:'hector'})},text:function(){return Promise.resolve('')}});
+    if(a==='generate'){ sent.push(b.get('aspect_ratio')); return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve({status:'queued',jobId:'r-'+sent.length})}}) }
+    return Promise.reject(new Error('no net'));
+  };
+  // a real 3:4 picture, like his flyer (a hand-typed PNG was refused by the page as unreadable)
+  function addSource(n){
+    var c=document.createElement('canvas'); c.width=300; c.height=400;
+    var x=c.getContext('2d'); x.fillStyle='#'+(n*3)+'21'; x.fillRect(0,0,300,400);
+    c.toBlob(function(bl){ var dt=new DataTransfer(); dt.items.add(new File([bl],'src'+n+'.jpg',{type:'image/jpeg'}));
+      $('file').files=dt.files; $('file').dispatchEvent(new Event('change',{bubbles:true})) },'image/jpeg',0.9);
+  }
+  function pressed(){ var b=$('seg-ar').querySelector('button[aria-pressed=true]'); return b?b.dataset.v:'' }
+  function slots(){ return document.querySelectorAll('#tray .slot').length }
+  function wait(c,cb,n){ n=n||0; if(c()) return cb(true); if(n>100) return cb(false); setTimeout(function(){wait(c,cb,n+1)},50) }
+  function done(){ T(true,'[done]'); document.title=S+out.join('\n')+S }
+  function submitThen(cb){ var k=sent.length; $('prompt').value='make this more realistic';
+    $('prompt').dispatchEvent(new Event('input',{bubbles:true})); $('submit').click();
+    wait(function(){ return sent.length>k },function(ok){ cb(ok ? sent[sent.length-1] : '(nothing sent)') }) }
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    wait(function(){ return $('scr-hub').classList.contains('on') },function(){
+      document.querySelector('.card[data-go="compose"]').click();
+      setTimeout(function(){
+        T(pressed()!=='auto', 'an empty Compose tray offers no Auto (it is '+pressed()+')');
+        addSource(1);
+        wait(function(){ return slots()===1 },function(ok){
+          T(ok, 'the source landed in the tray');
+          T(pressed()==='auto', 'with a source, Compose is on Auto - the source’s own shape (it is '+pressed()+')');
+          if(CASE!=='hand') return submitThen(function(ar){
+            T(ar==='auto', 'and Auto is what is SENT (aspect_ratio='+ar+')'); done() });
+          // ?case=hand: a ratio he picks by hand in Compose is his, and another source does not undo it
+          $('seg-ar').querySelector('button[data-v="4:5"]').click();
+          addSource(2);
+          wait(function(){ return slots()===2 },function(){
+            T(pressed()==='4:5', 'a ratio picked by hand in Compose survives another source (it is '+pressed()+')');
+            submitThen(function(ar2){ T(ar2==='4:5', 'and 4:5 is what is sent (aspect_ratio='+ar2+')'); done() });
+          });
+        });
+      },300);
+    });
+  }
+  if(document.readyState==='complete') go(); else addEventListener('load',go);
+})();
+</script>
