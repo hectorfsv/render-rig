@@ -788,12 +788,6 @@ body.typing .ctl-commit{display:none}
    extra row costs nothing. */
 @media (min-width:600px){#out-actions{grid-template-columns:repeat(4,minmax(0,1fr))}}
 
-/* the gallery's Refresh: the list is kept on the device for a day; this fetches it again (one execution) */
-.gal-tools{display:flex;align-items:baseline;gap:12px;flex:0 0 auto}
-.gal-refresh{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--ink-dim);background:none;border:1px solid var(--rule);padding:4px 8px;cursor:pointer;white-space:nowrap}
-.gal-refresh:hover{color:var(--ink);border-color:var(--rule-hot)}
-.gal-refresh:disabled{opacity:.5;cursor:default}
 </style>
 </head>
 <body>
@@ -1282,8 +1276,7 @@ body.typing .ctl-commit{display:none}
           <p id="gal-sub">Everything here came out of this rig. Tap any picture to see it big,
              what made it and what it cost.</p>
         </div>
-        <span class="gal-tools"><span class="gal-count" id="gal-count"></span>
-          <button class="gal-refresh" id="gal-refresh" type="button" title="Fetch the gallery again (one n8n run)">&#8635; Refresh</button></span>
+        <span class="gal-count" id="gal-count"></span>
       </div>
       <div class="gal-grid" id="gal-grid"></div>
       <div class="gal-one" id="gal-one" hidden></div>
@@ -3632,9 +3625,9 @@ window.RigMascot=(function(){
   // gallery opens) the list is also KEPT ON THIS DEVICE, under the person's name,
   // for a day: a new session within the day opens it for nothing. It holds only
   // what the gallery already shows - picture, engine, price, date - never a prompt.
-  var GAL_AT=0, GAL_TTL_MS=24*60*60*1000;
+  var GAL_AT=0, GAL_TTL_MS=60*60*1000;   // an hour (Hector 2026-09-23: "make it faster to refresh"; it was a day)
   // v2 (2026-09-23): renders flagged from elsewhere stayed invisible for a day behind the kept list; the new name
-  // makes every device fetch once, and the gallery has a Refresh for the next time
+  // made every device fetch once, and the list is now kept for an hour (he declined a Refresh button)
   function galKey(){ return 'rig_gallery2'+(K_USER ? ':'+K_USER : '') }
   function galKept(){
     try{
@@ -3769,11 +3762,7 @@ window.RigMascot=(function(){
     }
   }
   $('hub-gallery').onclick=openGallery;
-  $('gal-refresh').onclick=function(){
-    var b=this; b.disabled=true; setTimeout(function(){ b.disabled=false },2500);
-    GAL=null; GAL_AT=0; try{ localStorage.removeItem(galKey()) }catch(e){}
-    openGallery();
-  };
+
   $('gal-back').onclick=function(){
     if($('gal-one').hidden) show(picked?'scr-console':'scr-hub'); else galGrid();
   };
