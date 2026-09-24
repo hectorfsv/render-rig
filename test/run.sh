@@ -11,6 +11,7 @@
 #   ./test/run.sh mascot     the duel rides the render, cameos only in empty space, never over a click
 #   ./test/run.sh credit     credit left on screen, and every way the lookup fails
 #   ./test/run.sh gallery    the gallery: flagged work, prompts, empty and failed states
+#   ./test/run.sh ratio      Compose keeps the source's shape unless he picked one by hand
 #   ./test/run.sh segs       every segmented control reacts to the click that made it
 #   ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays)
 #   ./test/run.sh magnify    zoom on the stage and in the gallery (Chromium + WebKit)
@@ -140,6 +141,20 @@ if [ "$WHAT" = all ] || [ "$WHAT" = gallery ]; then
     done
   done
   echo "  -> $gp pass / $gf fail"; PASS=$((PASS+gp)); FAIL=$((FAIL+gf))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = ratio ]; then
+  build "$INJ/ratio.txt" "$B/ra.html"
+  line; echo "RATIO  (Compose keeps the source's shape unless he picked one by hand)"
+  rp=0; rf=0
+  for v in "2026 1037 auto" "393 852 auto" "2026 1037 hand" "393 852 hand"; do set -- $v
+    R=$(title "$1" "$2" "file://$B/ra.html?case=$3" 20000)
+    echo "$R" | grep -q '\[done\]' || R="$R FAIL  harness never finished (ratio ${1}x${2} $3)"
+    p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    rp=$((rp+p)); rf=$((rf+f))
+    [ "$f" != 0 ] && { echo "  ratio ${1}x${2} $3"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  done
+  echo "  -> $rp pass / $rf fail"; PASS=$((PASS+rp)); FAIL=$((FAIL+rf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = credit ]; then
