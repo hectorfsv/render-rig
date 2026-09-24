@@ -1147,7 +1147,9 @@ body.owner .gal-tools{display:flex}
 .cam-moves button:hover{color:var(--ink);border-color:var(--rule-hot)}
 .cam-moves button[aria-pressed=true]{color:var(--ink);border-color:var(--red);
   background:linear-gradient(180deg,rgba(224,27,27,.34),rgba(224,27,27,.08));box-shadow:inset 0 -2px 0 var(--red)}
-.cam-knobs{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;margin-top:12px;align-items:start}
+.cam-knobs{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:12px;align-items:start}
+body:not(.wide) .cam-knobs{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+body:not(.wide) .cam-knobs > :first-child{grid-column:1 / -1}
 #aud-box{margin-top:9px}
 #aud-play{width:100%;margin-top:9px;height:34px}
 #aud-rec.on{color:#fff;border-color:var(--red);background:rgba(224,27,27,.25)}
@@ -1155,9 +1157,7 @@ body.owner .gal-tools{display:flex}
 /* Talk is the owner's for now (the server cannot time an audio file yet, and it is priced by it) */
 body:not(.owner) #seg-type button[data-v="talk"],body:not(.owner) .card[data-go="talk"]{display:none}
 body.wide .cards{grid-template-columns:repeat(4,minmax(0,1fr))}
-@media (min-width:1900px){body.wide .cards{grid-template-columns:repeat(8,minmax(0,1fr))}}
 body.wide.guest .cards{grid-template-columns:repeat(4,minmax(0,1fr))}
-@media (min-width:1900px){body.wide.guest .cards{grid-template-columns:repeat(7,minmax(0,1fr))}}
 /* Camera and Talk have no prompt either: on the Mac their settings take the bar, like Upscale's */
 body.wide:not(.typing) .console.director.inline-set #pane-ctl .ctl-scroll > #row-cam:not([hidden]),
 body.wide:not(.typing) .console.director.inline-set #pane-ctl .ctl-scroll > #row-talk:not([hidden]),
@@ -1183,6 +1183,20 @@ body.wide:not(.typing) .console.director.inline-set #row-sound{margin-top:calc(1
   body.wide:not(.typing) .console.director.inline-set .cam-moves{display:flex;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
   body.wide:not(.typing) .console.director.inline-set .cam-moves button{flex:0 0 auto;min-width:88px}
 }
+
+
+/* ---- the hub cards (2026-09-24, Hector on his laptop: "the shape and alignment changes") ----
+   A card is a <button>, and a button CENTRES its content: a card with more text pushed its
+   title up and its price down (Design worst, four times the others' text). Now every card is
+   a column: the name at the top, the price pinned to the bottom, all the same height, and
+   every card's line is about the same length. One row from 1400px wide. */
+.card{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start}
+.card .foot{margin-top:auto}
+.card p{min-height:0}
+/* narrower cards: the wait goes under the price, so every price sits on the same line */
+@media (max-width:1799px){body.wide .card .foot{flex-direction:column;align-items:flex-start;gap:3px}}
+@media (min-width:1400px){body.wide .cards{grid-template-columns:repeat(8,minmax(0,1fr))}
+  body.wide.guest .cards{grid-template-columns:repeat(7,minmax(0,1fr))}}
 
 /* THIS IS THE PREVIEW (render-rig/next/). A pseudo-element in the header's top padding,
    so it cannot change the title's measured width. It goes when next/ replaces the Rig. */
@@ -1241,49 +1255,49 @@ body.wide:not(.typing) .console.director.inline-set #row-sound{margin-top:calc(1
           <button class="card" type="button" data-go="image">
             <h3>Image</h3>
             <div class="eng">Krea 2 Large</div>
-            <p>A still from words alone. Draws real people and characters other models refuse, in eight shapes including anamorphic.</p>
+            <p>A still from words alone. Draws the people other models refuse.</p>
             <div class="foot"><span class="from">$0.06</span><span class="wait">under 2 min</span></div>
           </button>
           <button class="card" type="button" data-go="compose">
             <h3>Compose</h3>
             <div class="eng">Nano Banana Pro</div>
-            <p>Hand it photos and it merges them into one picture &mdash; a face, a jacket and a room, together. Extra sources are free.</p>
+            <p>Merges your photos into one picture: a face, a jacket, a room.</p>
             <div class="foot"><span class="from">$0.15</span><span class="wait">under 2 min</span></div>
           </button>
           <button class="card" type="button" data-go="design">
             <h3>Design</h3>
             <div class="eng">Grok Imagine</div>
-            <p>Flyers, posters, invitations, memes &mdash; artwork with your words set into it. The cheapest thing here. It can refuse a famous character, and bills the refusal. Headline text can also be set in your browser afterwards, free and spelled right.</p>
+            <p>Flyers, posters and memes, with your words set into the art.</p>
             <div class="foot"><span class="from">$0.04</span><span class="wait">1 to 2 min</span></div>
           </button>
           <button class="card" type="button" data-go="upscale">
             <h3>Upscale</h3>
             <div class="eng">Topaz</div>
-            <p>Enlarge a picture you already have, up to four times, with the detail rebuilt rather than smeared. No prompt needed.</p>
+            <p>Enlarges a picture you have, the detail rebuilt. No prompt.</p>
             <div class="foot"><span class="from">$0.08</span><span class="wait">under a min</span></div>
           </button>
           <button class="card" type="button" data-go="video">
             <h3>Video</h3>
             <div class="eng">Kling 3.0 Pro</div>
-            <p>A clip of 3 to 15 seconds. The soundtrack is written from your words, so name the song or the line you want to hear.</p>
-            <div class="foot"><span class="from">$0.336</span><span class="wait">about 7 min for 10s</span></div>
+            <p>A clip of 3 to 15 seconds, its sound written from your words.</p>
+            <div class="foot"><span class="from">$0.336</span><span class="wait">about 7 min</span></div>
           </button>
           <button class="card" type="button" data-go="lite">
             <h3>Video Lite</h3>
             <div class="eng">MiniMax H3 Max</div>
-            <p>The economy clip: 5 to 15 seconds from a still or from words, with sound included free. Good for cartoon scenes made in Image. No characters.</p>
+            <p>The economy clip: 5 to 15 seconds, sound included, or a style.</p>
             <div class="foot"><span class="from">$0.40</span><span class="wait">about a minute</span></div>
           </button>
           <button class="card" type="button" data-go="camera">
             <h3>Camera</h3>
             <div class="eng">MiniMax H3 Camera</div>
-            <p>One still, and the camera moves through it: orbit, rise, push in, pull back. The scene stays frozen. No prompt needed.</p>
+            <p>One still; the camera moves through a frozen scene. No prompt.</p>
             <div class="foot"><span class="from">$0.15</span><span class="wait">about a minute</span></div>
           </button>
           <button class="card" type="button" data-go="talk">
             <h3>Talk</h3>
             <div class="eng">MiniMax H3 Lip Sync</div>
-            <p>A face and your voice: it says your words, lip-synced. Upload a clip or record one here, 5 to 15 seconds.</p>
+            <p>A face says your words, lip-synced to your own audio.</p>
             <div class="foot"><span class="from">$0.25</span><span class="wait">about a minute</span></div>
           </button>
         </div>
@@ -1574,8 +1588,16 @@ body.wide:not(.typing) .console.director.inline-set #row-sound{margin-top:calc(1
                   <button type="button" data-v="1080P" aria-pressed="false">1080P</button>
                 </div>
               </div>
+              <div>
+                <div class="lab">Sound</div>
+                <div class="seg" id="seg-camsnd" role="group" aria-label="Camera sound">
+                  <button type="button" data-v="silent" aria-pressed="true">Silent</button>
+                  <button type="button" data-v="mine" aria-pressed="false">I&rsquo;ll describe it</button>
+                </div>
+              </div>
             </div>
-            <div class="hint">Your first source is the opening frame. The scene stays frozen and only the camera moves. Billed per second: $0.05 at 480P, $0.08 at 768P, $0.16 at 1080P.</div>
+            <input type="text" id="cam-snd" maxlength="240" hidden aria-label="What you hear" placeholder="What you hear: wind through the trees, a distant thunder roll" style="margin-top:9px">
+            <div class="hint">Your first source is the opening frame. The scene stays frozen and only the camera moves. H3 always makes sound: Silent keeps it to a faint room tone, or describe what you want to hear. Billed per second: $0.05 at 480P, $0.08 at 768P, $0.16 at 1080P.</div>
           </div>
           <div id="row-talk" hidden>
             <div class="lab">Size</div>
@@ -3677,6 +3699,7 @@ window.RigMascot=(function(){
     if(type==='upscale' && !SRC.length){ genErr('Add a source image to upscale.'); return }
     if(type==='camera' && !SRC.length){ genErr('Add a still: Camera moves through your first source.'); return }
     if(type==='talk' && !SRC.length){ genErr('Add a face: Talk animates your first source.'); return }
+    if(type==='camera' && CAM_SND==='mine' && !$('cam-snd').value.trim()){ genErr('Describe the sound you want, or set Sound to Silent.'); return }
     if(needsAudio() && !AUDIO){ genErr(type==='talk' ? 'Add what they say: choose an audio file or record one.' : 'Add your audio, or set Sound back to “H3 makes it”.'); return }
     if(REC){ genErr('Stop the recording first.'); return }
     if(type==='compose' && !SRC.length && !$('prompt').value.trim()){ genErr('Write a prompt, or add sources to combine.'); return }
@@ -3774,7 +3797,8 @@ window.RigMascot=(function(){
     }else if(type==='camera'||type==='talk'){
       // straight to fal: the still (or the face) and the settings - no words, no writer
       var s1=SRC[0]; fd.append('image_0', s1.file ? s1.file : dataUrlToBlob(s1.ref), s1.file ? s1.name : 'source.jpg');
-      if(type==='camera'){ fd.append('cam_move',CAM_MOVE); fd.append('duration',CAM_DUR); fd.append('resolution',CAM_RES) }
+      if(type==='camera'){ fd.append('cam_move',CAM_MOVE); fd.append('duration',CAM_DUR); fd.append('resolution',CAM_RES);
+        if(CAM_SND==='mine') fd.append('cam_sound',$('cam-snd').value.trim()) }   // none = silent (n8n says so to H3)
       else{ fd.append('audio', AUDIO.blob, AUDIO.name); fd.append('audio_secs', AUDIO.secs.toFixed(2)); fd.append('resolution',TALK_RES);
             if($('talk-tr').checked) fd.append('talk_transcribe','on') }
 
@@ -4613,7 +4637,7 @@ window.RigMascot=(function(){
         case 'row-h3style': return H3_STYLE ? H3_STYLE_NAME[H3_STYLE]+(H3_STYLE==='vhs'?' · '+H3_DMG:'') : 'none';
         case 'row-h3eng': return H3_TURBO && !H3_STYLE ? 'Turbo' : 'Max';
         case 'row-sound': return type==='talk' ? (AUDIO ? AUDIO.secs.toFixed(1)+'s' : 'add audio') : (SOUND==='mine' ? (AUDIO ? 'yours · '+AUDIO.secs.toFixed(1)+'s' : 'yours · add it') : 'H3');
-        case 'row-cam': return (CAM_NAME[CAM_MOVE]||CAM_MOVE)+' · '+CAM_DUR+'s · '+CAM_RES;
+        case 'row-cam': return (CAM_NAME[CAM_MOVE]||CAM_MOVE)+' · '+CAM_DUR+'s · '+CAM_RES+' · '+(CAM_SND==='mine'?'your sound':'silent');
         case 'row-talk': return TALK_RES+($('talk-tr').checked?' · read first':'');
         case 'adv': return '';
       }
@@ -4783,7 +4807,7 @@ window.RigMascot=(function(){
      (Max / Turbo) and Sound (H3 makes it / his own audio). Camera: a still and a named move.
      Talk: a face speaks his audio (the owner's only for now). One audio picker serves both. */
   var H3_STYLE='', H3_DMG='medium', H3_TURBO=false, SOUND='h3', AUDIO=null, REC=null,
-      CAM_MOVE='orbit-right', CAM_DUR='5', CAM_RES='768P', TALK_RES='768P';
+      CAM_MOVE='orbit-right', CAM_DUR='5', CAM_RES='768P', TALK_RES='768P', CAM_SND='silent';
   var H3_STYLE_NAME={'vhs':'VHS','retro-toon-70s':'Retro Toon 70s','low-poly':'Low Poly','hand-drawn':'Hand Drawn','16bit-pixel':'16-bit Pixel'};
   var CAM_NAME={'orbit-left':'Orbit left','orbit-right':'Orbit right','orbit-360':'Full 360','crane-up':'Crane up','drop-down':'Drop down',
     'push-in':'Push in','pull-out':'Pull out','top-down':'Top-down reveal','hero-arc':'Hero arc'};
@@ -4850,6 +4874,9 @@ window.RigMascot=(function(){
   seg($('seg-sound'),function(v){ SOUND=v; syncMode(); paintCost() });
   seg($('seg-cam'),function(v){ CAM_MOVE=v; $('cam-opt').textContent=CAM_NAME[v]||v; paintCost() });
   seg($('seg-camres'),function(v){ CAM_RES=v; paintCost() });
+  // Camera's sound is his (2026-09-24): H3 always makes some, and left alone it invented gibberish speech
+  seg($('seg-camsnd'),function(v){ CAM_SND=v; $('cam-snd').hidden=(v!=='mine'); paintChips() });
+  $('cam-snd').addEventListener('input',function(){ paintChips() });
   seg($('seg-talkres'),function(v){ TALK_RES=v; paintCost() });
   $('cam-dur').addEventListener('input',function(){ CAM_DUR=this.value; $('camdur-read').textContent=this.value; paintCost() });
 

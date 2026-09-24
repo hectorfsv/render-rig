@@ -117,7 +117,18 @@
                               submitThen(function(f5){
                                 T(f5 && f5.model==='h3cam' && f5.cam_move==='push-in' && f5.duration==='12' && f5.resolution==='480P' && f5.image_0 && f5.image_0.blob && !('prompt' in f5) && !('aspect_ratio' in f5),
                                   'sent: h3cam, push-in, 12 s, 480P, the still - no prompt, no ratio');
+                                T(f5 && !('cam_sound' in f5), 'Sound defaults to Silent: nothing sent, n8n tells H3 silence');
                                 freeGenerate(function(){
+                                 pick('seg-camsnd','mine');
+                                 T(!$('cam-snd').hidden, 'I\u2019ll describe it opens the sound line');
+                                 refused(function(noneS,mS){
+                                  T(noneS && /Describe the sound/.test(mS), 'an empty sound line is refused on the page ('+mS+')');
+                                  $('cam-snd').value='wind through the trees, a distant thunder roll';
+                                  submitThen(function(fS){
+                                   T(fS && fS.cam_sound==='wind through the trees, a distant thunder roll', 'sent: his sound line');
+                                   pick('seg-camsnd','silent');
+                                   T($('cam-snd').hidden, 'Silent hides the sound line again');
+                                   freeGenerate(function(){
                                   // ---- Talk ----
                                   mode('talk');
                                   T($('row-prompt').hidden && !$('row-talk').hidden && !$('aud-box').hidden && $('row-soundpick').hidden, 'Talk: no prompt, its size, the audio picker (always)');
@@ -136,6 +147,7 @@
                                         T(document.documentElement.scrollWidth<=innerWidth, 'nothing spills sideways');
                                         done();
                                       });
+                                   }); }); });
                                     });
                                   });
                                 });
