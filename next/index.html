@@ -1116,7 +1116,8 @@ body.owner .gal-tools{display:flex}
 body.wide .gal-arr{grid-template-columns:repeat(auto-fill,minmax(calc(170px * var(--k)),1fr));gap:12px}
 .gal-tile{position:relative;aspect-ratio:1;background:#000;border:1px solid var(--rule);overflow:hidden;
   cursor:grab;-webkit-user-select:none;user-select:none}
-.gal-tile img,.gal-tile video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.gal-tile img,.gal-tile video{width:100%!important;height:100%!important;max-height:none!important;
+  aspect-ratio:auto!important;object-fit:cover;display:block;pointer-events:none;opacity:1!important}
 .gal-tile .n{position:absolute;top:0;left:0;font-family:var(--mono);font-size:11px;font-weight:600;
   color:var(--ink);background:rgba(0,0,0,.75);padding:3px 7px}
 .gal-tile .mv{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between}
@@ -4059,18 +4060,7 @@ window.RigMascot=(function(){
     }
     // Build the columns by hand and drop each picture into the shortest one.
     // Deterministic: nothing here can balance, so nothing can leave a hole.
-    var g2=g, W=g2.getBoundingClientRect().width||innerWidth,
-        target=document.body.classList.contains('wide')?290:250, gap=14,
-        // never more columns than pictures: four pictures in six columns leaves
-        // two empty slots and makes every picture smaller for no reason
-        cols=Math.max(1,Math.min(6,Math.floor((W+gap)/(target+gap)),GAL.length));
-    g2.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';
-    var colW=(W-gap*(cols-1))/cols, boxes=[], heights=[];
-    g2.innerHTML='';
-    for(var c=0;c<cols;c++){
-      var d=document.createElement('div'); d.className='gal-col';
-      g2.appendChild(d); boxes.push(d); heights.push(0);
-    }
+    var put=galCols(GAL.length);
     GAL.forEach(function(it,i){
       var sp=it.specs||{}, w=+sp.w||0, h=+sp.h||0, ar=(w&&h)?(w/h):1;
       // Every item used to be drawn as an <img>, so a flagged video was a broken
@@ -4082,7 +4072,7 @@ window.RigMascot=(function(){
       b.setAttribute('aria-label','Open this '+(isVid?'video':'picture'));
       b.innerHTML=(isVid
           ? '<video muted playsinline loop preload="metadata" style="--ar:'+ar.toFixed(4)+'"'+dims+' src="'+esc(it.url)+'#t=0.1"></video>'
-          : '<img alt="" loading="lazy" style="--ar:'+ar.toFixed(4)+'"'+dims+' src="'+esc(it.url)+'">')+
+          : '<img alt="" loading="lazy" decoding="async" draggable="false" style="--ar:'+ar.toFixed(4)+'"'+dims+' src="'+esc(it.url)+'">')+
         '<div class="frame-cap"><div class="frame-meta"><b>'+esc(engineOf(it))+'</b><span>'+
         (it.price!=null ? '$'+money(it.price) : '')+'</span></div></div>';
       // fade each picture in as it actually loads - motion that answers an event,
@@ -4097,9 +4087,37 @@ window.RigMascot=(function(){
       });
       if(isVid ? im.readyState>=2 : im.complete) im.classList.add('in');
       b.onclick=function(){ galOne(+b.dataset.i) };
+      put(b, ar);
+    });
+  }
+  // Fresh columns for n pictures; returns put(el, ratio), which drops a frame into the
+  // shortest column. Deterministic: nothing here can balance, so nothing can leave a hole.
+  function galCols(n){
+    var g2=$('gal-grid'), W=g2.getBoundingClientRect().width||innerWidth,
+        target=document.body.classList.contains('wide')?290:250, gap=14,
+        // never more columns than pictures: four pictures in six columns leaves
+        // two empty slots and makes every picture smaller for no reason
+        cols=Math.max(1,Math.min(6,Math.floor((W+gap)/(target+gap)),n));
+    g2.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';
+    var colW=(W-gap*(cols-1))/cols, boxes=[], heights=[];
+    g2.innerHTML='';
+    for(var c=0;c<cols;c++){
+      var d=document.createElement('div'); d.className='gal-col';
+      g2.appendChild(d); boxes.push(d); heights.push(0);
+    }
+    return function(el,ar){
       var k=0; for(var j=1;j<heights.length;j++) if(heights[j]<heights[k]) k=j;
-      boxes[k].appendChild(b);
+      boxes[k].appendChild(el);
       heights[k] += colW/ar + 86;     // picture + about a caption
+    };
+  }
+  // The same frames in GAL's (new) order: moved, not rebuilt, so nothing loads again.
+  function galRelayout(byUrl){
+    if(!GAL.every(function(it){ return byUrl[it.url] })) return paintGallery();
+    var put=galCols(GAL.length);
+    GAL.forEach(function(it,i){
+      var sp=it.specs||{}, w=+sp.w||0, h=+sp.h||0, f=byUrl[it.url];
+      f.dataset.i=i; put(f, (w&&h)?(w/h):1);
     });
   }
   // the column count is a function of width, so it has to be recomputed on resize
@@ -4168,18 +4186,21 @@ window.RigMascot=(function(){
      request (action=order, 1 execution); the rig refuses it for anyone but the owner
      (Order Allowed?). The masonry then lays them out in that order, and anything added
      to the gallery later comes first until it is placed. */
-  var ARR=null, arrDrag=-1;
+  // ARR_EL: url -> {frame, media, tile}. The tiles BORROW the gallery's own picture and
+  // video elements (moved, never copied) and give them back, so arranging fetches and
+  // decodes nothing (Hector 2026-09-24: "you are killing my CPU just by clicking arrange").
+  var ARR=null, ARR_EL=null, arrDrag=-1;
   function arranging(){ return $('scr-gallery').classList.contains('arranging') }
   function arrPaint(){
-    $('gal-arr').innerHTML=ARR.map(function(it,i){
-      var isVid=it.gen_type==='video';
-      return '<div class="gal-tile" draggable="true" data-i="'+i+'">'+
-        (isVid ? '<video muted playsinline preload="metadata" src="'+esc(it.url)+'#t=0.1"></video>'
-               : '<img alt="" draggable="false" loading="lazy" src="'+esc(it.url)+'">')+
-        '<span class="n">'+(i+1)+'</span><div class="mv">'+
-        '<button type="button" data-mv="-1" aria-label="Move earlier"'+(i?'':' disabled')+'>&#9664;</button>'+
-        '<button type="button" data-mv="1" aria-label="Move later"'+(i<ARR.length-1?'':' disabled')+'>&#9654;</button></div></div>';
-    }).join('');
+    // the tiles already exist: put them in ARR's order and renumber them
+    var h=$('gal-arr');
+    ARR.forEach(function(it,i){
+      var t=ARR_EL[it.url].tile; t.dataset.i=i; t.classList.remove('dragging','over');
+      t.querySelector('.n').textContent=i+1;
+      t.querySelector('[data-mv="-1"]').disabled=!i;
+      t.querySelector('[data-mv="1"]').disabled=(i===ARR.length-1);
+      h.appendChild(t);
+    });
   }
   function arrMove(from,to){
     if(!ARR || from===to || to<0 || to>=ARR.length || from<0 || from>=ARR.length) return;
@@ -4187,7 +4208,23 @@ window.RigMascot=(function(){
   }
   function arrOpen(){
     if(!isOwner() || !GAL || !GAL.length) return;
-    ARR=GAL.slice(); galGrid();
+    ARR=GAL.slice(); ARR_EL={}; galGrid();
+    [].forEach.call($('gal-grid').querySelectorAll('.frame'),function(f){
+      var it=GAL[+f.dataset.i], md=f.querySelector('img,video');
+      if(it && md) ARR_EL[it.url]={frame:f, media:md};
+    });
+    var h=$('gal-arr'); h.innerHTML='';
+    ARR.forEach(function(it){
+      var e=ARR_EL[it.url]||(ARR_EL[it.url]={}), t=document.createElement('div');
+      t.className='gal-tile'; t.draggable=true;
+      if(e.media) t.appendChild(e.media);             // moved from its frame, not loaded again
+      else { var im=document.createElement('img');    // only a picture the gallery never drew
+        im.alt=''; im.loading='lazy'; im.decoding='async'; im.draggable=false; im.src=it.url; t.appendChild(im) }
+      t.insertAdjacentHTML('beforeend','<span class="n"></span><div class="mv">'+
+        '<button type="button" data-mv="-1" aria-label="Move earlier">&#9664;</button>'+
+        '<button type="button" data-mv="1" aria-label="Move later">&#9654;</button></div>');
+      e.tile=t;
+    });
     $('scr-gallery').classList.add('arranging');
     $('gal-grid').hidden=true; $('gal-arr').hidden=false; $('gal-arr-note').textContent='';
     $('gal-title').textContent='Arrange the gallery';
@@ -4195,11 +4232,19 @@ window.RigMascot=(function(){
     arrPaint();
   }
   function arrClose(){
-    ARR=null; arrDrag=-1;
+    // every borrowed picture goes back into its own frame, then the frames are laid out
+    // in GAL's order (the new one after a Save, the old one after Cancel)
+    var byUrl={};
+    if(ARR_EL) Object.keys(ARR_EL).forEach(function(u){
+      var e=ARR_EL[u]; if(!e.frame) return;
+      if(e.media && e.media.parentNode!==e.frame) e.frame.insertBefore(e.media, e.frame.firstChild);
+      byUrl[u]=e.frame;
+    });
+    ARR=null; ARR_EL=null; arrDrag=-1;
     $('scr-gallery').classList.remove('arranging');
     $('gal-arr').hidden=true; $('gal-arr').innerHTML=''; $('gal-arr-note').textContent='';
     $('gal-sub').textContent=GAL_SUB;
-    galGrid(); if(GAL) paintGallery();
+    galGrid(); if(GAL && GAL.length) galRelayout(byUrl);
   }
   function arrSave(){
     var b=$('gal-save'); if(!ARR || b.disabled) return;
