@@ -1,10 +1,12 @@
 <style>*{animation:none!important;transition:none!important}</style>
 <script>
 /* ARRANGE THE GALLERY (Hector only, 2026-09-24): "can you give me acces to organize
-   the images in the gallery, just me". The owner gets Arrange: even tiles in the
-   gallery's order, the arrows and a drag move a picture, Save sends the WHOLE order
-   once (action=order) and the masonry follows it. Nobody else gets the button, a
-   refusal changes nothing, and Cancel or Back sends nothing.
+   the images in the gallery, just me". Arranging IS the gallery ("the images dont show
+   the same when you arrange them" killed the first version, a grid of square crops):
+   the same rows and frames with a number and arrows on each; the arrows and a drag move
+   a picture; Save sends the WHOLE order once (action=order). It loads nothing ("you are
+   killing my CPU just by clicking arrange"). Nobody else gets the button, a refusal
+   changes nothing, and Cancel or Back sends nothing.
    ?who=owner|guest  ?o=ok|refuse */
 (function(){
   var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search),
@@ -33,20 +35,22 @@
     }
     return Promise.reject(new Error('no net'));
   };
-  function urlsOnTiles(){ return [].map.call(document.querySelectorAll('#gal-arr .gal-tile img'),function(i){return i.getAttribute('src')}) }
   function nOf(u){ for(var i=0;i<ITEMS.length;i++) if(ITEMS[i].url===u) return i+1; return '?' }
-  function tileOrder(){ return urlsOnTiles().map(nOf).join('') }
-  // the masonry fills the shortest column, so its visual order is not DOM order: read each frame's index
-  function masonryOrder(){ return [].map.call(document.querySelectorAll('#gal-grid .frame img'),function(i){
-    return {i:+i.closest('.frame').dataset.i, n:nOf(i.getAttribute('src'))} }).sort(function(a,b){return a.i-b.i}).map(function(x){return x.n}).join('') }
-  // "you are killing my CPU just by clicking arrange": Arrange must BORROW the gallery's
-  // own elements. Every picture/video element that exists, and which one holds which link.
+  function frames(){ return [].slice.call(document.querySelectorAll('#gal-grid .frame')) }
+  // rows read left to right, so DOM order is reading order
+  function order(){ return frames().map(function(f){ return nOf(f.querySelector('img').getAttribute('src')) }).join('') }
   function media(){ return [].slice.call(document.querySelectorAll('#scr-gallery img,#scr-gallery video')) }
+  function shapesKept(){ return frames().every(function(f){ var m=f.querySelector('img'), b=m.getBoundingClientRect(),
+    want=parseFloat(m.style.getPropertyValue('--ar'))||0; return !want || (b.height>0 && Math.abs(b.width/b.height-want)/want<0.03) }) }
+  function readsInOrder(){ // each next picture is right of the last in its row, or starts the next row
+    var fr=frames(); for(var i=1;i<fr.length;i++){ var a=fr[i-1].getBoundingClientRect(), b=fr[i].getBoundingClientRect();
+      if(!((Math.abs(a.top-b.top)<2 && b.left>=a.right) || b.top>=a.bottom-1)) return false } return true }
   function drag(from,to){
-    var tiles=document.querySelectorAll('#gal-arr .gal-tile'), dt=new DataTransfer();
-    tiles[from].dispatchEvent(new DragEvent('dragstart',{bubbles:true,dataTransfer:dt}));
-    tiles[to].dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:dt}));
-    tiles[to].dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt}));
+    var fr=frames(), dt=new DataTransfer(), src=fr[from].querySelector('.arr-ov'), dst=fr[to].querySelector('.arr-ov')||fr[to];
+    src.dispatchEvent(new DragEvent('dragstart',{bubbles:true,dataTransfer:dt}));
+    dst.dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:dt}));
+    dst.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt}));
+    src.dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer:dt}));
   }
   function wait(c,cb,n){ n=n||0; if(c()) return cb(true); if(n>80) return cb(false); setTimeout(function(){wait(c,cb,n+1)},50) }
   function done(){ T(true,'[done]'); document.title=S+out.join('\n')+S }
@@ -54,50 +58,56 @@
     $('pw').value='x'; $('unlock').click();
     wait(function(){ return $('scr-hub').classList.contains('on') },function(){
       $('hub-gallery').click();
-      wait(function(){ return document.querySelectorAll('#gal-grid .frame').length===5 },function(ok){
+      wait(function(){ return frames().length===5 },function(ok){
         T(ok,'the gallery shows the five pictures');
         var arr=$('gal-arrange');
         if(who!=='owner'){
           T(!vis(arr) && !vis($('gal-save')), 'a guest gets no Arrange and no Save');
           T(!document.body.classList.contains('owner'), 'a guest is not the owner');
+          T(!document.querySelector('.arr-ov'), 'a guest never gets the arrange handles');
           T(orders.length===0, 'a guest sent no order'); return done();
         }
         T(vis(arr) && hit(arr)==='yes', 'Hector gets Arrange, on screen and clickable ('+hit(arr)+')');
         T(!vis($('gal-save')) && !vis($('gal-cancel')), 'Save and Cancel wait for Arrange');
-        T(masonryOrder()==='12345', 'the masonry starts in the list order ('+masonryOrder()+')');
-        var before=media(), n0=before.length;
+        T(order()==='12345' && readsInOrder(), 'the gallery reads in list order ('+order()+')');
+        // positions inside the gallery grid (the caption above changes length while arranging)
+        function where(){ var g=$('gal-grid').getBoundingClientRect(); return frames().map(function(f){ var r=f.getBoundingClientRect();
+          return Math.round(r.left-g.left)+','+Math.round(r.top-g.top)+','+Math.round(r.width) }).join('|') }
+        var before=media(), n0=before.length, pos0=where();
         arr.click();
-        T($('scr-gallery').classList.contains('arranging') && vis($('gal-arr')) && !vis($('gal-grid')), 'Arrange swaps the masonry for tiles');
+        T($('scr-gallery').classList.contains('arranging') && vis($('gal-grid')), 'Arrange stays in the gallery - no separate grid');
+        var pos1=where();
+        T(pos1===pos0, 'every picture stays exactly where and as big as it was'+(pos1===pos0?'':' ('+pos0+' -> '+pos1+')'));
+        T(shapesKept(), 'every picture keeps its full shape while arranging (nothing cropped)');
         var during=media();
         T(during.length===n0 && during.every(function(m){ return before.indexOf(m)>=0 }),
-          'Arrange makes NO new picture or video: it borrows the gallery\u2019s own ('+n0+' before, '+during.length+' during, '+
-          during.filter(function(m){ return before.indexOf(m)<0 }).length+' new)');
-        T([].every.call(document.querySelectorAll('#gal-arr .gal-tile'),function(t){ return t.querySelector('img,video') }), 'every tile shows its picture');
-        T(tileOrder()==='12345', 'the tiles are in the gallery order ('+tileOrder()+')');
+          'Arrange loads NOTHING: the same picture elements ('+n0+' before, '+during.length+' during)');
+        var ovs=document.querySelectorAll('#gal-grid .frame .arr-ov');
+        T(ovs.length===5 && [].every.call(ovs,function(o,x){ return vis(o) && o.querySelector('.n').textContent===String(x+1) }), 'every picture shows its place, 1 to 5');
         T(vis($('gal-save')) && vis($('gal-cancel')) && !vis(arr), 'Save and Cancel replace Arrange');
-        T(document.documentElement.scrollWidth<=innerWidth, 'the tiles fit the width ('+document.documentElement.scrollWidth+'<='+innerWidth+')');
-        var t0=document.querySelectorAll('#gal-arr .gal-tile')[0], tl=document.querySelectorAll('#gal-arr .gal-tile')[4];
-        T(t0.querySelector('[data-mv="-1"]').disabled && tl.querySelector('[data-mv="1"]').disabled, 'the first cannot go earlier, the last cannot go later');
-        var nb=t0.querySelector('[data-mv="1"]'); nb.scrollIntoView({block:'nearest'});
+        T(document.documentElement.scrollWidth<=innerWidth, 'nothing spills sideways ('+document.documentElement.scrollWidth+'<='+innerWidth+')');
+        var fr=frames();
+        T(fr[0].querySelector('[data-mv="-1"]').getAttribute('aria-disabled')==='true' && fr[4].querySelector('[data-mv="1"]').getAttribute('aria-disabled')==='true',
+          'the first cannot go earlier, the last cannot go later');
+        var nb=fr[0].querySelector('[data-mv="1"]'); nb.scrollIntoView({block:'nearest'});
         T(hit(nb)==='yes', 'the arrow is clickable ('+hit(nb)+')');
         nb.click();
-        T(tileOrder()==='21345', 'the arrow moves a picture one place ('+tileOrder()+')');
+        T(order()==='21345' && readsInOrder(), 'the arrow moves a picture one place, and the rows follow ('+order()+')');
+        T($('scr-gallery').classList.contains('on') && !vis($('gal-one')), 'an arrow never opens the picture');
+        frames()[2].click();
+        T(!vis($('gal-one')), 'clicking a picture while arranging does not open it');
         drag(4,0);
-        T(tileOrder()==='52134', 'a drag puts a picture where it is dropped ('+tileOrder()+')');
-        // Cancel first: nothing is sent and nothing changes
+        T(order()==='52134', 'a drag puts a picture where it is dropped ('+order()+')');
         $('gal-cancel').click();
-        T(!$('scr-gallery').classList.contains('arranging') && vis($('gal-grid')), 'Cancel goes back to the masonry');
-        T(orders.length===0 && masonryOrder()==='12345', 'Cancel sends nothing and keeps the order ('+orders.length+' sent, '+masonryOrder()+')');
+        T(!$('scr-gallery').classList.contains('arranging') && !document.querySelector('.arr-ov'), 'Cancel takes the handles off');
+        T(orders.length===0 && order()==='12345', 'Cancel sends nothing and restores the order ('+orders.length+' sent, '+order()+')');
         var after=media();
-        T(after.length===n0 && after.every(function(m){ return before.indexOf(m)>=0 && m.closest('#gal-grid .frame') }),
-          'Cancel hands every picture back to its own frame, none rebuilt ('+after.filter(function(m){ return before.indexOf(m)<0 }).length+' new)');
-        // Back while arranging cancels too, and stays in the gallery
+        T(after.length===n0 && after.every(function(m){ return before.indexOf(m)>=0 }), 'the same elements all along, none rebuilt');
         arr.click(); drag(2,0); $('gal-back').click();
-        T($('scr-gallery').classList.contains('on') && !$('scr-gallery').classList.contains('arranging') && orders.length===0,
+        T($('scr-gallery').classList.contains('on') && !$('scr-gallery').classList.contains('arranging') && orders.length===0 && order()==='12345',
           'Back while arranging cancels it and stays in the gallery');
-        // now for real
         arr.click(); drag(4,0); drag(4,1);
-        T(tileOrder()==='54123', 'the working order before Save ('+tileOrder()+')');
+        T(order()==='54123', 'the working order before Save ('+order()+')');
         $('gal-save').click();
         wait(function(){ return orders.length && (omode==='refuse' ? /did not|Only/.test($('gal-arr-note').textContent) : !$('scr-gallery').classList.contains('arranging')) },function(ok2){
           T(orders.length===1, 'Save sends ONE request ('+orders.length+')');
@@ -108,17 +118,14 @@
             T($('scr-gallery').classList.contains('arranging'), 'a refusal keeps the arranging open');
             T(/Only Hector/.test($('gal-arr-note').textContent), 'and says why ('+$('gal-arr-note').textContent+')');
             $('gal-cancel').click();
-            T(masonryOrder()==='12345', 'a refused order changes nothing on the page ('+masonryOrder()+')');
+            T(order()==='12345', 'a refused order changes nothing on the page ('+order()+')');
             return done();
           }
-          T(ok2 && vis($('gal-grid')), 'a saved order closes the arranging');
-          T(masonryOrder()==='54123', 'the masonry follows the saved order ('+masonryOrder()+')');
-          var fin=media();
-          T(fin.length===n0 && fin.every(function(m){ return before.indexOf(m)>=0 }), 'after Save the same elements are laid out again, none loaded twice');
-          // the reordered frames still open the right picture
-          var f0=null; [].forEach.call(document.querySelectorAll('#gal-grid .frame'),function(f){ if(+f.dataset.i===0) f0=f });
-          f0.click();
-          var big=document.querySelector('#gal-one img'); T(big && nOf(big.getAttribute('src'))===5, 'the first frame opens picture 5, the new first');
+          T(ok2 && !document.querySelector('.arr-ov'), 'a saved order closes the arranging');
+          T(order()==='54123' && readsInOrder(), 'the gallery reads in the saved order ('+order()+')');
+          T(media().length===n0, 'still the same elements after Save');
+          frames()[0].click();
+          var big=document.querySelector('#gal-one img'); T(big && nOf(big.getAttribute('src'))===5, 'the first picture opens picture 5, the new first');
           $('gal-back').click();
           var kept=null; try{ kept=JSON.parse(localStorage.getItem('rig_gallery2:hector')) }catch(e){}
           T(kept && kept.items && kept.items.map(function(x){return nOf(x.url)}).join('')==='54123', 'this device keeps the new order, so the next open costs nothing');
