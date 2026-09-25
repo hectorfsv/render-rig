@@ -16,7 +16,7 @@
     var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
     if(/jobId=/.test(String(u))) return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve({status:'error',message:'harness'})}});
     if(a==='auth') return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve({guest:who!=='owner',user:who==='owner'?'hector':'tanner',balance:9,budget:who==='owner'?null:10})},text:function(){return Promise.resolve('')}});
-    if(a==='generate'){ var f={}; b.forEach(function(v,k){ f[k]= (v && typeof v==='object' && 'size' in v) ? {blob:true,size:v.size,type:v.type,name:v.name} : v }); sent.push(f);
+    if(a==='generate'){ var f={}; b.forEach(function(v,k){ f[k]= (v && typeof v==='object' && 'size' in v) ? {blob:true,size:v.size,type:v.type,name:v.name,raw:v} : v }); sent.push(f);
       // record what was sent, then refuse the job, so the page is free for the next check at once
       return Promise.resolve({ok:false,status:503,json:function(){return Promise.resolve({error:'harness'})},text:function(){return Promise.resolve('harness')}}) }
     return Promise.reject(new Error('no net'));
@@ -27,7 +27,9 @@
     w(0,'RIFF'); v.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
     v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,'data'); v.setUint32(40,n*2,true);
     return new File([buf],'voice.wav',{type:'audio/wav'}) }
-  function still(cb){ var c=document.createElement('canvas'); c.width=300; c.height=400; var x=c.getContext('2d'); x.fillStyle='#834'; x.fillRect(0,0,300,400);
+  // the size of a picture the page sent
+  function dims(blob,cb){ var im=new Image(), u=URL.createObjectURL(blob); im.onload=function(){ cb(im.naturalWidth+'x'+im.naturalHeight) }; im.onerror=function(){ cb('unreadable') }; im.src=u }
+  function still(cb,W,H){ W=W||300; H=H||400; var c=document.createElement('canvas'); c.width=W; c.height=H; var x=c.getContext('2d'); x.fillStyle='#834'; x.fillRect(0,0,W,H);
     c.toBlob(function(bl){ var dt=new DataTransfer(); dt.items.add(new File([bl],'face.jpg',{type:'image/jpeg'})); $('file').files=dt.files;
       $('file').dispatchEvent(new Event('change',{bubbles:true})); cb() },'image/jpeg',0.9) }
   function mode(m){ $('seg-type').querySelector('button[data-v="'+m+'"]').click() }
@@ -72,19 +74,26 @@
         T($('seg-vres').querySelector('[aria-pressed=true]').dataset.v==='768P' && $('seg-vres').querySelector('[data-v="1080P"]').disabled, 'a Style is 768P only');
         T(cost()==='$0.64', 'a Style: 8 s at $0.08 = $0.64 ('+cost()+')');
         T(/VHS/.test($('cost-sub').textContent), 'the meter names the style ('+$('cost-sub').textContent.replace(/\s+/g,' ')+')');
+        // a VHS tape is 4:3 (job 6680: a 2.33:1 canvas broke the tape frame)
+        var arBtns=[].map.call($('seg-ar').querySelectorAll('button'),function(x){return x.dataset.v+(x.getAttribute('aria-pressed')==='true'?'*':'')}).join(',');
+        T(!$('row-ar').hidden && arBtns==='4:3*' && /4:3/.test($('ar-hint').textContent), 'words-only VHS: the ratio is 4:3 only ('+arBtns+')');
+        T(/4:3 tape/.test($('cost-sub').textContent), 'the meter says 4:3 tape');
         pick('seg-h3dmg','heavy');
         submitThen(function(f){
           T(f && f.model==='h3' && f.h3_style==='vhs' && f.h3_damage==='heavy' && f.resolution==='768P' && !f.h3_turbo && !f.audio,
             'sent: h3, the VHS style, heavy damage, 768P - no Turbo, no audio ('+JSON.stringify(f&&{s:f.h3_style,d:f.h3_damage,r:f.resolution,t:f.h3_turbo})+')');
+          T(f && f.aspect_ratio==='4:3', 'sent: words-only VHS is 4:3 ('+(f&&f.aspect_ratio)+')');
           freeGenerate(function(){
             // ---- Turbo ----
             pick('seg-h3style','');
             T(!$('seg-h3eng').querySelector('[data-v="turbo"]').disabled && $('row-h3dmg').hidden, 'no style: Turbo is back, no tape damage');
+            var arBack=[].map.call($('seg-ar').querySelectorAll('button'),function(x){return x.dataset.v+(x.getAttribute('aria-pressed')==='true'?'*':'')}).join(',');
+            T(arBack==='16:9*,9:16,1:1,4:3,3:4,21:9', 'style off: all six ratios back, his 16:9 still picked ('+arBack+')');
             pick('seg-h3eng','turbo'); $('dur').value='10'; $('dur').dispatchEvent(new Event('input',{bubbles:true})); pick('seg-vres','768P');
             T(cost()==='$0.40', 'Turbo: 10 s at $0.04 = $0.40 ('+cost()+')');
             pick('seg-vres','1080P'); T(cost()==='$0.80', 'Turbo 1080P: $0.08/s = $0.80 ('+cost()+')'); pick('seg-vres','768P');
             submitThen(function(f2){
-              T(f2 && f2.h3_turbo==='on' && !f2.h3_style && f2.resolution==='768P', 'sent: h3_turbo on, no style');
+              T(f2 && f2.h3_turbo==='on' && !f2.h3_style && f2.resolution==='768P' && f2.aspect_ratio==='16:9', 'sent: h3_turbo on, no style, his 16:9');
               freeGenerate(function(){
                 // ---- his own soundtrack ----
                 pick('seg-h3eng','max'); pick('seg-sound','mine');
@@ -145,7 +154,40 @@
                                       refused(function(none7,m7){
                                         T(none7 && /Add what they say/.test(m7), 'Talk without audio: refused on the page ('+m7+')');
                                         T(document.documentElement.scrollWidth<=innerWidth, 'nothing spills sideways');
-                                        done();
+                                        // ---- VHS from a picture: it goes in on a 4:3 tape ----
+                                        mode('lite'); pick('seg-h3style','vhs');
+                                        T($('row-ar').hidden, 'VHS from a picture: no ratio row (the picture decides, fitted to 4:3)');
+                                        T(!$('row-h3dmg').hidden && /black bars/.test($('row-h3dmg').textContent), 'the tape damage row says a tape is 4:3');
+                                        submitThen(function(v1){
+                                          dims(v1.image_0.raw,function(d1){
+                                            T(d1==='533x400', 'a tall 300x400 picture goes in with bars at the sides: 533x400 ('+d1+')');
+                                            T(!('aspect_ratio' in v1), 'VHS from a picture: no ratio sent');
+                                            freeGenerate(function(){
+                                              pick('seg-h3style','hand-drawn');
+                                              submitThen(function(v2){
+                                                dims(v2.image_0.raw,function(d2){
+                                                  T(d2==='300x400', 'another style sends the picture as it is ('+d2+')');
+                                                  freeGenerate(function(){
+                                                    document.querySelector('#tray .slot .x').click();
+                                                    wait(function(){ return document.querySelectorAll('#tray .slot').length===0 },function(){
+                                                      still(function(){
+                                                        wait(function(){ return document.querySelectorAll('#tray .slot').length===1 },function(){
+                                                          pick('seg-h3style','vhs');
+                                                          submitThen(function(v3){
+                                                            dims(v3.image_0.raw,function(d3){
+                                                              T(d3==='700x525', 'a wide 700x300 picture goes in letterboxed: 700x525 ('+d3+')');
+                                                              done();
+                                                            });
+                                                          });
+                                                        });
+                                                      },700,300);
+                                                    });
+                                                  });
+                                                });
+                                              });
+                                            });
+                                          });
+                                        });
                                       });
                                    }); }); });
                                     });

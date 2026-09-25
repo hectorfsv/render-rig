@@ -1531,6 +1531,7 @@ body.wide:not(.typing) .console.director.inline-set #row-sound{margin-top:calc(1
                 <button type="button" data-v="medium" aria-pressed="true">Medium</button>
                 <button type="button" data-v="heavy" aria-pressed="false">Heavy</button>
               </div>
+              <div class="hint">A tape is 4:3: a wider or taller picture goes in with black bars, the way movies looked on a rented tape.</div>
             </div>
             <div class="hint">The engine paints the whole clip in that look; Grok writes only the action. A style renders at 768P only, takes no end frame and none of your audio, and costs the same $0.08 a second.</div>
           </div>
@@ -3179,7 +3180,11 @@ window.RigMascot=(function(){
     var i2v = (type==='video'||type==='lite') && SRC.length>0;
     $('row-ar').hidden = (type==='upscale' || type==='camera' || type==='talk' || i2v);
     if($('row-ar').hidden) return;
-    var list = type==='video' ? AR_VID : type==='lite' ? AR_LITE : (type==='image' ? AR_KREA
+    // A VHS tape is 4:3 (fal: "Use a 4:3 image for the classic VHS frame"): his first VHS clip,
+    // on a 2.33:1 canvas, broke the tape frame into a black box (job 6680). His own ratio is kept
+    // for when the style comes off; only the button shown and the one sent are 4:3.
+    var vhs = type==='lite' && H3_STYLE==='vhs';
+    var list = vhs ? [['4:3','4:3']] : type==='video' ? AR_VID : type==='lite' ? AR_LITE : (type==='image' ? AR_KREA
              : (type==='design' ? AR_DESIGN : AR_NBP));
     if((type==='compose'||type==='design') && !SRC.length) list=list.filter(function(x){return x[0]!=='auto'});
     // Compose with a source keeps the source's shape (Auto) unless he picked a ratio IN
@@ -3187,10 +3192,11 @@ window.RigMascot=(function(){
     // 1:1, and the 1:1 survived the source arriving: his 3:4 flyer came back square
     // (job 6640) with the brisket over "in Town!".
     if(type==='compose' && SRC.length && arHand!=='compose') ar='auto';
-    if(list.map(function(x){return x[0]}).indexOf(ar)<0) ar=list[0][0];
+    if(!vhs && list.map(function(x){return x[0]}).indexOf(ar)<0) ar=list[0][0];
+    var shown = vhs ? '4:3' : ar;
     $('seg-ar').innerHTML=list.map(function(x){
       var s=arShape(x[0]);
-      return '<button type="button" data-v="'+x[0]+'" aria-pressed="'+(x[0]===ar)+'" aria-label="'+x[1]+', '+s.word+'">'+
+      return '<button type="button" data-v="'+x[0]+'" aria-pressed="'+(x[0]===shown)+'" aria-label="'+x[1]+', '+s.word+'">'+
         '<i class="ar-mark'+(x[0]==='auto'?' auto':'')+'" style="width:'+s.w+'px;height:'+s.h+'px" aria-hidden="true"></i>'+x[1]+'</button>';
     }).join('');
     /* A flex-wrap leaves a lone orphan: six ratios wrapped 5+1 and the last one
@@ -3202,11 +3208,12 @@ window.RigMascot=(function(){
       el.style.display='grid';
       el.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';
     })();
-    $('ar-shape').textContent=arShape(ar).word;
+    $('ar-shape').textContent=arShape(shown).word;
     $('ar-hint').textContent = type==='image'
       ? '2.35:1 is anamorphic cinema. Only Krea offers it.'
       : (type==='compose' ? 'Auto keeps the shape of your sources.'
-      : (type==='design' ? '3:4 is a letter-size flyer, 2:3 a classic poster, 1:1 a meme, 9:16 a story.' : (type==='lite' ? 'H3 offers these six.' : 'Kling offers these three.')));
+      : (type==='design' ? '3:4 is a letter-size flyer, 2:3 a classic poster, 1:1 a meme, 9:16 a story.'
+      : (vhs ? 'A VHS tape is 4:3.' : (type==='lite' ? 'H3 offers these six.' : 'Kling offers these three.'))));
   }
   // Grok's edit endpoint takes a MAXIMUM OF 3 sources. n8n slices to 3 as well,
   // so a stale page can never make fal 422 - but the tray says so up front.
@@ -3535,7 +3542,7 @@ window.RigMascot=(function(){
       det = (AUDIO ? talkSecs()+'s of your audio' : 'add your audio')+', '+TALK_RES+(SRC.length ? '' : ' — add a face first');
     }else if(type==='lite'){
       eng=engineLabel('lite');
-      det = dur+'s, '+(SRC.length ? 'from your first source' : 'from words alone — no source')+', '+(H3_STYLE?'768P':vres)+
+      det = dur+'s, '+(SRC.length ? 'from your first source' : 'from words alone — no source')+(H3_STYLE==='vhs' ? ', 4:3 tape' : '')+', '+(H3_STYLE?'768P':vres)+
             (!H3_STYLE && SOUND==='mine' ? ', your audio' : ', sound included');
       if($('use-shots').checked && SHOTS.length) det += ' · '+SHOTS.length+' shots';
     }else if(type==='video'){
@@ -3681,6 +3688,27 @@ window.RigMascot=(function(){
     while(n--) arr[n]=bin.charCodeAt(n);
     return new Blob([arr],{type:mime});
   }
+  // A VHS TAPE IS 4:3 (2026-09-24). fal: "Use a 4:3 image for the classic VHS frame; the image's
+  // aspect ratio determines the output canvas." His 2.33:1 jungle still came back with the tape
+  // frame broken into a black box on the left edge (job 6680). So a VHS opening frame goes in the
+  // way a widescreen movie went onto a rented tape: the whole picture, black bars above and below
+  // (at the sides for a tall one). Resolves to a JPEG blob, or null when it is already 4:3.
+  function tapeFrame(s){
+    return new Promise(function(res,rej){
+      var im=new Image();
+      im.onload=function(){
+        var w=im.naturalWidth,h=im.naturalHeight,a=w/h;
+        if(Math.abs(a-4/3)<0.02) return res(null);
+        var cw = a>4/3 ? w : Math.round(h*4/3), ch = a>4/3 ? Math.round(w*3/4) : h;
+        var c=document.createElement('canvas'); c.width=cw; c.height=ch;
+        var x=c.getContext('2d'); x.fillStyle='#000'; x.fillRect(0,0,cw,ch);
+        x.drawImage(im,Math.round((cw-w)/2),Math.round((ch-h)/2),w,h);
+        res(dataUrlToBlob(c.toDataURL('image/jpeg',0.9)));
+      };
+      im.onerror=function(){ rej(new Error('tape frame')) };
+      im.src=s.ref;
+    });
+  }
   // Generate must never be a no-op. A throw anywhere in here used to leave the
   // button looking dead with nothing on screen, which is how a video got made
   // with no source: the real click did nothing, the source was removed to try
@@ -3746,7 +3774,7 @@ window.RigMascot=(function(){
     // the same seed gives the same picture.
     if(type!=='upscale' && type!=='camera' && type!=='talk') fd.append('prompt', same?'':cap);
     if(rev) fd.append('prior_prompt', rev.written);
-    if(!$('row-ar').hidden) put('aspect_ratio',ar);
+    if(!$('row-ar').hidden) put('aspect_ratio', (type==='lite' && H3_STYLE==='vhs') ? '4:3' : ar);
 
     if(type==='upscale'){
       fd.append('upscale_factor',upf);
@@ -3851,7 +3879,11 @@ window.RigMascot=(function(){
     eta = type==='video' ? parseInt(dur,10)*44 : ((type==='lite'||type==='camera'||type==='talk') ? 40 : (type==='upscale' ? 40 : 85));
     startTick();
 
-    fetch(BASE,{method:'POST',body:fd})
+    // VHS: the opening frame goes in on a 4:3 tape (tapeFrame); if that fails, the picture goes as it is
+    var ready = (type==='lite' && H3_STYLE==='vhs' && SRC.length)
+      ? tapeFrame(SRC[0]).then(function(b){ if(b) fd.set('image_0', b, 'src0.jpg') }).catch(function(){})
+      : Promise.resolve();
+    ready.then(function(){ return fetch(BASE,{method:'POST',body:fd}) })
       .then(function(r){
         if(r.status===401){lockOut();return null}
         if(!r.ok) throw new Error('http '+r.status);
