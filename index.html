@@ -13,11 +13,11 @@
      tools/build-icon.py). The -v2 names are deliberate: Safari files its icon answer per SITE and a
      re-added bookmark never clears it, so a name it has never requested is the only way to make it
      look again without wiping website data - which holds this Rig's job history and spend. -->
-<link rel="icon" href="icon-v2.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="icon-32-v2.png">
-<link rel="icon" type="image/png" sizes="16x16" href="icon-16-v2.png">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180-v2.png">
-<link rel="manifest" href="manifest.json">
+<link rel="icon" href="./icon-v2.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="./icon-32-v2.png">
+<link rel="icon" type="image/png" sizes="16x16" href="./icon-16-v2.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icon-180-v2.png">
+<link rel="manifest" href="./manifest.json">
 <meta name="apple-mobile-web-app-title" content="Render Rig">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -559,6 +559,18 @@ body.wide .gal-head h2{font-size:26px}
    instead, so there is no balancing algorithm left to disagree about. */
 .gal-grid{display:grid;gap:14px;align-items:start}
 body.wide .gal-grid{gap:16px}
+/* Rows, read left to right (2026-09-24). ONE flat line of frames that wraps: the page sets
+   each frame's width so every full row sums to the width exactly and the next picture
+   starts the next row. The frames are never moved to lay them out - Safari dropped the
+   loads of pictures that were taken out of the page and put back. */
+#gal-grid{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+body.wide #gal-grid{gap:16px}
+#gal-grid > .frame{flex:0 0 auto;min-width:0;overflow:hidden}
+#gal-grid > .gal-empty{flex:1 1 100%}
+/* a narrow portrait picture: its caption trims to the picture instead of widening it */
+#gal-grid .frame-meta{min-width:0;overflow:hidden}
+#gal-grid .frame-meta b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#gal-grid .frame-meta span{flex:0 0 auto}
 .gal-col{display:flex;flex-direction:column;gap:14px;min-width:0}
 body.wide .gal-col{gap:16px}
 .frame{margin:0;
@@ -788,6 +800,409 @@ body.typing .ctl-commit{display:none}
    extra row costs nothing. */
 @media (min-width:600px){#out-actions{grid-template-columns:repeat(4,minmax(0,1fr))}}
 
+/* ================= THE DIRECTOR'S CONSOLE (render-rig/next, from 2026-09-23) =================
+   The prompt is the main bar under the stage and every setting is a chip on it that
+   opens that setting; the six modes are a tab strip; helper text is readable. The
+   same ids and the same logic as the live Rig sit underneath. Audit:
+   ../../../research/rig-design-audit-20260923.md */
+:root{--ink-faint:#8C7F7D;--ink-ghost:#5E5250}
+.rail .tape-in{color:var(--ink-ghost)}
+.chip::before{background:var(--ink-ghost)}
+
+/* the mode strip */
+.modebar{margin:0 0 12px;min-width:0}
+#seg-type.seg-modes{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;
+  border-bottom:1px solid var(--rule);-webkit-overflow-scrolling:touch}
+#seg-type.seg-modes::-webkit-scrollbar{display:none}
+#seg-type.seg-modes button{flex:1 0 auto;background:none;border:none;border-bottom:2px solid transparent;
+  box-shadow:none;margin-bottom:-1px;padding:10px 18px 9px;text-align:left;display:flex;flex-direction:column;gap:3px;
+  font-size:13.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);white-space:nowrap}
+#seg-type.seg-modes button small{font-size:11px;font-weight:500;letter-spacing:.01em;text-transform:none;color:var(--ink-faint)}
+#seg-type.seg-modes button:hover{color:var(--ink);background:rgba(224,27,27,.05)}
+#seg-type.seg-modes button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--red);box-shadow:none;
+  background:linear-gradient(0deg,rgba(224,27,27,.16),rgba(224,27,27,0) 85%)}
+#seg-type.seg-modes button[aria-pressed=true] small{color:var(--red-hot)}
+.modebar #mode-hint{margin-top:8px;max-width:none;color:var(--ink-dim)}
+
+/* the composer */
+.composer{position:relative;min-width:0}
+.cmp-main{min-width:0;display:flex;flex-direction:column;gap:9px}
+.cmp-main #prompt{min-height:0;resize:none;overflow-y:auto;line-height:1.5;
+  border-color:var(--rule-hot);background:rgba(0,0,0,.5)}
+.cmp-main #prompt:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(224,27,27,.14),0 0 22px rgba(224,27,27,.10)}
+.cmp-main #hint{margin-top:5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.chip-s{display:inline-flex;align-items:baseline;gap:8px;padding:8px 12px 7px;cursor:pointer;
+  background:rgba(0,0,0,.36);border:1px solid var(--rule);color:var(--ink-dim);
+  font-family:var(--disp);font-size:12.5px;font-weight:600;letter-spacing:.02em;white-space:nowrap;
+  clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);transition:.14s}
+.chip-s b{font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--ink);letter-spacing:.02em}
+.chip-s:hover{border-color:var(--rule-hot);color:var(--ink)}
+.chip-s[aria-pressed=true]{border-color:var(--red);color:var(--ink);background:rgba(224,27,27,.14)}
+.chip-s[aria-pressed=true] b{color:var(--red-hot)}
+.chip-s.set b{color:var(--amber)}
+body.wide .chip-s.ph{display:none}
+
+/* the open setting: a header naming it, then only that row */
+.pop-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;
+  font-family:var(--disp);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink)}
+.pop-x{background:none;border:1px solid var(--rule);color:var(--ink-dim);width:30px;height:30px;
+  font-size:18px;line-height:1;cursor:pointer}
+.pop-x:hover{color:var(--ink);border-color:var(--rule-hot)}
+.console.director #pane-ctl .ctl-scroll > :not(.row-open):not(#row-type){display:none}
+.console.director #pane-ctl details.row-open{border:none;background:none}
+.console.director #pane-ctl details.row-open > summary{display:none}
+.console.director #pane-ctl details.row-open > :not(summary){padding-left:0;padding-right:0}
+
+/* ---- the Mac: two columns and a composer; the controls open above the bar ---- */
+body.wide .console.director .bay{grid-template-columns:clamp(186px,11.5vw,300px) minmax(0,1fr);
+  grid-template-rows:auto minmax(0,1fr) auto;
+  grid-template-areas:"src stage" "hist stage" "hist composer";
+  max-height:calc(100dvh - 131px - 66px)}
+body.wide .composer{grid-area:composer;display:grid;gap:14px;align-items:end;padding-top:12px;
+  grid-template-columns:minmax(0,1fr) clamp(250px,16vw,330px);grid-template-areas:"main commit"}
+body.wide .cmp-main{grid-area:main}
+body.wide .console.director .ctl-commit{grid-area:commit;padding-top:0}
+body.wide .cmp-main #prompt{font-size:16.5px;padding:13px 15px}
+body.wide .console.director #pane-ctl{position:absolute;left:0;bottom:calc(100% + 8px);z-index:30;
+  width:min(560px,100%);max-height:min(640px,calc(100dvh - 240px));display:none;flex-direction:column;
+  padding:14px 16px 14px;background:linear-gradient(180deg,rgba(33,25,24,.985),rgba(16,12,11,.985));
+  border:1px solid var(--rule-hot);box-shadow:0 22px 60px rgba(0,0,0,.65);
+  clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+body.wide .console.director .composer[data-open] #pane-ctl,
+body.wide.typing .console.director #pane-ctl{display:flex}
+body.wide .console.director .ctl-scroll{padding-right:8px;margin-right:-8px}
+
+/* ---- the phone: modes on top, the stage, the open panel, then the composer ---- */
+body:not(.wide) .console.director .modebar{flex:0 0 auto;margin:0 -10px 8px}
+body:not(.wide) #seg-type.seg-modes{padding:0 4px}
+/* WebKit does not count a flex scroller's END padding as scroll room, and fractional
+   tab widths round the scroll width down: the last tab could never come fully into
+   view (1.4px short). A real flex item at the end gives it the room. */
+body:not(.wide) #seg-type.seg-modes::after{content:'';flex:0 0 10px}
+body:not(.wide) #seg-type.seg-modes button{flex:0 0 auto;padding:8px 12px 8px;font-size:12px;letter-spacing:.07em}
+body:not(.wide) #seg-type.seg-modes button small{font-size:10px}
+body:not(.wide) .modebar #mode-hint{display:none}
+body:not(.wide) .console.director .sheet-tabs{display:none!important}
+body:not(.wide) .console.director .composer{order:4;flex:0 0 auto;margin:0 -10px;
+  padding:9px 10px calc(7px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--rule-hot);background:rgba(9,6,7,.97)}
+body:not(.wide) .console.director .ctl-commit{padding:0;margin:0;border:none;background:none}
+body:not(.wide) .console.director .cmp-main{margin-bottom:8px;gap:7px}
+body:not(.wide) .console.director #row-prompt .hint{display:none}
+body:not(.wide) .console.director .cmp-main #prompt{padding:10px 12px;max-height:24dvh}
+body:not(.wide) .console.director .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
+  margin:0 -10px;padding:0 10px;-webkit-overflow-scrolling:touch}
+body:not(.wide) .console.director .chips::-webkit-scrollbar{display:none}
+body:not(.wide) .console.director .chip-s{flex:0 0 auto;padding:8px 11px 7px}
+body:not(.wide) .console.director #pane-ctl{margin:-9px -10px 9px;max-height:40dvh}
+body:not(.wide) .console.director #pane-src,
+body:not(.wide) .console.director .hist{max-height:40dvh}
+body.typing:not(.wide) .console.director #pane-ctl{display:block!important}
+
+/* ---- pass 1b (same day): the Mac gives the stage its room back ----
+   The mode tabs ride in the header strip (it was 1,500px of empty bar), the stage
+   is sized to what is actually left under the composer (measured, so a longer
+   prompt shrinks the picture instead of covering it), and the stage's facts and
+   its actions share one line. */
+body.wide .console.director .modebar{position:absolute;top:0;left:230px;right:330px;height:55px;margin:0;
+  display:flex;justify-content:center;z-index:6;pointer-events:none}
+body.wide .console.director #seg-type.seg-modes{pointer-events:auto;border-bottom:none;height:55px;align-items:stretch;max-width:100%}
+body.wide .console.director #seg-type.seg-modes button{flex:0 1 auto;justify-content:center;padding:9px 18px 7px;margin-bottom:0}
+body.wide .console.director .modebar #mode-hint{display:none}
+@media (max-width:1560px){
+  body.wide .console.director #seg-type.seg-modes button{padding:9px 11px 7px;font-size:12.5px;letter-spacing:.05em}
+  body.wide .console.director #seg-type.seg-modes button small{display:none}
+}
+body.wide .console.director .bay{height:calc(100dvh - 131px);max-height:none}
+body.wide .console.director #pane-stage{min-height:0;display:grid;column-gap:14px;
+  grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"stage stage" "foot actions"}
+body.wide .console.director #pane-stage > .pane-h{display:none}
+body.wide .console.director #pane-stage .stage{grid-area:stage;min-height:0}
+body.wide .console.director .stage-foot{grid-area:foot;align-self:center;padding-top:8px;min-width:0}
+body.wide .console.director #out-actions{grid-area:actions;margin-top:8px!important;max-width:none;width:560px}
+body.wide .console.director .out{max-height:var(--stage-h,60vh)}
+body.wide .console.director #row-prompt{display:contents}
+body.wide .console.director .cmp-main{display:grid;grid-template-columns:minmax(0,1fr) auto;
+  grid-template-areas:"prompt prompt" "chips hint";gap:9px 18px;align-items:center}
+body.wide .console.director .cmp-main #prompt{grid-area:prompt}
+body.wide .console.director .cmp-main #hint{grid-area:hint;margin:0;text-align:right;max-width:56ch}
+body.wide .console.director #chips{grid-area:chips}
+body.wide .console.director .ctl-commit .meter-l{display:none}
+body.wide .console.director .ctl-commit .meter{margin-bottom:8px}
+body.wide .console.director .ctl-commit .go{padding:14px}
+
+/* the phone, while a setting is open: the result's buttons and facts step aside so
+   the picture keeps real room; the stage's label goes (the tab above names the mode) */
+body:not(.wide) .console.director.chip-open #out-actions,
+body:not(.wide) .console.director.chip-open .stage-foot{display:none!important}
+body:not(.wide) .console.director #pane-stage > .pane-h{display:none}
+
+/* ---- pass 1d/1e: the phone on its side ----
+   The stage keeps the full height on the left. The right column is four rows: the
+   modes, the open panel (a setting, Sources or Session - one at a time), the prompt
+   and chips, then the price and Generate. The bay and the composer lend their
+   children to this grid (display:contents), so the open setting gets the flexible
+   row instead of pushing Generate off a 393px screen. */
+@media (orientation:landscape) and (max-height:560px){
+  body:not(.wide) .console.director.on{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,44%);
+    grid-template-rows:auto minmax(0,1fr) auto auto;
+    grid-template-areas:"stage modes" "stage panel" "stage prompt" "stage commit";column-gap:10px}
+  body:not(.wide) .console.director .bay,
+  body:not(.wide) .console.director .composer{display:contents}
+  body:not(.wide) .console.director .modebar{grid-area:modes;margin:0 -10px 4px 0;min-width:0}
+  body:not(.wide) .console.director #pane-stage{grid-area:stage;grid-row:1 / -1;min-height:0}
+  body:not(.wide) .console.director #pane-src,
+  body:not(.wide) .console.director .hist,
+  body:not(.wide) .console.director #pane-ctl{grid-area:panel;max-height:none;min-height:0;margin:0 -10px 0 0;
+    align-self:stretch;overflow-y:auto}
+  body:not(.wide) .console.director .cmp-main{grid-area:prompt;margin:6px 0 6px;min-width:0}
+  body:not(.wide) .console.director .ctl-commit{grid-area:commit;padding-bottom:calc(4px + env(safe-area-inset-bottom))}
+  body:not(.wide) .console.director .ctl-commit .meter-sub{display:none}
+  /* a 393px-tall screen: while a panel is open the modes and the prompt step aside for it */
+  body:not(.wide) .console.director.chip-open .modebar,
+  body:not(.wide) .console.director.chip-open #row-prompt{display:none}
+}
+
+/* ---- pass 1e: an open setting never pushes Generate off a small phone ----
+   The composer is a flex column that may shrink, and inside it only the open
+   setting shrinks (and scrolls); the prompt, the chips, the price and Generate
+   keep their size. The stage keeps its floor. */
+@media (orientation:portrait),(min-height:561px){
+body:not(.wide) .console.director .composer{display:flex;flex-direction:column;flex:0 1 auto}
+/* The composer may shrink only while a SETTING is open inside it - the setting gives
+   way and scrolls. With Sources or Session open (siblings, not children) the composer
+   holds its size and that panel is the one that gives. */
+body:not(.wide) .console.director .composer[data-open]{min-height:0}
+body:not(.wide) .console.director .composer > #pane-ctl{flex:0 1 auto;min-height:0}
+body:not(.wide) .console.director .cmp-main,
+body:not(.wide) .console.director .ctl-commit{flex:0 0 auto}
+}
+
+/* ---- the gallery rules (2026-09-23) ----
+   (Outside the phone block above since 2026-09-24: inside it, a phone on its side
+   under 561px tall got none of them, so a guest could long-press to save there.) */
+.galflag[aria-pressed=true]{color:var(--amber);border-color:rgba(232,163,61,.55)}
+.galflag:disabled{opacity:.55;cursor:default}
+.gal-own{display:none;gap:8px;margin-top:14px;grid-template-columns:repeat(3,minmax(0,1fr))}
+body.owner .gal-own{display:grid}
+.gal-own .go{margin:0}
+.gal-note{font-size:12px;color:var(--ink-faint);margin-top:8px;min-height:1em}
+/* not the owner: nothing in the gallery offers a native save */
+body:not(.owner) #scr-gallery img,body:not(.owner) #scr-gallery video{-webkit-touch-callout:none;
+  -webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+
+
+/* ---- pass 2 (2026-09-24): THE BIG SCREEN ----
+   Hector on his 27" (2560x1440): "resize the buttons". Every size in the console was a
+   fixed px, so a 2560 window got the same 11-13px controls as a laptop. One number, --k,
+   set by the window's size, scales type, padding and the side columns together: 1 up to
+   a laptop, 1.22 on his monitor. The phone never sees it (body.wide only). */
+/* Only while the CONSOLE is on screen (Hector 2026-09-24: "in the HUB i want the size and
+   format of the one in production ... just change the size of the knobs on the console").
+   The hub, the gallery and the guide keep production's sizes. */
+body.wide{--k:1}
+@media (min-width:1700px) and (min-height:900px){body.wide:has(#scr-console.on){--k:1.08}}
+@media (min-width:2000px) and (min-height:1000px){body.wide:has(#scr-console.on){--k:1.14}}
+@media (min-width:2300px) and (min-height:1150px){body.wide:has(#scr-console.on){--k:1.22}}
+
+/* the header strip: 55px on a laptop, 55 x k here, and the mode tabs ride it */
+body.wide .head{min-height:calc(55px * var(--k));padding:calc(15px * var(--k)) calc(18px * var(--k))}
+body.wide .mark b{font-size:calc(18px * var(--k))}
+body.wide .mark i{font-size:calc(11px * var(--k))}
+body.wide .head-r{gap:calc(8px * var(--k))}
+body.wide .gbtn,body.wide .chip{font-size:calc(11px * var(--k));line-height:calc(13px * var(--k));
+  padding:calc(4px * var(--k)) calc(11px * var(--k))}
+body.wide .panel::before{font-size:calc(8.5px * var(--k))}
+body.wide .console.director .modebar{left:calc(230px * var(--k));right:calc(330px * var(--k));height:calc(55px * var(--k))}
+body.wide .console.director #seg-type.seg-modes{height:calc(55px * var(--k))}
+@media (min-width:1561px){
+  body.wide .console.director #seg-type.seg-modes button{font-size:calc(13.5px * var(--k));
+    padding:calc(9px * var(--k)) calc(18px * var(--k)) calc(7px * var(--k))}
+  body.wide .console.director #seg-type.seg-modes button small{font-size:calc(11px * var(--k))}
+}
+body.wide .console.director .bay{height:calc(100dvh - 76px - 55px * var(--k));
+  grid-template-columns:clamp(186px,calc(11.5vw * var(--k)),calc(300px * var(--k))) minmax(0,1fr)}
+
+/* the left column: sources and this session */
+body.wide .pane-h{font-size:calc(12px * var(--k))}
+body.wide .pane-h b{font-size:calc(10.5px * var(--k))}
+body.wide .tray-note{font-size:calc(12px * var(--k))}
+body.wide .tray-empty,body.wide .hist-empty{font-size:calc(13px * var(--k))}
+body.wide .slot .n{font-size:calc(9.5px * var(--k))}
+body.wide .slot .d{font-size:calc(9px * var(--k))}
+body.wide .slot .x{width:calc(22px * var(--k));height:calc(22px * var(--k));font-size:calc(14px * var(--k))}
+body.wide .add{font-size:calc(22px * var(--k))}
+body.wide .hcard .t{font-size:calc(8.5px * var(--k))}
+body.wide .hcard .up{width:calc(20px * var(--k));height:calc(20px * var(--k))}
+body.wide .hclear{font-size:calc(11px * var(--k))}
+
+/* the composer: the prompt, the chips, the price and the button */
+body.wide .composer{gap:calc(14px * var(--k));
+  grid-template-columns:minmax(0,1fr) clamp(250px,16vw,calc(330px * var(--k)))}
+body.wide .chips{gap:calc(7px * var(--k))}
+body.wide .chip-s{gap:calc(8px * var(--k));font-size:calc(12.5px * var(--k));
+  padding:calc(8px * var(--k)) calc(12px * var(--k)) calc(7px * var(--k))}
+body.wide .chip-s b{font-size:calc(11.5px * var(--k))}
+body.wide .console.director .cmp-main #prompt{font-size:calc(16.5px * var(--k));
+  padding:calc(13px * var(--k)) calc(15px * var(--k))}
+body.wide .hint{font-size:calc(13px * var(--k))}
+body.wide .meter-top{padding:calc(11px * var(--k)) calc(13px * var(--k)) calc(9px * var(--k))}
+body.wide .meter-v{font-size:calc(27px * var(--k))}
+body.wide .credit{font-size:calc(10.5px * var(--k))}
+body.wide .meter-sub{font-size:calc(11.5px * var(--k))}
+body.wide .bars{padding:0 calc(13px * var(--k)) calc(11px * var(--k))}
+body.wide .console.director .ctl-commit .go{font-size:calc(14px * var(--k));padding:calc(14px * var(--k))}
+body.wide .err{font-size:calc(12px * var(--k))}
+
+/* an open setting */
+body.wide .console.director #pane-ctl{width:min(calc(560px * var(--k)),100%);
+  max-height:min(calc(640px * var(--k)),calc(100dvh - 240px * var(--k)));
+  padding:calc(14px * var(--k)) calc(16px * var(--k))}
+body.wide .pop-h{font-size:calc(12px * var(--k));margin-bottom:calc(10px * var(--k))}
+body.wide .pop-x{width:calc(30px * var(--k));height:calc(30px * var(--k));font-size:calc(18px * var(--k))}
+body.wide .lab{font-size:calc(12.5px * var(--k))}
+body.wide .lab .opt{font-size:calc(11.5px * var(--k))}
+body.wide .seg button{font-size:calc(13px * var(--k));padding:calc(10px * var(--k)) 6px}
+body.wide .seg-wrap button{font-size:calc(11.5px * var(--k));padding:calc(9px * var(--k)) 4px}
+body.wide .check{padding:calc(10px * var(--k)) calc(13px * var(--k))}
+body.wide .check span{font-size:calc(13px * var(--k))}
+body.wide .check b{font-size:calc(10.5px * var(--k))}
+body.wide .check.tiny{padding:calc(7px * var(--k)) calc(10px * var(--k))}
+body.wide .check.tiny span{font-size:calc(12px * var(--k))}
+body.wide .adv>summary{font-size:calc(12px * var(--k));padding:calc(11px * var(--k)) calc(13px * var(--k))}
+body.wide .note-amber{font-size:calc(12px * var(--k))}
+body.wide .rowlab{font-size:calc(9.5px * var(--k))}
+body.wide select,body.wide textarea,body.wide input[type=text],body.wide input[type=number]{font-size:calc(16px * var(--k))}
+body.wide select,body.wide input[type=text]{padding:calc(11px * var(--k)) calc(13px * var(--k))}
+body.wide input[type=range]{height:calc(26px * var(--k))}
+body.wide input[type=range]::-webkit-slider-thumb{width:calc(15px * var(--k));height:calc(15px * var(--k));
+  margin-top:calc((3px - 15px * var(--k)) / 2)}
+
+/* the stage: its empty state, its facts line and the result's buttons */
+body.wide .stage-idle h3{font-size:calc(15px * var(--k))}
+body.wide .stage-idle p{font-size:calc(13.5px * var(--k))}
+body.wide .stage-foot{font-size:calc(10px * var(--k))}
+body.wide .seedbtn{font-size:calc(9.5px * var(--k));padding:calc(3px * var(--k)) calc(7px * var(--k))}
+body.wide .console.director #out-actions{width:calc(560px * var(--k))}
+body.wide .go.sm{font-size:calc(11px * var(--k));padding:calc(10px * var(--k))}
+body.wide .zbar{font-size:calc(10px * var(--k))}
+body.wide .zbar button{min-width:calc(34px * var(--k));height:calc(32px * var(--k))}
+
+
+/* ---- pass 2: Upscale on the Mac. It has no prompt, so its settings take the prompt's place ----
+   Hector: "on upscale the options are literally buried at the bottom to the left" - two
+   small chips in the corner of an empty bar, a screen's width from the Upscale button.
+   Now Enlarge and Model sit in the bar at full size beside the button, and the rest
+   opens under Advanced in the same place. Add words (typing) still opens as a popover. */
+body.wide:not(.typing) .console.director.inline-set .cmp-main{display:none}
+body.wide:not(.typing) .console.director.inline-set #pane-ctl{display:flex;position:static;grid-area:main;
+  width:auto;max-height:42dvh;padding:0;background:none;border:none;box-shadow:none;clip-path:none;align-self:end}
+body.wide:not(.typing) .console.director.inline-set #pop-h{display:none}
+body.wide:not(.typing) .console.director.inline-set #pane-ctl .ctl-scroll > #row-ups:not([hidden]){display:grid!important;
+  grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);column-gap:calc(30px * var(--k));align-items:start}
+body.wide:not(.typing) .console.director.inline-set #row-ups > :nth-child(1){grid-column:1;grid-row:1}
+body.wide:not(.typing) .console.director.inline-set #row-ups > :nth-child(2){grid-column:1;grid-row:2;align-self:center}
+body.wide:not(.typing) .console.director.inline-set #row-ups > :nth-child(3){grid-column:1;grid-row:3}
+body.wide:not(.typing) .console.director.inline-set #row-ups > :nth-child(4){grid-column:2;grid-row:1;margin-top:0!important}
+body.wide:not(.typing) .console.director.inline-set #row-ups > :nth-child(5){grid-column:2;grid-row:2}
+body.wide:not(.typing) .console.director.inline-set #row-ups > :nth-child(6){grid-column:2;grid-row:3}
+body.wide:not(.typing) .console.director.inline-set #row-ups > #gen-warn{grid-column:1 / -1;grid-row:4}
+body.wide:not(.typing) .console.director.inline-set #row-ups > #row-redefine{grid-column:1 / -1;grid-row:5}
+body.wide:not(.typing) .console.director.inline-set #pane-ctl .ctl-scroll > #adv:not([hidden]){display:block!important;
+  margin-top:calc(12px * var(--k))}
+
+
+/* ---- arrange the gallery (Hector only, 2026-09-24) ---- */
+.gal-tools{display:none;gap:8px;margin-left:auto;flex:0 0 auto}
+body.owner .gal-tools{display:flex}
+.gal-tools .go{width:auto;margin:0;padding:9px 14px}
+#gal-save,#gal-cancel{display:none}
+#scr-gallery.arranging #gal-save,#scr-gallery.arranging #gal-cancel{display:block}
+#scr-gallery.arranging #gal-arrange{display:none}
+#scr-gallery:not(.arranging) #gal-arr-note{display:none}
+/* arranging IS the gallery: a number and two arrows over each picture, and it drags */
+.frame .arr-ov{display:none}
+#scr-gallery.arranging .frame{cursor:grab}
+#scr-gallery.arranging .frame .arr-ov{display:block;position:absolute;inset:0;z-index:2;
+  -webkit-user-select:none;user-select:none;-webkit-user-drag:element}
+.arr-ov .n{position:absolute;top:0;left:0;font-family:var(--mono);font-size:12px;font-weight:600;
+  color:var(--ink);background:rgba(0,0,0,.78);padding:4px 9px}
+.arr-ov .mv{position:absolute;top:0;width:40px;height:32px;display:grid;place-items:center;
+  background:rgba(0,0,0,.8);color:var(--ink);font-size:14px;cursor:pointer}
+.arr-ov .mv[data-mv="-1"]{right:41px}
+.arr-ov .mv[data-mv="1"]{right:0}
+.arr-ov .mv:hover{color:var(--red-hot)}
+.arr-ov .mv[aria-disabled=true]{opacity:.25;cursor:default}
+#scr-gallery.arranging .frame.dragging{opacity:.35}
+#scr-gallery.arranging .frame.over{border-color:var(--red);box-shadow:inset 0 0 0 2px var(--red)}
+
+
+/* ---- the H3 family (2026-09-24) ---- */
+#seg-h3style{grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-flow:row}
+.cam-moves{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
+.cam-moves button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px 8px;cursor:pointer;
+  background:rgba(0,0,0,.34);border:1px solid var(--rule);color:var(--ink-dim);font-family:var(--disp);
+  font-size:12px;font-weight:600;transition:.16s}
+.cam-moves button:hover{color:var(--ink);border-color:var(--rule-hot)}
+.cam-moves button[aria-pressed=true]{color:var(--ink);border-color:var(--red);
+  background:linear-gradient(180deg,rgba(224,27,27,.34),rgba(224,27,27,.08));box-shadow:inset 0 -2px 0 var(--red)}
+.cam-knobs{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:12px;align-items:start}
+body:not(.wide) .cam-knobs{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+body:not(.wide) .cam-knobs > :first-child{grid-column:1 / -1}
+#aud-box{margin-top:9px}
+#aud-play{width:100%;margin-top:9px;height:34px}
+#aud-rec.on{color:#fff;border-color:var(--red);background:rgba(224,27,27,.25)}
+.seg button:disabled{opacity:.35;cursor:not-allowed}
+/* Talk is the owner's for now (the server cannot time an audio file yet, and it is priced by it) */
+body:not(.owner) #seg-type button[data-v="talk"],body:not(.owner) .card[data-go="talk"]{display:none}
+body.wide .cards{grid-template-columns:repeat(4,minmax(0,1fr))}
+body.wide.guest .cards{grid-template-columns:repeat(4,minmax(0,1fr))}
+/* Camera and Talk have no prompt either: on the Mac their settings take the bar, like Upscale's */
+body.wide:not(.typing) .console.director.inline-set #pane-ctl .ctl-scroll > #row-cam:not([hidden]),
+body.wide:not(.typing) .console.director.inline-set #pane-ctl .ctl-scroll > #row-talk:not([hidden]),
+body.wide:not(.typing) .console.director.inline-set #pane-ctl .ctl-scroll > #row-sound:not([hidden]){display:block!important}
+body.wide:not(.typing) .console.director.inline-set.inline-noadv #pane-ctl .ctl-scroll > #adv{display:none!important}
+body.wide:not(.typing) .console.director.inline-set #row-talk{display:grid!important;grid-template-columns:minmax(0,1fr) auto;column-gap:18px;align-items:end}
+body.wide:not(.typing) .console.director.inline-set #row-talk[hidden]{display:none!important}
+body.wide:not(.typing) .console.director.inline-set #row-talk > .hint{grid-column:1 / -1}
+body.wide:not(.typing) .console.director.inline-set #row-talk > .check{margin-top:0!important}
+body.wide:not(.typing) .console.director.inline-set #row-sound{margin-top:calc(10px * var(--k))}
+
+
+/* ---- small laptop windows (2026-09-24): the stage keeps its room ----
+   Under 1500px the chips shared a line with the hint, which squeezed them into one
+   column 7-8 chips deep (313px in Video Lite at 1040x800, the stage down to 31%). The
+   hint goes under the chips; Camera's moves become one scrolling row; the long helper
+   text under Camera and Talk steps aside (the meter says the same in one line). */
+@media (max-width:1500px){
+  body.wide .console.director .cmp-main{grid-template-columns:minmax(0,1fr);grid-template-areas:"prompt" "chips" "hint"}
+  body.wide .console.director .cmp-main #hint{text-align:left;max-width:none}
+  body.wide:not(.typing) .console.director.inline-set #row-cam > .hint,
+  body.wide:not(.typing) .console.director.inline-set #row-talk > .hint{display:none}
+  body.wide:not(.typing) .console.director.inline-set .cam-moves{display:flex;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+  body.wide:not(.typing) .console.director.inline-set .cam-moves button{flex:0 0 auto;min-width:88px}
+}
+
+
+/* ---- the hub cards (2026-09-24, Hector on his laptop: "the shape and alignment changes") ----
+   A card is a <button>, and a button CENTRES its content: a card with more text pushed its
+   title up and its price down (Design worst, four times the others' text). Now every card is
+   a column: the name at the top, the price pinned to the bottom, all the same height, and
+   every card's line is about the same length. One row from 1400px wide. */
+.card{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start}
+.card .foot{margin-top:auto}
+.card p{min-height:0}
+/* narrower cards: the wait goes under the price, so every price sits on the same line */
+@media (max-width:1799px){body.wide .card .foot{flex-direction:column;align-items:flex-start;gap:3px}}
+@media (min-width:1400px){body.wide .cards{grid-template-columns:repeat(8,minmax(0,1fr))}
+  body.wide.guest .cards{grid-template-columns:repeat(7,minmax(0,1fr))}}
+
+/* THIS IS THE PREVIEW (render-rig/next/). A pseudo-element in the header's top padding,
+   so it cannot change the title's measured width. It goes when next/ replaces the Rig. */
+.panel::before{content:'PREVIEW · THE DIRECTOR’S CONSOLE';position:absolute;top:4px;left:18px;z-index:7;
+  font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.2em;color:var(--amber);pointer-events:none}
+
 </style>
 </head>
 <body>
@@ -812,7 +1227,7 @@ body.typing .ctl-commit{display:none}
     <!-- LOGIN -->
     <div class="screen on" id="scr-login">
       <div class="hero">
-        <img src="hero.webp" alt="" draggable="false" width="736" height="1408">
+        <img src="./hero.webp" alt="" draggable="false" width="736" height="1408">
         <div class="lock">
           <h2>Access Required</h2>
           <p>This rig spends real money on every run. Enter your passphrase or code to unlock it.</p>
@@ -840,38 +1255,50 @@ body.typing .ctl-commit{display:none}
           <button class="card" type="button" data-go="image">
             <h3>Image</h3>
             <div class="eng">Krea 2 Large</div>
-            <p>A still from words alone. Draws real people and characters other models refuse, in eight shapes including anamorphic.</p>
+            <p>A still from words alone. Draws the people other models refuse.</p>
             <div class="foot"><span class="from">$0.06</span><span class="wait">under 2 min</span></div>
           </button>
           <button class="card" type="button" data-go="compose">
             <h3>Compose</h3>
             <div class="eng">Nano Banana Pro</div>
-            <p>Hand it photos and it merges them into one picture &mdash; a face, a jacket and a room, together. Extra sources are free.</p>
+            <p>Merges your photos into one picture: a face, a jacket, a room.</p>
             <div class="foot"><span class="from">$0.15</span><span class="wait">under 2 min</span></div>
           </button>
           <button class="card" type="button" data-go="design">
             <h3>Design</h3>
             <div class="eng">Grok Imagine</div>
-            <p>Flyers, posters, invitations, memes &mdash; artwork with your words set into it. The cheapest thing here. It can refuse a famous character, and bills the refusal. Headline text can also be set in your browser afterwards, free and spelled right.</p>
+            <p>Flyers, posters and memes, with your words set into the art.</p>
             <div class="foot"><span class="from">$0.04</span><span class="wait">1 to 2 min</span></div>
           </button>
           <button class="card" type="button" data-go="upscale">
             <h3>Upscale</h3>
             <div class="eng">Topaz</div>
-            <p>Enlarge a picture you already have, up to four times, with the detail rebuilt rather than smeared. No prompt needed.</p>
+            <p>Enlarges a picture you have, the detail rebuilt. No prompt.</p>
             <div class="foot"><span class="from">$0.08</span><span class="wait">under a min</span></div>
           </button>
           <button class="card" type="button" data-go="video">
             <h3>Video</h3>
             <div class="eng">Kling 3.0 Pro</div>
-            <p>A clip of 3 to 15 seconds. The soundtrack is written from your words, so name the song or the line you want to hear.</p>
-            <div class="foot"><span class="from">$0.336</span><span class="wait">about 7 min for 10s</span></div>
+            <p>A clip of 3 to 15 seconds, its sound written from your words.</p>
+            <div class="foot"><span class="from">$0.336</span><span class="wait">about 7 min</span></div>
           </button>
           <button class="card" type="button" data-go="lite">
             <h3>Video Lite</h3>
             <div class="eng">MiniMax H3 Max</div>
-            <p>The economy clip: 5 to 15 seconds from a still or from words, with sound included free. Good for cartoon scenes made in Image. No characters.</p>
+            <p>The economy clip: 5 to 15 seconds, sound included, or a style.</p>
             <div class="foot"><span class="from">$0.40</span><span class="wait">about a minute</span></div>
+          </button>
+          <button class="card" type="button" data-go="camera">
+            <h3>Camera</h3>
+            <div class="eng">MiniMax H3 Camera</div>
+            <p>One still; the camera moves through a frozen scene. No prompt.</p>
+            <div class="foot"><span class="from">$0.15</span><span class="wait">about a minute</span></div>
+          </button>
+          <button class="card" type="button" data-go="talk">
+            <h3>Talk</h3>
+            <div class="eng">MiniMax H3 Lip Sync</div>
+            <p>A face says your words, lip-synced to your own audio.</p>
+            <div class="foot"><span class="from">$0.25</span><span class="wait">about a minute</span></div>
           </button>
         </div>
         <div class="hub-foot" style="gap:10px">
@@ -884,7 +1311,22 @@ body.typing .ctl-commit{display:none}
     </div>
 
     <!-- CONSOLE -->
-    <div class="console" id="scr-console" data-panel="pane-ctl">
+    <div class="console director sheet-shut" id="scr-console" data-panel="pane-ctl">
+      <!-- THE MODES. A tab strip, not a grid inside the form: the hub already
+           picked one, and the prompt should not sit under six buttons. -->
+      <div class="modebar" id="modebar">
+        <div class="seg seg-modes" id="seg-type" role="group" aria-label="What to make">
+          <button type="button" data-v="image" aria-pressed="true">Image<small>Krea 2 Large</small></button>
+          <button type="button" data-v="compose" aria-pressed="false">Compose<small>Nano Banana Pro</small></button>
+          <button type="button" data-v="design" aria-pressed="false">Design<small>Grok Imagine</small></button>
+          <button type="button" data-v="upscale" aria-pressed="false">Upscale<small>Topaz</small></button>
+          <button type="button" data-v="video" aria-pressed="false">Video<small>Kling 3.0 Pro</small></button>
+          <button type="button" data-v="lite" aria-pressed="false">Video Lite<small>MiniMax H3 Max</small></button>
+          <button type="button" data-v="camera" aria-pressed="false">Camera<small>H3 Camera</small></button>
+          <button type="button" data-v="talk" aria-pressed="false">Talk<small>H3 Lip Sync</small></button>
+        </div>
+        <div class="hint" id="mode-hint"></div>
+      </div>
       <div class="bay">
 
         <!-- SOURCES -->
@@ -940,6 +1382,8 @@ body.typing .ctl-commit{display:none}
             <span id="m-engine">&nbsp;</span>
             <button class="seedbtn" id="m-seed" type="button" hidden
                     title="Put this seed in the Seed field">seed</button>
+            <button class="seedbtn galflag" id="gal-flag" type="button" hidden aria-pressed="false"
+                    title="Show this render in the gallery">&#9734; Add to gallery</button>
             <span id="m-time">&nbsp;</span>
           </div>
           <div class="row3" id="out-actions" hidden style="margin-top:8px">
@@ -950,8 +1394,13 @@ body.typing .ctl-commit{display:none}
           </div>
         </div>
 
-        <!-- CONTROLS -->
+        <!-- THE COMPOSER. The prompt is the main bar; every setting is a chip on
+             it. The controls pane lives inside it: on the Mac it opens above the
+             bar as a popover, on the phone it is the sheet's panel. -->
+        <div class="composer" id="composer">
         <div class="pane" id="pane-ctl">
+          <div class="pop-h" id="pop-h"><span id="pop-title">Setting</span>
+            <button type="button" class="pop-x" id="pop-x" aria-label="Close this setting">&times;</button></div>
           <div class="stack ctl-scroll">
           <div id="row-type" hidden>
             <div class="lab">The words <span class="opt">one line each</span></div>
@@ -986,22 +1435,7 @@ body.typing .ctl-commit{display:none}
             </div>
             <div class="hint" id="ty-note">Baking draws the words at the picture&rsquo;s real size and hands you a new still. The render underneath is untouched.</div>
           </div>
-          <div>
-            <div class="seg seg-5" id="seg-type" role="group" aria-label="What to make">
-              <button type="button" data-v="image" aria-pressed="true">Image</button>
-              <button type="button" data-v="compose" aria-pressed="false">Compose</button>
-              <button type="button" data-v="design" aria-pressed="false">Design</button>
-              <button type="button" data-v="upscale" aria-pressed="false">Upscale</button>
-              <button type="button" data-v="video" aria-pressed="false">Video</button>
-              <button type="button" data-v="lite" aria-pressed="false">Video Lite</button>
-            </div>
-            <div class="hint" id="mode-hint"></div>
-          </div>
 
-          <div id="row-prompt">
-            <textarea id="prompt" aria-label="Prompt" placeholder="Describe the shot. Camera move, subject, light, mood, sound."></textarea>
-            <div class="hint" id="hint">Grok rewrites this into a full cinematic brief before it reaches the model.</div>
-          </div>
 
           <!-- shot-by-shot direction (Kling multi_prompt) -->
           <div id="row-shots" hidden>
@@ -1076,6 +1510,106 @@ body.typing .ctl-commit{display:none}
               <select id="end-img" aria-label="End frame"></select>
               <div class="hint">Ending on the opening frame makes a clip that loops with no cut. Free.</div>
             </div>
+          </div>
+
+
+          <!-- THE H3 FAMILY (2026-09-24): Video Lite's style, engine and sound; Camera; Talk -->
+          <div id="row-h3style" hidden>
+            <div class="lab">Style <span class="opt" id="h3style-opt">none</span></div>
+            <div class="seg" id="seg-h3style" role="group" aria-label="H3 style">
+              <button type="button" data-v="" aria-pressed="true">None</button>
+              <button type="button" data-v="vhs" aria-pressed="false">VHS</button>
+              <button type="button" data-v="retro-toon-70s" aria-pressed="false">70s Toon</button>
+              <button type="button" data-v="low-poly" aria-pressed="false">Low Poly</button>
+              <button type="button" data-v="hand-drawn" aria-pressed="false">Hand Drawn</button>
+              <button type="button" data-v="16bit-pixel" aria-pressed="false">16-bit Pixel</button>
+            </div>
+            <div id="row-h3dmg" hidden style="margin-top:9px">
+              <div class="lab">Tape damage</div>
+              <div class="seg" id="seg-h3dmg" role="group" aria-label="VHS tape damage">
+                <button type="button" data-v="light" aria-pressed="false">Light</button>
+                <button type="button" data-v="medium" aria-pressed="true">Medium</button>
+                <button type="button" data-v="heavy" aria-pressed="false">Heavy</button>
+              </div>
+              <div class="hint">A tape is 4:3: a wider or taller picture goes in with black bars, the way movies looked on a rented tape.</div>
+            </div>
+            <div class="hint">The engine paints the whole clip in that look; Grok writes only the action. A style renders at 768P only, takes no end frame and none of your audio, and costs the same $0.08 a second.</div>
+          </div>
+          <div id="row-h3eng" hidden>
+            <div class="lab">Engine</div>
+            <div class="seg" id="seg-h3eng" role="group" aria-label="H3 engine">
+              <button type="button" data-v="max" aria-pressed="true">Max</button>
+              <button type="button" data-v="turbo" aria-pressed="false">Turbo</button>
+            </div>
+            <div class="hint" id="h3eng-hint">Turbo is half the price and a step down in quality: $0.04 a second at 768P. Draft on Turbo, finish on Max.</div>
+          </div>
+          <div id="row-sound" hidden>
+            <div id="row-soundpick">
+              <div class="lab">Sound</div>
+              <div class="seg" id="seg-sound" role="group" aria-label="Sound">
+                <button type="button" data-v="h3" aria-pressed="true">H3 makes it</button>
+                <button type="button" data-v="mine" aria-pressed="false">My audio</button>
+              </div>
+            </div>
+            <div id="aud-box" hidden>
+              <div class="lab" id="aud-lab">Your audio <span class="opt">5 to 15 seconds</span></div>
+              <div class="row3">
+                <button class="go ghost sm" type="button" id="aud-pick">Choose a file</button>
+                <button class="go ghost sm" type="button" id="aud-rec">Record</button>
+                <button class="go ghost sm" type="button" id="aud-clear" hidden>Remove</button>
+              </div>
+              <input type="file" id="aud-file" accept="audio/*,.m4a,.mp3,.wav,.aac" hidden>
+              <audio id="aud-play" controls preload="metadata" hidden></audio>
+              <div class="hint" id="aud-read">No audio yet.</div>
+            </div>
+          </div>
+          <div id="row-cam" hidden>
+            <div class="lab">The move <span class="opt" id="cam-opt">Orbit right</span></div>
+            <div class="cam-moves" id="seg-cam" role="group" aria-label="Camera move">
+              <button type="button" data-v="orbit-left" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2"/><path d="M19 9a8 5 0 1 0 0 6"/><path d="M4 13.5l1.6 1.8 2.2-1"/></svg><span>Orbit left</span></button>
+              <button type="button" data-v="orbit-right" aria-pressed="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2"/><path d="M5 9a8 5 0 1 1 0 6"/><path d="M20 13.5l-1.6 1.8-2.2-1"/></svg><span>Orbit right</span></button>
+              <button type="button" data-v="orbit-360" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2"/><path d="M20 12a8 5 0 1 1-3-3.9"/><path d="M17 5.5v3h3"/></svg><span>Full 360</span></button>
+              <button type="button" data-v="crane-up" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V6"/><path d="M7.5 10.5L12 6l4.5 4.5"/><path d="M5 21h14"/></svg><span>Crane up</span></button>
+              <button type="button" data-v="drop-down" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v14"/><path d="M7.5 13.5L12 18l4.5-4.5"/><path d="M5 3h14"/></svg><span>Drop down</span></button>
+              <button type="button" data-v="push-in" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="8" height="8"/><path d="M3 3l4 4M21 3l-4 4M3 21l4-4M21 21l-4-4"/></svg><span>Push in</span></button>
+              <button type="button" data-v="pull-out" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9.5" y="9.5" width="5" height="5"/><path d="M8 8L3 3M16 8l5-5M8 16l-5 5M16 16l5 5"/></svg><span>Pull out</span></button>
+              <button type="button" data-v="top-down" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l9 4 9-4-9-4z"/><path d="M12 3v7"/><path d="M9 7l3 3 3-3"/></svg><span>Top-down reveal</span></button>
+              <button type="button" data-v="hero-arc" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="14" r="2.2"/><path d="M4 12a8 8 0 0 1 14-4"/><path d="M18 4v4h-4"/></svg><span>Hero arc</span></button>
+            </div>
+            <div class="cam-knobs">
+              <div>
+                <div class="lab">Length <span class="opt"><b id="camdur-read">5</b> seconds</span></div>
+                <input type="range" id="cam-dur" min="3" max="15" step="1" value="5" aria-label="Camera move length">
+              </div>
+              <div>
+                <div class="lab">Size</div>
+                <div class="seg" id="seg-camres" role="group" aria-label="Camera resolution">
+                  <button type="button" data-v="480P" aria-pressed="false">480P</button>
+                  <button type="button" data-v="768P" aria-pressed="true">768P</button>
+                  <button type="button" data-v="1080P" aria-pressed="false">1080P</button>
+                </div>
+              </div>
+              <div>
+                <div class="lab">Sound</div>
+                <div class="seg" id="seg-camsnd" role="group" aria-label="Camera sound">
+                  <button type="button" data-v="silent" aria-pressed="true">Silent</button>
+                  <button type="button" data-v="mine" aria-pressed="false">I&rsquo;ll describe it</button>
+                </div>
+              </div>
+            </div>
+            <input type="text" id="cam-snd" maxlength="240" hidden aria-label="What you hear" placeholder="What you hear: wind through the trees, a distant thunder roll" style="margin-top:9px">
+            <div class="hint">Your first source is the opening frame. The scene stays frozen and only the camera moves. H3 always makes sound: Silent keeps it to a faint room tone, or describe what you want to hear. Billed per second: $0.05 at 480P, $0.08 at 768P, $0.16 at 1080P.</div>
+          </div>
+          <div id="row-talk" hidden>
+            <div class="lab">Size</div>
+            <div class="seg" id="seg-talkres" role="group" aria-label="Talk resolution">
+              <button type="button" data-v="480P" aria-pressed="false">480P</button>
+              <button type="button" data-v="768P" aria-pressed="true">768P</button>
+              <button type="button" data-v="1080P" aria-pressed="false">1080P</button>
+              <button type="button" data-v="2K" aria-pressed="false">2K</button>
+            </div>
+            <label class="check" style="margin-top:9px"><input type="checkbox" id="talk-tr"><span>Read my words first</span></label>
+            <div class="hint">Your first source is the face; it speaks your audio, and the clip is as long as the audio (5 to 14.8 seconds). Reading the words first can sharpen the lip sync on clear speech. Billed per second of audio: $0.05 at 480P, $0.08 at 768P, $0.16 at 1080P, $0.32 at 2K.</div>
           </div>
 
           <!-- IMAGE (Krea) -->
@@ -1225,6 +1759,13 @@ body.typing .ctl-commit{display:none}
           </details>
           </div><!-- /.ctl-scroll -->
         </div>
+        <div class="cmp-main">
+          <div id="row-prompt">
+            <textarea id="prompt" rows="2" aria-label="Prompt" placeholder="Describe the shot. Camera move, subject, light, mood, sound."></textarea>
+            <div class="hint" id="hint">Grok rewrites this into a full cinematic brief before it reaches the model.</div>
+          </div>
+          <div class="chips" id="chips" role="toolbar" aria-label="Settings"></div>
+        </div>
 
         <!-- Cost + trigger. A sibling of the controls pane, not a child of it:
              on a phone the controls collapse into a sheet and this stays on
@@ -1246,6 +1787,7 @@ body.typing .ctl-commit{display:none}
           <button class="go" id="submit">Generate</button>
           <div class="err" id="gen-err"></div>
         </div>
+        </div><!-- /.composer -->
 
       <!-- HISTORY -->
       <div class="hist">
@@ -1277,8 +1819,14 @@ body.typing .ctl-commit{display:none}
              what made it and what it cost.</p>
         </div>
         <span class="gal-count" id="gal-count"></span>
+        <div class="gal-tools">
+          <button class="go ghost sm" id="gal-arrange" type="button" title="Put the pictures in the order you want">Arrange</button>
+          <button class="go sm" id="gal-save" type="button">Save order</button>
+          <button class="go ghost sm" id="gal-cancel" type="button">Cancel</button>
+        </div>
       </div>
       <div class="gal-grid" id="gal-grid"></div>
+      <div class="gal-note" id="gal-arr-note"></div>
       <div class="gal-one" id="gal-one" hidden></div>
       <div style="margin-top:20px;max-width:340px">
         <button class="go ghost sm" id="gal-back" type="button">Back</button>
@@ -1291,7 +1839,7 @@ body.typing .ctl-commit{display:none}
             <div class="spec">
         <h4>Start here</h4>
         <div class="note"><b>You describe something, and a few minutes later it exists.</b> A photo of a place that was never photographed. A short film of your dog on the moon. An old picture from a shoebox, sharp again.</div>
-        <div class="note">There are six things this can do, and you pick one before you start:</div>
+        <div class="note">There are eight things this can do, and you pick one before you start:</div>
         <table class="tbl">
           <tr><td>Video</td><td class="d">A short clip, with sound, made from a sentence.</td></tr>
           <tr><td>Video Lite</td><td class="d">A cheaper clip, 5 to 15 seconds, sound always included.</td></tr>
@@ -1299,6 +1847,8 @@ body.typing .ctl-commit{display:none}
           <tr><td>Compose</td><td class="d">Hand it several photos, get one picture with all of them in it.</td></tr>
           <tr><td>Design</td><td class="d">Artwork with your words set into it &mdash; a flyer, a poster, an invitation, a meme.</td></tr>
           <tr><td>Upscale</td><td class="d">Take a picture you already have and make it bigger and clearer.</td></tr>
+          <tr><td>Camera</td><td class="d">A still, and the camera moves through it while the scene stays frozen.</td></tr>
+          <tr><td>Talk</td><td class="d">A face that says your words, lip-synced to your own audio.</td></tr>
         </table>
         <div class="note">Each one uses a different piece of software behind the scenes, and they are good at different things &mdash; but you never have to choose between them. <b>Pick what you want to make, and the right one is already loaded.</b></div>
         <div class="note"><b>Just write like you are talking to a person.</b> Your words get expanded into a longer, more detailed brief before anything is made, so you do not need special phrasing or a list of keywords. Say what you want to see. Words you want <b>on</b> something &mdash; a sign, a shirt, a screen &mdash; go in quotes, and they are rendered exactly as typed, typos included.</div>
@@ -2191,6 +2741,8 @@ window.RigMascot=(function(){
   function modelFor(t){
     if(t==='video') return SRC.length ? 'kling-i2v' : 'kling-t2v';
     if(t==='lite') return 'h3';
+    if(t==='camera') return 'h3cam';
+    if(t==='talk') return 'h3talk';
     if(t==='image') return 'krea';
     if(t==='compose') return 'nbp';
     if(t==='design') return 'grok';
@@ -2487,6 +3039,7 @@ window.RigMascot=(function(){
   function applyGuest(){
     var g=!!(who&&who.guest);
     document.body.classList.toggle('guest', g);
+    document.body.classList.toggle('owner', !!(who && who.guest===false));   // only a confirmed owner
     var w=$('welcome');
     if(w){
       w.hidden=!g;
@@ -2625,9 +3178,13 @@ window.RigMascot=(function(){
     // Kling i2v has NO aspect_ratio parameter - the clip inherits the start
     // image's shape. Showing the control there would be a control that lies.
     var i2v = (type==='video'||type==='lite') && SRC.length>0;
-    $('row-ar').hidden = (type==='upscale' || i2v);
+    $('row-ar').hidden = (type==='upscale' || type==='camera' || type==='talk' || i2v);
     if($('row-ar').hidden) return;
-    var list = type==='video' ? AR_VID : type==='lite' ? AR_LITE : (type==='image' ? AR_KREA
+    // A VHS tape is 4:3 (fal: "Use a 4:3 image for the classic VHS frame"): his first VHS clip,
+    // on a 2.33:1 canvas, broke the tape frame into a black box (job 6680). His own ratio is kept
+    // for when the style comes off; only the button shown and the one sent are 4:3.
+    var vhs = type==='lite' && H3_STYLE==='vhs';
+    var list = vhs ? [['4:3','4:3']] : type==='video' ? AR_VID : type==='lite' ? AR_LITE : (type==='image' ? AR_KREA
              : (type==='design' ? AR_DESIGN : AR_NBP));
     if((type==='compose'||type==='design') && !SRC.length) list=list.filter(function(x){return x[0]!=='auto'});
     // Compose with a source keeps the source's shape (Auto) unless he picked a ratio IN
@@ -2635,10 +3192,11 @@ window.RigMascot=(function(){
     // 1:1, and the 1:1 survived the source arriving: his 3:4 flyer came back square
     // (job 6640) with the brisket over "in Town!".
     if(type==='compose' && SRC.length && arHand!=='compose') ar='auto';
-    if(list.map(function(x){return x[0]}).indexOf(ar)<0) ar=list[0][0];
+    if(!vhs && list.map(function(x){return x[0]}).indexOf(ar)<0) ar=list[0][0];
+    var shown = vhs ? '4:3' : ar;
     $('seg-ar').innerHTML=list.map(function(x){
       var s=arShape(x[0]);
-      return '<button type="button" data-v="'+x[0]+'" aria-pressed="'+(x[0]===ar)+'" aria-label="'+x[1]+', '+s.word+'">'+
+      return '<button type="button" data-v="'+x[0]+'" aria-pressed="'+(x[0]===shown)+'" aria-label="'+x[1]+', '+s.word+'">'+
         '<i class="ar-mark'+(x[0]==='auto'?' auto':'')+'" style="width:'+s.w+'px;height:'+s.h+'px" aria-hidden="true"></i>'+x[1]+'</button>';
     }).join('');
     /* A flex-wrap leaves a lone orphan: six ratios wrapped 5+1 and the last one
@@ -2650,11 +3208,12 @@ window.RigMascot=(function(){
       el.style.display='grid';
       el.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';
     })();
-    $('ar-shape').textContent=arShape(ar).word;
+    $('ar-shape').textContent=arShape(shown).word;
     $('ar-hint').textContent = type==='image'
       ? '2.35:1 is anamorphic cinema. Only Krea offers it.'
       : (type==='compose' ? 'Auto keeps the shape of your sources.'
-      : (type==='design' ? '3:4 is a letter-size flyer, 2:3 a classic poster, 1:1 a meme, 9:16 a story.' : (type==='lite' ? 'H3 offers these six.' : 'Kling offers these three.')));
+      : (type==='design' ? '3:4 is a letter-size flyer, 2:3 a classic poster, 1:1 a meme, 9:16 a story.'
+      : (vhs ? 'A VHS tape is 4:3.' : (type==='lite' ? 'H3 offers these six.' : 'Kling offers these three.'))));
   }
   // Grok's edit endpoint takes a MAXIMUM OF 3 sources. n8n slices to 3 as well,
   // so a stale page can never make fal 422 - but the tray says so up front.
@@ -2669,7 +3228,9 @@ window.RigMascot=(function(){
     image:'Krea 2 Large. Draws from words alone, and will draw anyone.',
     compose:'Nano Banana Pro. Merges the pictures you hand it. Can refuse a famous face.',
     design:'Grok Imagine. Flyers, posters and memes with your words in them. Can refuse a famous character \u2014 and charges when it does.',
-    upscale:'Topaz. Enlarges a picture you already have. No prompt needed.'
+    upscale:'Topaz. Enlarges a picture you already have. No prompt needed.',
+    camera:'MiniMax H3 Camera. One still, a camera move through it. Billed per second.',
+    talk:'MiniMax H3 Lip Sync. A face speaks your audio. Billed per second of audio.'
   };
   function syncMode(){
     // The two engines that use this row do not offer the same rungs. Grok has no
@@ -2681,13 +3242,35 @@ window.RigMascot=(function(){
     var isVid=type==='video', isLite=type==='lite', isClip=isVid||isLite, isUps=type==='upscale',
         isKrea=type==='image', isNbp=type==='compose', isDes=type==='design';
     $('mode-hint').textContent=MODE_HINT[type];
-    $('row-prompt').hidden = isUps;
+    var isCam=type==='camera', isTalk=type==='talk', noWords=isUps||isCam||isTalk;
+    $('row-prompt').hidden = noWords;
+    // Upscale, Camera and Talk take no words: on the Mac their settings take the bar
+    $('scr-console').classList.toggle('inline-set', noWords);
+    $('scr-console').classList.toggle('inline-noadv', isCam||isTalk);
+    // THE H3 FAMILY
+    if(!isLite && REC){ try{ REC.stop() }catch(e){} }
+    $('row-h3style').hidden = !isLite;
+    $('row-h3dmg').hidden = !(isLite && H3_STYLE==='vhs');
+    $('row-h3eng').hidden = !isLite;
+    [].forEach.call($('seg-h3eng').querySelectorAll('button'),function(b){ b.disabled=!!H3_STYLE });
+    $('h3eng-hint').textContent = H3_STYLE ? 'A style runs on Max only.' : 'Turbo is half the price and a step down in quality: $0.04 a second at 768P. Draft on Turbo, finish on Max.';
+    $('h3style-opt').textContent = H3_STYLE ? H3_STYLE_NAME[H3_STYLE] : 'none';
+    $('row-sound').hidden = !((isLite && !H3_STYLE) || isTalk);
+    $('row-soundpick').hidden = isTalk;
+    $('aud-box').hidden = !(isTalk || (isLite && !H3_STYLE && SOUND==='mine'));
+    $('aud-lab').firstChild.textContent = isTalk ? 'What they say ' : 'Your audio ';
+    $('row-cam').hidden = !isCam;
+    $('row-talk').hidden = !isTalk;
+    paintAud();
     $('row-design').hidden = !isDes;
     $('row-shots').hidden  = !isClip;
     $('row-vid').hidden    = !isClip;
     // Video Lite (MiniMax H3 Max): sound always on and free, its own resolution, 5 to 15 s.
     $('row-audio').hidden = isLite; $('audio-hint').hidden = isLite;
-    $('lite-audio').hidden = !isLite; $('row-vres').hidden = !isLite;
+    $('lite-audio').hidden = !isLite || (!H3_STYLE && SOUND==='mine'); $('row-vres').hidden = !isLite;
+    // a Style renders at 768P only
+    if(isLite && H3_STYLE && vres!=='768P'){ vres='768P'; [].forEach.call($('seg-vres').querySelectorAll('button'),function(b){ b.setAttribute('aria-pressed',String(b.dataset.v==='768P')) }) }
+    [].forEach.call($('seg-vres').querySelectorAll('button'),function(b){ b.disabled=!!(isLite && H3_STYLE && b.dataset.v!=='768P') });
     $('dur').min = isLite ? 5 : 3;
     if(isLite && parseInt(dur,10)<5){ $('dur').value=5; $('dur').dispatchEvent(new Event('input',{bubbles:true})); }
     $('dur-hint').innerHTML = isLite
@@ -2710,14 +3293,14 @@ window.RigMascot=(function(){
     // Grok Imagine has no seed at all - showing the box would be a control that lies.
     $('row-seed').hidden   = !(isKrea||isNbp);
     $('row-ups').hidden    = !isUps;
-    $('row-endimg').hidden = !(isClip && SRC.length);
+    $('row-endimg').hidden = !(isClip && SRC.length) || (isLite && !!H3_STYLE);   // a Style takes no end frame
     $('row-stylestr').hidden = !(isKrea && $('use-style').checked);
     $('row-redefine').hidden = !(isUps && $('upmodel').value==='Redefine');
     $('gen-warn').hidden     = !(isUps && isGenUpscale());
     $('adv-vid').hidden  = !isVid;
     $('adv-nbp').hidden  = !isNbp;
     $('adv-ups').hidden  = !isUps;
-    $('adv-none').hidden = !(isKrea||isDes||isLite);
+    $('adv-none').hidden = !(isKrea||isDes||isLite||isCam||isTalk);
     $('adv-none').firstElementChild.textContent = isLite
       ? 'Nothing extra for Video Lite. Characters, keep-out words and prompt adherence are Kling-only.'
       : "Nothing extra for this one. Krea's controls are all above.";
@@ -2733,7 +3316,9 @@ window.RigMascot=(function(){
       : (isKrea ? 'Grok expands this into a full image brief. Krea draws from words only.'
       : (isDes ? 'Grok expands this into a layout brief. Your words in the box below are added afterwards, untouched.'
                 : 'Grok expands this into a full image brief. Order matters, and the tray is numbered so you can point at each one.'));
-    $('tray-note').textContent = isClip
+    $('tray-note').textContent = isCam ? 'Camera moves through your first source. The scene stays frozen.'
+      : isTalk ? 'Talk animates the face in your first source.'
+      : isClip
       ? (isLite ? 'Video Lite' : 'Video')+' uses the first source as its opening frame.'
       : (isUps ? 'Upscale uses the first source, at full resolution.'
                : (isKrea ? 'Krea borrows the look of these, it cannot combine them.'
@@ -2904,6 +3489,11 @@ window.RigMascot=(function(){
   }
   // Every figure here is quoted from fal's own model pages, not estimated.
   function cost(){
+    // THE H3 FAMILY - fal's list prices, the same table as n8n's priceOf
+    if(type==='camera') return +(Math.min(15,Math.max(3,parseInt(CAM_DUR,10)||5))*perSec(CAM_RES)).toFixed(3);
+    if(type==='talk') return +(talkSecs()*perSec(TALK_RES)).toFixed(3);
+    if(type==='lite' && H3_STYLE) return +(Math.min(15,Math.max(5,parseInt(dur,10)||5))*0.08).toFixed(3);
+    if(type==='lite' && H3_TURBO) return +(Math.min(15,Math.max(5,parseInt(dur,10)||5))*(vres==='1080P'?0.08:0.04)).toFixed(3);
     if(type==='lite'){
       // MiniMax H3 Max at fal's LIST rate - its page shows 50% off, unproven against a
       // balance delta. n8n's priceOf charges exactly this (check-rig-price-parity.js).
@@ -2944,9 +3534,16 @@ window.RigMascot=(function(){
     el.textContent=(type==='upscale'&&isGenUpscale()&&c?'from $':'$')+money(c);
     el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick');
     var eng,det;
-    if(type==='lite'){
-      eng='MiniMax H3 Max';
-      det = dur+'s, '+(SRC.length ? 'from your first source' : 'from words alone — no source')+', '+vres+', sound included';
+    if(type==='camera'){
+      eng='MiniMax H3 Camera';
+      det = (CAM_NAME[CAM_MOVE]||CAM_MOVE)+', '+CAM_DUR+'s, '+CAM_RES+(SRC.length ? '' : ' — add a still first');
+    }else if(type==='talk'){
+      eng='MiniMax H3 Lip Sync';
+      det = (AUDIO ? talkSecs()+'s of your audio' : 'add your audio')+', '+TALK_RES+(SRC.length ? '' : ' — add a face first');
+    }else if(type==='lite'){
+      eng=engineLabel('lite');
+      det = dur+'s, '+(SRC.length ? 'from your first source' : 'from words alone — no source')+(H3_STYLE==='vhs' ? ', 4:3 tape' : '')+', '+(H3_STYLE?'768P':vres)+
+            (!H3_STYLE && SOUND==='mine' ? ', your audio' : ', sound included');
       if($('use-shots').checked && SHOTS.length) det += ' · '+SHOTS.length+' shots';
     }else if(type==='video'){
       eng='Kling 3.0 Pro';
@@ -2982,6 +3579,7 @@ window.RigMascot=(function(){
       if($('websearch').checked) det += ' \u00b7 web +$0.015';
     }
     $('cost-sub').innerHTML=eng+'<br>'+det;
+    paintChips();
     var lit=Math.max(0,Math.min(12,Math.round(c/2.52*12)));
     var b=$('bars');b.innerHTML='';
     for(var i=0;i<12;i++){var s2=document.createElement('i');if(i<lit)s2.className='on';b.appendChild(s2)}
@@ -3017,16 +3615,17 @@ window.RigMascot=(function(){
     pbI=want;
   }
   /* What each mode runs on, for the labels. The meter (paintCost) says more. */
-  var ENGINE_NAME={video:'Kling 3.0 Pro',lite:'MiniMax H3 Max',image:'Krea 2 Large',compose:'Nano Banana Pro',design:'Grok Imagine 2.0',upscale:'Topaz'};
+  var ENGINE_NAME={video:'Kling 3.0 Pro',lite:'MiniMax H3 Max',image:'Krea 2 Large',compose:'Nano Banana Pro',design:'Grok Imagine 2.0',upscale:'Topaz',
+    camera:'MiniMax H3 Max Camera',talk:'MiniMax H3 Max Lip Sync'};
   function stage(which){
     progBg(which==='prog');
     // While a render runs, the labels describe THAT render, not the still left
     // behind it (2026-09-23 audit: a clip in flight read "image / STILL 1776x2368").
     if(which==='prog'){
       var jt=(curJob&&curJob.type)||type;
-      $('stage-tag').textContent = (jt==='video'||jt==='lite') ? 'video' : (jt==='upscale' ? 'upscale' : 'image');
-      $('m-engine').textContent = ENGINE_NAME[jt]||'';
-      $('m-time').innerHTML='&nbsp;'; $('m-seed').hidden=true;
+      $('stage-tag').textContent = isClipT(jt) ? 'video' : (jt==='upscale' ? 'upscale' : 'image');
+      $('m-engine').textContent = (curJob && curJob.engine) || engineLabel(jt);
+      $('m-time').innerHTML='&nbsp;'; $('m-seed').hidden=true; $('gal-flag').hidden=true;
     }
     $('stage-idle').hidden = which!=='idle';
     $('stage-prog').hidden = which!=='prog';
@@ -3089,6 +3688,27 @@ window.RigMascot=(function(){
     while(n--) arr[n]=bin.charCodeAt(n);
     return new Blob([arr],{type:mime});
   }
+  // A VHS TAPE IS 4:3 (2026-09-24). fal: "Use a 4:3 image for the classic VHS frame; the image's
+  // aspect ratio determines the output canvas." His 2.33:1 jungle still came back with the tape
+  // frame broken into a black box on the left edge (job 6680). So a VHS opening frame goes in the
+  // way a widescreen movie went onto a rented tape: the whole picture, black bars above and below
+  // (at the sides for a tall one). Resolves to a JPEG blob, or null when it is already 4:3.
+  function tapeFrame(s){
+    return new Promise(function(res,rej){
+      var im=new Image();
+      im.onload=function(){
+        var w=im.naturalWidth,h=im.naturalHeight,a=w/h;
+        if(Math.abs(a-4/3)<0.02) return res(null);
+        var cw = a>4/3 ? w : Math.round(h*4/3), ch = a>4/3 ? Math.round(w*3/4) : h;
+        var c=document.createElement('canvas'); c.width=cw; c.height=ch;
+        var x=c.getContext('2d'); x.fillStyle='#000'; x.fillRect(0,0,cw,ch);
+        x.drawImage(im,Math.round((cw-w)/2),Math.round((ch-h)/2),w,h);
+        res(dataUrlToBlob(c.toDataURL('image/jpeg',0.9)));
+      };
+      im.onerror=function(){ rej(new Error('tape frame')) };
+      im.src=s.ref;
+    });
+  }
   // Generate must never be a no-op. A throw anywhere in here used to leave the
   // button looking dead with nothing on screen, which is how a video got made
   // with no source: the real click did nothing, the source was removed to try
@@ -3105,6 +3725,11 @@ window.RigMascot=(function(){
     if(SRC.some(function(s){return s.loading})){
       genErr('A source is still loading. Give it a second and press Generate again.'); return }
     if(type==='upscale' && !SRC.length){ genErr('Add a source image to upscale.'); return }
+    if(type==='camera' && !SRC.length){ genErr('Add a still: Camera moves through your first source.'); return }
+    if(type==='talk' && !SRC.length){ genErr('Add a face: Talk animates your first source.'); return }
+    if(type==='camera' && CAM_SND==='mine' && !$('cam-snd').value.trim()){ genErr('Describe the sound you want, or set Sound to Silent.'); return }
+    if(needsAudio() && !AUDIO){ genErr(type==='talk' ? 'Add what they say: choose an audio file or record one.' : 'Add your audio, or set Sound back to “H3 makes it”.'); return }
+    if(REC){ genErr('Stop the recording first.'); return }
     if(type==='compose' && !SRC.length && !$('prompt').value.trim()){ genErr('Write a prompt, or add sources to combine.'); return }
     if(type==='image' && !$('prompt').value.trim()){ genErr('Krea draws from words. Write a prompt.'); return }
     if(type==='design' && !$('prompt').value.trim() && !$('exact-text').value.trim() && !SRC.length){
@@ -3147,9 +3772,9 @@ window.RigMascot=(function(){
     // A seed-locked change: the prompt Grok wrote for that render goes up with
     // the change and Grok edits it. The same words again skip the writer, so
     // the same seed gives the same picture.
-    if(type!=='upscale') fd.append('prompt', same?'':cap);
+    if(type!=='upscale' && type!=='camera' && type!=='talk') fd.append('prompt', same?'':cap);
     if(rev) fd.append('prior_prompt', rev.written);
-    if(!$('row-ar').hidden) put('aspect_ratio',ar);
+    if(!$('row-ar').hidden) put('aspect_ratio', (type==='lite' && H3_STYLE==='vhs') ? '4:3' : ar);
 
     if(type==='upscale'){
       fd.append('upscale_factor',upf);
@@ -3174,7 +3799,14 @@ window.RigMascot=(function(){
       fd.append('duration',dur);
       // Video Lite (MiniMax H3 Max) generates sound every time and has no characters,
       // keep-out words, adherence or shot structure - its resolution is its own.
-      if(type==='lite') fd.append('resolution',vres);
+      if(type==='lite') fd.append('resolution', H3_STYLE ? '768P' : vres);
+      if(type==='lite'){
+        if(H3_STYLE){ fd.append('h3_style',H3_STYLE); if(H3_STYLE==='vhs') fd.append('h3_damage',H3_DMG) }
+        else{
+          if(H3_TURBO) fd.append('h3_turbo','on');
+          if(SOUND==='mine' && AUDIO) fd.append('audio', AUDIO.blob, AUDIO.name);
+        }
+      }
       if(type==='video'){
         if($('audio').checked||hasVoice()) fd.append('generate_audio','on');
         put('cfg_scale', optVal('cfg','use-cfg'));
@@ -3189,6 +3821,14 @@ window.RigMascot=(function(){
         })));
       }
       SRC.forEach(function(s,i){ fd.append('image_'+i, dataUrlToBlob(s.ref), 'src'+i+'.jpg') });
+
+    }else if(type==='camera'||type==='talk'){
+      // straight to fal: the still (or the face) and the settings - no words, no writer
+      var s1=SRC[0]; fd.append('image_0', s1.file ? s1.file : dataUrlToBlob(s1.ref), s1.file ? s1.name : 'source.jpg');
+      if(type==='camera'){ fd.append('cam_move',CAM_MOVE); fd.append('duration',CAM_DUR); fd.append('resolution',CAM_RES);
+        if(CAM_SND==='mine') fd.append('cam_sound',$('cam-snd').value.trim()) }   // none = silent (n8n says so to H3)
+      else{ fd.append('audio', AUDIO.blob, AUDIO.name); fd.append('audio_secs', AUDIO.secs.toFixed(2)); fd.append('resolution',TALK_RES);
+            if($('talk-tr').checked) fd.append('talk_transcribe','on') }
 
     }else{
       if(type==='image'||type==='compose'){
@@ -3236,10 +3876,14 @@ window.RigMascot=(function(){
     $('p-sub').textContent='Safe to close this tab. It picks back up when you return.';
     t0=Date.now();over=false;noRow=0;
     // Video Lite measured 2026-09-22 (job 6465): fal inference 3.9 s, done within 32 s of submit.
-    eta = type==='video' ? parseInt(dur,10)*44 : (type==='lite' ? 40 : (type==='upscale' ? 40 : 85));
+    eta = type==='video' ? parseInt(dur,10)*44 : ((type==='lite'||type==='camera'||type==='talk') ? 40 : (type==='upscale' ? 40 : 85));
     startTick();
 
-    fetch(BASE,{method:'POST',body:fd})
+    // VHS: the opening frame goes in on a 4:3 tape (tapeFrame); if that fails, the picture goes as it is
+    var ready = (type==='lite' && H3_STYLE==='vhs' && SRC.length)
+      ? tapeFrame(SRC[0]).then(function(b){ if(b) fd.set('image_0', b, 'src0.jpg') }).catch(function(){})
+      : Promise.resolve();
+    ready.then(function(){ return fetch(BASE,{method:'POST',body:fd}) })
       .then(function(r){
         if(r.status===401){lockOut();return null}
         if(!r.ok) throw new Error('http '+r.status);
@@ -3251,11 +3895,11 @@ window.RigMascot=(function(){
         // was sent to fal, nothing was held. Show why, and the credit it quoted.
         if(d.status==='denied'){ takeCredit(d); bad(d.message||'That run is more than the credit left on this code.'); return }
         if(!d.jobId) throw new Error('no job id');
-        curJob={id:d.jobId,priced:priced,type:type,seed:seedSent,caption:cap};
-        saveJob({id:d.jobId,priced:priced,type:type,t0:t0,eta:eta,seed:seedSent,caption:cap});
+        curJob={id:d.jobId,priced:priced,type:type,seed:seedSent,caption:cap,engine:engineLabel(type)};
+        saveJob({id:d.jobId,priced:priced,type:type,t0:t0,eta:eta,seed:seedSent,caption:cap,engine:engineLabel(type)});
         $('p-msg').textContent = type==='upscale' ? 'Enlarging' : 'Rendering';
         chip('Rendering','busy');
-        var first = type==='video' ? 280 : (type==='lite' ? 25 : (type==='upscale' ? 20 : 15));
+        var first = type==='video' ? 280 : ((type==='lite'||type==='camera'||type==='talk') ? 25 : (type==='upscale' ? 20 : 15));
         poller=setTimeout(function(){poll(d.jobId)},first*1000);
       })
       .catch(function(e){ bad('Could not submit that run. '+(e.message||'')); });
@@ -3295,7 +3939,7 @@ window.RigMascot=(function(){
        video takes ~11 min), after which the page stops asking and says where the
        render will be if fal finishes it anyway. The row keeps the request id. */
   var noRow=0;
-  function waitCap(){ return (curJob&&(curJob.type==='video'||curJob.type==='lite')?45:30)*60*1000 }
+  function waitCap(){ return (curJob&&isClipT(curJob.type)?45:30)*60*1000 }
   function gaveUp(jobId,why){
     var mins=Math.round(waitCap()/60000);
     bad(why==='norow'
@@ -3304,7 +3948,7 @@ window.RigMascot=(function(){
   }
   function poll(jobId){
     var again=function(){ if(Date.now()-t0>waitCap()) return gaveUp(jobId,'cap');
-      poller=setTimeout(function(){poll(jobId)},(curJob&&curJob.type==='video'?30:(curJob&&curJob.type==='lite'?10:6))*1000) };
+      poller=setTimeout(function(){poll(jobId)},(curJob&&curJob.type==='video'?30:(curJob&&isClipT(curJob.type)?10:6))*1000) };
     fetch(BASE+'?jobId='+encodeURIComponent(jobId)+'&p='+encodeURIComponent(pw))
       .then(function(r){
         // A code that no longer opens this job (turned off, or not its owner): stop
@@ -3479,6 +4123,7 @@ window.RigMascot=(function(){
     $('stage-tag').textContent = item.gen_type;
     paintSeed(item.seed);
     paintMeta(item, tail);
+    setTimeout(paintGalFlag,0);
     /* fal does not report dimensions reliably - Krea sends width/height as null
        and Topaz sends none at all (measured on execs 5064/5068/5071, where a real
        2904x3872 file reported nothing). So ask the media itself: it is the only
@@ -3530,7 +4175,7 @@ window.RigMascot=(function(){
     $('stage-tag').textContent='';
     $('m-engine').innerHTML='&nbsp;';
     $('m-time').innerHTML='&nbsp;';
-    $('m-seed').hidden=true;
+    $('m-seed').hidden=true; $('gal-flag').hidden=true;
     document.body.classList.remove('done');
     stage(busy?'prog':'idle');
   }
@@ -3540,7 +4185,7 @@ window.RigMascot=(function(){
     var item={url:url,filename:d.filename,gen_type:d.gen_type,
               w:d.width||0,h:d.height||0,
               seed:(d.seed===0||d.seed)?d.seed:null};
-    if(curJob && ENGINE_NAME[curJob.type]) item.engine=ENGINE_NAME[curJob.type];
+    if(curJob && (curJob.engine || ENGINE_NAME[curJob.type])) item.engine=curJob.engine || ENGINE_NAME[curJob.type];
     // Krea reports the seed back and Nano Banana never does; the one we sent is
     // the truth either way, and it is what makes a Nano Banana render revisable.
     if(item.seed===null && curJob && curJob.seed) item.seed=curJob.seed;
@@ -3610,7 +4255,7 @@ window.RigMascot=(function(){
   $('to-src').onclick=function(){
     if(!lastOut) return;
     addUrl(lastOut.url,lastOut.w,lastOut.h);
-    if(type==='video'||type==='lite'){type='image';
+    if(isClipT(type)){type='image';
       [].slice.call($('seg-type').querySelectorAll('button')).forEach(function(x){
         x.setAttribute('aria-pressed',String(x.dataset.v==='image'))});
       syncMode();paintCost();
@@ -3643,7 +4288,7 @@ window.RigMascot=(function(){
     return false;
   }
   function openGallery(){
-    show('scr-gallery'); galGrid();
+    show('scr-gallery'); if(arranging()) arrClose(); galGrid();
     if((GAL_AT && Date.now()-GAL_AT < GAL_TTL_MS) || galKept()){ paintGallery(); return }
     var f=new FormData(); f.append('action','gallery'); f.append('password',pw);
     fetch(BASE,{method:'POST',body:f})
@@ -3654,7 +4299,7 @@ window.RigMascot=(function(){
         paintGallery() })
       .catch(function(){ GAL=[]; GAL_AT=0; paintGallery() });
   }
-  function galGrid(){ if(GZ){ GZ.destroy(); GZ=null } $('gal-one').hidden=true; $('gal-grid').hidden=false;
+  function galGrid(){ if(GZ){ GZ.destroy(); GZ=null } $('gal-one').hidden=true; $('gal-grid').hidden=false; galLayoutSoon();
     $('gal-back').textContent='Back'; $('gal-title').textContent='Made with this';
     $('gal-sub').hidden=false; }
   function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g, function(c){
@@ -3671,6 +4316,8 @@ window.RigMascot=(function(){
     if(e.indexOf('krea')>-1) return 'image';
     if(e.indexOf('banana')>-1) return 'compose';
     if(e.indexOf('topaz')>-1) return 'upscale';
+    if(e.indexOf('camera')>-1) return 'camera';
+    if(e.indexOf('lip sync')>-1) return 'talk';
     if(e.indexOf('minimax')>-1) return 'lite';
     if(e.indexOf('kling')>-1) return 'video';
     if(e.indexOf('grok')>-1) return 'design';
@@ -3679,41 +4326,35 @@ window.RigMascot=(function(){
          : (it.model==='nbp'||String(it.model).indexOf('nano-banana')===0) ? 'compose'
          : it.model==='topaz' ? 'upscale' : it.model==='h3' ? 'lite' : 'video';
   }
+  // A picture whose shape the table never recorded is measured once, when it loads
+  var GAL_AR={};
+  function arOf(it){ var sp=it.specs||{}, w=+sp.w||0, h=+sp.h||0; return (w&&h) ? w/h : (GAL_AR[it.url]||1) }
+  // picture -> its frame (keyed by the item itself: two rows may share a link). A new
+  // order or a resize MOVES frames, never rebuilds them.
+  var GAL_FR=new Map();
   function paintGallery(){
     var g=$('gal-grid');
     $('gal-count').textContent = GAL.length ? GAL.length+(GAL.length===1?' picture':' pictures') : '';
+    $('gal-arrange').hidden = GAL.length<2;
+    GAL_FR=new Map();
     if(!GAL.length){
       g.innerHTML='<div class="gal-empty"><h3>Nothing here yet</h3>'+
         '<p>Renders show up here once they are added to the gallery. '+
         'Make something you like, and it can be the first.</p></div>';
       return;
     }
-    // Build the columns by hand and drop each picture into the shortest one.
-    // Deterministic: nothing here can balance, so nothing can leave a hole.
-    var g2=g, W=g2.getBoundingClientRect().width||innerWidth,
-        target=document.body.classList.contains('wide')?290:250, gap=14,
-        // never more columns than pictures: four pictures in six columns leaves
-        // two empty slots and makes every picture smaller for no reason
-        cols=Math.max(1,Math.min(6,Math.floor((W+gap)/(target+gap)),GAL.length));
-    g2.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';
-    var colW=(W-gap*(cols-1))/cols, boxes=[], heights=[];
-    g2.innerHTML='';
-    for(var c=0;c<cols;c++){
-      var d=document.createElement('div'); d.className='gal-col';
-      g2.appendChild(d); boxes.push(d); heights.push(0);
-    }
     GAL.forEach(function(it,i){
-      var sp=it.specs||{}, w=+sp.w||0, h=+sp.h||0, ar=(w&&h)?(w/h):1;
+      var sp=it.specs||{}, w=+sp.w||0, h=+sp.h||0, ar=arOf(it);
       // Every item used to be drawn as an <img>, so a flagged video was a broken
       // card. A video shows its first frame here (#t=0.1 makes Safari paint one
       // instead of black) and plays in the detail view, where it has controls.
       var isVid=it.gen_type==='video', dims=(w&&h ? ' width="'+w+'" height="'+h+'"' : '');
-      var b=document.createElement('button');
-      b.className='frame'; b.type='button'; b.dataset.i=i;
+      var b=document.createElement('div');
+      b.className='frame'; b.tabIndex=0; b.setAttribute('role','button'); b.dataset.i=i;
       b.setAttribute('aria-label','Open this '+(isVid?'video':'picture'));
       b.innerHTML=(isVid
           ? '<video muted playsinline loop preload="metadata" style="--ar:'+ar.toFixed(4)+'"'+dims+' src="'+esc(it.url)+'#t=0.1"></video>'
-          : '<img alt="" loading="lazy" style="--ar:'+ar.toFixed(4)+'"'+dims+' src="'+esc(it.url)+'">')+
+          : '<img alt="" loading="lazy" decoding="async" draggable="false" style="--ar:'+ar.toFixed(4)+'"'+dims+' src="'+esc(it.url)+'">')+
         '<div class="frame-cap"><div class="frame-meta"><b>'+esc(engineOf(it))+'</b><span>'+
         (it.price!=null ? '$'+money(it.price) : '')+'</span></div></div>';
       // fade each picture in as it actually loads - motion that answers an event,
@@ -3722,22 +4363,70 @@ window.RigMascot=(function(){
       im.addEventListener(isVid?'loadeddata':'load',function(){
         im.classList.add('in');
         // A picture whose shape was never recorded arrives assumed square, which
-        // would crop it. Take the real ratio from the file itself once it lands.
+        // would crop it. Take the real ratio from the file itself once it lands,
+        // and lay the rows out again around it.
         var nw=isVid?im.videoWidth:im.naturalWidth, nh=isVid?im.videoHeight:im.naturalHeight;
-        if(!(w&&h) && nw && nh) im.style.setProperty('--ar',(nw/nh).toFixed(4));
+        if(!(w&&h) && nw && nh && Math.abs(nw/nh-(GAL_AR[it.url]||1))>0.01){
+          GAL_AR[it.url]=nw/nh; im.style.setProperty('--ar',(nw/nh).toFixed(4)); galLayoutSoon();
+        }
       });
       if(isVid ? im.readyState>=2 : im.complete) im.classList.add('in');
-      b.onclick=function(){ galOne(+b.dataset.i) };
-      var k=0; for(var j=1;j<heights.length;j++) if(heights[j]<heights[k]) k=j;
-      boxes[k].appendChild(b);
-      heights[k] += colW/ar + 86;     // picture + about a caption
+      b.onclick=function(){ if(!arranging()) galOne(+b.dataset.i) };
+      b.onkeydown=function(e){ if((e.key==='Enter'||e.key===' ') && e.target===b && !arranging()){ e.preventDefault(); galOne(+b.dataset.i) } };
+      GAL_FR.set(it,b);
     });
+    g.innerHTML='';
+    GAL.forEach(function(it){ g.appendChild(GAL_FR.get(it)) });   // once, in order
+    galLayout(GAL);
   }
-  // the column count is a function of width, so it has to be recomputed on resize
+  /* ROWS, READ LEFT TO RIGHT (2026-09-24). The masonry dropped each picture into the
+     shortest column, so an order was never what you saw: his flyer (6th) landed top
+     right and its realistic version (7th) three columns over, a row down. Now each row
+     is filled left to right at one height, every picture at its own shape (nothing is
+     cropped), and the row is scaled to end exactly at the edge; the last row keeps the
+     natural height. The frames are moved, never rebuilt, so nothing loads again. */
+  function galLayout(list){
+    var g=$('gal-grid'); if(!list || !list.length || !GAL_FR.size) return;
+    var wide=document.body.classList.contains('wide'), gap=wide?16:14,
+        W=Math.floor(g.getBoundingClientRect().width||innerWidth),
+        H=wide ? Math.max(220,Math.min(340,W/6.5)) : Math.max(120,W/2.6);
+    g.style.gridTemplateColumns='';
+    // a new order (Arrange): move only the frames that are out of place
+    var want=list.map(function(it){ return GAL_FR.get(it) }).filter(Boolean);
+    want.forEach(function(f,i){ if(g.children[i]!==f) g.insertBefore(f, g.children[i]||null) });
+    var row=[], sum=0;
+    // Each picture's height is SET, not left to the browser: a picture that failed to
+    // load (or a clip before its first frame) ignores its shape in Safari and draws square,
+    // which broke the row. The frame is the picture plus its 1px border on each side.
+    function flush(last){
+      var n=row.length; if(!n) return;
+      var h=(W-gap*(n-1)-2*n)/sum; if(last) h=Math.min(h,H);
+      var cum=0, prev=0;
+      row.forEach(function(x){
+        // rounding spread over the row (each edge rounded once), so the row ends exactly
+        // at the edge and no picture is more than a pixel off its shape
+        cum+=h*x.ar+2; var edge=Math.round(cum), w=edge-prev; prev=edge;
+        x.f.style.width=w+'px';
+        var m=x.f.querySelector('img,video'); if(m) m.style.height=Math.round(h)+'px';
+      });
+      row=[]; sum=0;
+    }
+    list.forEach(function(it,i){
+      var f=GAL_FR.get(it); if(!f) return;
+      f.dataset.i=i; var ar=arOf(it); row.push({f:f, ar:ar}); sum+=ar;
+      if(sum*H + gap*(row.length-1) >= W) flush(false);
+    });
+    flush(true);
+    if(arranging()) arrNumber();
+  }
+  var galSoon=null;
+  function galLayoutSoon(){ clearTimeout(galSoon); galSoon=setTimeout(function(){
+    if(GAL && GAL.length && !$('gal-grid').hidden) galLayout(ARR||GAL) },80) }
+  // the rows are a function of width, so they are laid out again on resize (moved, not rebuilt)
   var galTimer=null;
   window.addEventListener('resize',function(){
     if(!$('scr-gallery').classList.contains('on') || !GAL || !GAL.length) return;
-    clearTimeout(galTimer); galTimer=setTimeout(paintGallery,160);
+    clearTimeout(galTimer); galTimer=setTimeout(function(){ if(!$('gal-grid').hidden) galLayout(ARR||GAL) },160);
   });
   function galOne(i){
     var it=GAL[i]; if(!it) return;
@@ -3751,13 +4440,36 @@ window.RigMascot=(function(){
     if(it.created_at) facts.push(['Made', String(it.created_at).slice(0,10)]);
     if(GZ){ GZ.destroy(); GZ=null }
     $('gal-one').innerHTML =
-      (isVid ? '<video src="'+esc(it.url)+'" controls playsinline loop preload="metadata"></video>'
+      (isVid ? '<video src="'+esc(it.url)+'#t=0.1" controls playsinline loop preload="metadata"'+(isOwner()?'':' controlslist="nodownload noremoteplayback" disablepictureinpicture')+'></video>'
              : '<div class="gal-pic"><div class="zview"><img alt="" src="'+esc(it.url)+'"></div></div>')+
       // Hector, 2026-09-20: the picture, what made it and what it cost. No prompt,
       // no seed, no settings, no "make one like this" - for anyone.
       '<div><div class="gal-facts">'+facts.map(function(f){
         return '<div><span>'+esc(f[0])+'</span><b>'+esc(f[1])+'</b></div>' }).join('')+'</div>'+
+      // Hector only (2026-09-23): reuse, save, or take it out. Nobody else gets these.
+      (isOwner() ? '<div class="gal-own">'+
+        '<button class="go sm" type="button" data-act="src">Use as source</button>'+
+        '<a class="go sm ghost" data-act="dl" href="'+esc(DOWNLOAD+'?u='+encodeURIComponent(it.url)+'&n='+encodeURIComponent('rig-'+(String(it.created_at||'').slice(0,10)||'render')))+'">Download</a>'+
+        '<button class="go sm ghost" type="button" data-act="off">Remove</button></div>'+
+        '<div class="gal-note" id="gal-note"></div>' : '')+
       '</div>';
+    var own=$('gal-one').querySelector('.gal-own');
+    if(own) own.addEventListener('click',function(e){
+      var a=e.target.closest('[data-act]'); if(!a) return;
+      if(a.dataset.act==='src'){
+        if(isVid){ $('gal-note').textContent='A clip cannot be a source. Pick a still.'; return }
+        addUrl(it.url, sp.w, sp.h);
+        show('scr-console');
+        if(!document.body.classList.contains('wide')) openChip('pane-src');
+      }
+      if(a.dataset.act==='off'){
+        a.disabled=true; a.textContent='Removing…';
+        setGallery(it.url,false).then(function(){
+          GAL_FLAGS[it.url]=false; GAL=(GAL||[]).filter(function(x){ return x.url!==it.url });
+          galGrid(); paintGallery();
+        }).catch(function(err){ a.disabled=false; a.textContent='Remove'; $('gal-note').textContent=err.message });
+      }
+    });
     if(!isVid){
       // the same bar as the stage's, cloned so there is one copy of the markup
       var gp=$('gal-one').querySelector('.gal-pic'), gim=gp.querySelector('img'),
@@ -3769,7 +4481,107 @@ window.RigMascot=(function(){
   }
   $('hub-gallery').onclick=openGallery;
 
+  /* ---------- ARRANGE THE GALLERY (Hector only, 2026-09-24) ----------
+     "can you give me acces to organize the images in the gallery, just me". Save sends
+     the whole order once (action=order, 1 execution); the rig refuses anyone but the
+     owner (Order Allowed?). Anything added to the gallery later comes first until placed. */
+  // Arranging IS the gallery (Hector: "the images dont show the same when you arrange
+  // them" - the first version cropped them into a separate grid of squares). The same
+  // rows and the same frames, with a number and two arrows on each; nothing is loaded.
+  var ARR=null, arrDrag=-1;
+  function arranging(){ return $('scr-gallery').classList.contains('arranging') }
+  function arrNumber(){
+    [].forEach.call($('gal-grid').querySelectorAll('.frame'),function(f){
+      var ov=f.querySelector('.arr-ov'), i=+f.dataset.i; if(!ov) return;
+      ov.querySelector('.n').textContent=i+1;
+      ov.querySelector('[data-mv="-1"]').setAttribute('aria-disabled',String(i===0));
+      ov.querySelector('[data-mv="1"]').setAttribute('aria-disabled',String(i===ARR.length-1));
+    });
+  }
+  function arrMove(from,to){
+    if(!ARR || from===to || to<0 || to>=ARR.length || from<0 || from>=ARR.length) return;
+    var x=ARR.splice(from,1)[0]; ARR.splice(to,0,x); galLayout(ARR);
+  }
+  function arrOpen(){
+    if(!isOwner() || !GAL || !GAL.length) return;
+    ARR=GAL.slice(); galGrid();
+    $('scr-gallery').classList.add('arranging'); $('gal-arr-note').textContent='';
+    $('gal-title').textContent='Arrange the gallery';
+    $('gal-sub').textContent='It reads left to right, top to bottom. Drag a picture onto another to put it there, or use the arrows. Save when it looks right.';
+    GAL_FR.forEach(function(f){
+      if(f.querySelector('.arr-ov')) return;
+      f.insertAdjacentHTML('beforeend','<div class="arr-ov" draggable="true"><span class="n"></span>'+
+        '<span class="mv" data-mv="-1" role="button" tabindex="0" aria-label="Move earlier">&#9664;</span>'+
+        '<span class="mv" data-mv="1" role="button" tabindex="0" aria-label="Move later">&#9654;</span></div>');
+    });
+    galLayout(ARR);
+  }
+  function arrClose(){
+    ARR=null; arrDrag=-1;
+    $('scr-gallery').classList.remove('arranging');
+    GAL_FR.forEach(function(f){
+      var ov=f.querySelector('.arr-ov'); if(ov) ov.remove(); f.classList.remove('dragging','over') });
+    $('gal-arr-note').textContent=''; $('gal-sub').textContent=GAL_SUB;
+    galGrid(); if(GAL && GAL.length) galLayout(GAL);
+  }
+  function arrSave(){
+    var b=$('gal-save'); if(!ARR || b.disabled) return;
+    b.disabled=true; b.textContent='Saving…';
+    var fd=new FormData(); fd.append('action','order'); fd.append('password',pw);
+    fd.append('order', JSON.stringify(ARR.map(function(x){ return x.url })));
+    fetch(BASE,{method:'POST',body:fd}).then(function(r){
+      return r.json().catch(function(){ return {} }).then(function(d){
+        if(!r.ok || !d.ok) throw new Error(d.error==='owner only' ? 'Only Hector can arrange the gallery.'
+          : 'The order did not save (HTTP '+r.status+'). Nothing changed.');
+        GAL=ARR.slice(); GAL_AT=Date.now();
+        try{ localStorage.setItem(galKey(), JSON.stringify({t:GAL_AT, items:GAL})) }catch(e){}
+        b.disabled=false; b.textContent='Save order'; arrClose();
+      });
+    }).catch(function(e){ b.disabled=false; b.textContent='Save order'; $('gal-arr-note').textContent=e.message });
+  }
+  var GAL_SUB=$('gal-sub').textContent;
+  $('gal-arrange').onclick=arrOpen;
+  $('gal-cancel').onclick=arrClose;
+  $('gal-save').onclick=arrSave;
+  function arrArrow(m){
+    if(!m || m.getAttribute('aria-disabled')==='true') return;
+    var i=+m.closest('.frame').dataset.i; arrMove(i, i+(+m.dataset.mv));
+  }
+  $('gal-grid').addEventListener('click',function(e){
+    if(!arranging()) return; var m=e.target.closest('.arr-ov .mv'); if(m){ e.stopPropagation(); arrArrow(m) }
+  });
+  $('gal-grid').addEventListener('keydown',function(e){
+    var m=e.target.closest && e.target.closest('.arr-ov .mv');
+    if(m && arranging() && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); arrArrow(m) }
+  });
+  $('gal-grid').addEventListener('dragstart',function(e){
+    var ov=e.target.closest && e.target.closest('.arr-ov'); if(!ov || !arranging()) return;
+    var f=ov.closest('.frame'); arrDrag=+f.dataset.i; f.classList.add('dragging');
+    try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', String(arrDrag)) }catch(x){}
+  });
+  $('gal-grid').addEventListener('dragover',function(e){
+    var f=e.target.closest && e.target.closest('.frame'); if(!f || arrDrag<0) return;
+    e.preventDefault();
+    [].forEach.call(this.querySelectorAll('.frame.over'),function(x){ if(x!==f) x.classList.remove('over') });
+    f.classList.add('over');
+  });
+  $('gal-grid').addEventListener('drop',function(e){
+    var f=e.target.closest && e.target.closest('.frame'); if(!f || arrDrag<0) return;
+    e.preventDefault(); var from=arrDrag; arrDrag=-1;
+    [].forEach.call(this.querySelectorAll('.frame.over,.frame.dragging'),function(x){ x.classList.remove('over','dragging') });
+    arrMove(from, +f.dataset.i);
+  });
+  $('gal-grid').addEventListener('dragend',function(){
+    arrDrag=-1; [].forEach.call(this.querySelectorAll('.frame.over,.frame.dragging'),function(x){ x.classList.remove('over','dragging') });
+  });
+
+  ['contextmenu','dragstart'].forEach(function(ev){
+    $('scr-gallery').addEventListener(ev,function(e){
+      if(!isOwner() && e.target.closest('img,video')) e.preventDefault();
+    });
+  });
   $('gal-back').onclick=function(){
+    if(arranging()){ arrClose(); return }
     if($('gal-one').hidden) show(picked?'scr-console':'scr-hub'); else galGrid();
   };
   $('guide-btn').onclick=function(){show('scr-guide')};
@@ -3824,10 +4636,287 @@ window.RigMascot=(function(){
     if(!c.classList.contains('sheet-shut') && b.dataset.p===sheetPanel) shutSheet();
     else openSheet(b.dataset.p);
   });
+
+  /* ---------- THE COMPOSER'S CHIPS (the director's console, 2026-09-23) ----------
+     Every setting row stays where the logic expects it, with its ids and its
+     handlers; a chip names the row and what it is set to, and opens it. The
+     value is read off the row itself, so a chip can never disagree with its
+     control. Order: the ones people change most first. */
+  var CHIP_ROWS=[['row-ar','Ratio'],['row-krea','Creativity'],['row-design','Words'],['row-res','Resolution'],
+    ['row-vid','Length'],['row-h3style','Style'],['row-h3eng','Engine'],['row-sound','Sound'],['row-cam','Move'],['row-talk','Size'],['row-shots','Shots'],['row-framing','Framing'],['row-ups','Enlarge'],
+    ['row-seed','Seed'],['look','Look'],['adv','More']];
+  var CHIP_NAME={}; CHIP_ROWS.forEach(function(c){ CHIP_NAME[c[0]]=c[1] });
+  CHIP_NAME['pane-src']='Sources'; CHIP_NAME['hist']='This session';
+  function chipPressed(sel){ var b=document.querySelector(sel+' button[aria-pressed=true]');
+    return b ? b.textContent.replace(/\s+/g,' ').trim() : '' }
+  function chipVal(id){
+    try{
+      switch(id){
+        case 'row-ar': return chipPressed('#seg-ar');
+        case 'row-krea': return chipPressed('#seg-crea')+($('use-style').checked?' · style refs':'');
+        case 'row-res': return chipPressed('#seg-res');
+        case 'row-vid': return $('dur').value+'s'+(type==='lite' ? ' · '+chipPressed('#seg-vres')
+                                                            : ($('audio').checked ? ' · audio' : ' · silent'));
+        case 'row-design':
+          var n=$('exact-text').value.split('\n').filter(function(l){return l.trim()}).length;
+          return (n ? n+(n>1?' lines':' line') : 'none')+' · '+chipPressed('#seg-quality');
+        case 'row-shots': return ($('use-shots').checked && typeof SHOTS!=='undefined' && SHOTS && SHOTS.length)
+                                   ? SHOTS.length+' shots' : 'off';
+        case 'row-framing': return $('keep-framing').checked ? 'kept' : 'free';
+        case 'row-ups': return (+$('upf').value).toFixed(1)+'× · '+$('upmodel').value.replace(/ V2$/,'');
+        case 'row-seed': return ($('seed').value.trim()||'random')+($('seed-lock').getAttribute('aria-pressed')==='true'?' · locked':'');
+        case 'look': return $('look-sum').textContent.trim()||'auto';
+        case 'row-h3style': return H3_STYLE ? H3_STYLE_NAME[H3_STYLE]+(H3_STYLE==='vhs'?' · '+H3_DMG:'') : 'none';
+        case 'row-h3eng': return H3_TURBO && !H3_STYLE ? 'Turbo' : 'Max';
+        case 'row-sound': return type==='talk' ? (AUDIO ? AUDIO.secs.toFixed(1)+'s' : 'add audio') : (SOUND==='mine' ? (AUDIO ? 'yours · '+AUDIO.secs.toFixed(1)+'s' : 'yours · add it') : 'H3');
+        case 'row-cam': return (CAM_NAME[CAM_MOVE]||CAM_MOVE)+' · '+CAM_DUR+'s · '+CAM_RES+' · '+(CAM_SND==='mine'?'your sound':'silent');
+        case 'row-talk': return TALK_RES+($('talk-tr').checked?' · read first':'');
+        case 'adv': return '';
+      }
+    }catch(e){}
+    return '';
+  }
+  function chipOpen(){ return $('composer').dataset.open||'' }
+  function paintChips(){
+    var host=$('chips'); if(!host || !CHIP_ROWS) return;   // the meter can run before this module has
+    var open=chipOpen(), wide=document.body.classList.contains('wide'),
+        shut=$('scr-console').classList.contains('sheet-shut'), html=[];
+    CHIP_ROWS.forEach(function(c){
+      var r=$(c[0]); if(!r || r.hidden) return;
+      var v=chipVal(c[0]), set=(c[0]==='look' && v && v!=='auto') || (c[0]==='row-seed' && /locked/.test(v));
+      html.push('<button type="button" class="chip-s'+(set?' set':'')+'" data-row="'+c[0]+'" aria-pressed="'+(open===c[0])+'">'
+        +'<span>'+c[1]+'</span>'+(v?'<b>'+esc(v)+'</b>':'')+'</button>');
+    });
+    // on the phone, Sources and This Session are panels of the same sheet
+    [['pane-src','Sources',SRC.length],['hist','Session',HIST.length]].forEach(function(p){
+      var on=!wide && !shut && sheetPanel===p[0] && !open;
+      html.push('<button type="button" class="chip-s ph" data-row="'+p[0]+'" aria-pressed="'+on+'"><span>'+p[1]+'</span><b>'+p[2]+'</b></button>');
+    });
+    host.innerHTML=html.join('');
+    var strip=$('seg-type'), tb=strip.querySelector('button[aria-pressed=true]');
+    keepTabInView();
+  }
+  function keepTabInView(){
+    var strip=$('seg-type'), tb=strip.querySelector('button[aria-pressed=true]');
+    if(!tb || strip.scrollWidth<=strip.clientWidth) return;
+    var sr=strip.getBoundingClientRect(), br=tb.getBoundingClientRect(), max=strip.scrollWidth-strip.clientWidth;
+    if(sr.width<=0) return;
+    // whole pixels, rounded AWAY from the edge, clamped to the strip's own ends
+    if(br.left<sr.left+1) strip.scrollLeft=Math.max(0,Math.floor(strip.scrollLeft-(sr.left-br.left)-8));
+    else if(br.right>sr.right-1) strip.scrollLeft=Math.min(max,Math.ceil(strip.scrollLeft+(br.right-sr.right)+8));
+  }
+  function openChip(id){
+    var wide=document.body.classList.contains('wide');
+    [].forEach.call(document.querySelectorAll('#pane-ctl .row-open'),function(x){ x.classList.remove('row-open') });
+    if(id==='pane-src' || id==='hist'){
+      delete $('composer').dataset.open;
+      if(!wide){ openSheet(id); $('scr-console').classList.add('chip-open') }
+      paintChips(); growPrompt(); return;
+    }
+    var r=$(id); if(!r) return;
+    r.classList.add('row-open');
+    if(r.tagName==='DETAILS') r.open=true;
+    $('composer').dataset.open=id;
+    $('scr-console').classList.add('chip-open');
+    $('pop-title').textContent=CHIP_NAME[id]||'Setting';
+    if(!wide) openSheet('pane-ctl');
+    paintChips(); growPrompt();
+  }
+  function closeChip(){
+    [].forEach.call(document.querySelectorAll('#pane-ctl .row-open'),function(x){ x.classList.remove('row-open') });
+    delete $('composer').dataset.open;
+    $('scr-console').classList.remove('chip-open');
+    if(!document.body.classList.contains('wide')) shutSheet();
+    paintChips(); growPrompt();
+  }
+  $('chips').addEventListener('click',function(e){
+    var b=e.target.closest('.chip-s'); if(!b) return;
+    var id=b.dataset.row;
+    if(b.getAttribute('aria-pressed')==='true') closeChip(); else openChip(id);
+  });
+  $('pop-x').addEventListener('click',function(){ if(document.body.classList.contains('typing')) tyClose(); else closeChip() });
+  // a change inside an open setting repaints its chip (some controls bypass the meter)
+  ['input','change','click'].forEach(function(ev){
+    $('pane-ctl').addEventListener(ev,function(){ requestAnimationFrame(paintChips) });
+  });
+  // the Mac: a click anywhere else, or Escape, puts the popover away
+  document.addEventListener('mousedown',function(e){
+    if(!document.body.classList.contains('wide') || !chipOpen()) return;
+    if(e.target.closest('#pane-ctl') || e.target.closest('#chips')) return;
+    closeChip();
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape' && chipOpen()) closeChip();
+  });
+  // the phone: tapping the stage puts the open setting away and gives it the screen
+  $('pane-stage').addEventListener('click',function(e){
+    if(document.body.classList.contains('wide') || !chipOpen()) return;
+    if(e.target.closest('#out-actions') || e.target.closest('.zbar')) return;
+    closeChip();
+  },true);
+  // the prompt grows with what is typed, up to its cap; Cmd/Ctrl+Enter generates
+  function growPrompt(){
+    var t=$('prompt'); if(!t) return;
+    var wide=document.body.classList.contains('wide');
+    t.style.height='auto';
+    var focused=(document.activeElement===t);
+    var side=!wide && innerWidth>innerHeight && innerHeight<560;
+    var K=wide ? (parseFloat(getComputedStyle(document.body).getPropertyValue('--k'))||1) : 1;
+    var min=wide?Math.round(62*K):44, max=wide?Math.round(190*K):(focused ? Math.round(innerHeight*(side?0.3:0.24)) : ((chipOpen()||side||!$('scr-console').classList.contains('sheet-shut')) ? 44 : 92));
+    t.style.height=Math.max(min,Math.min(max,t.scrollHeight+2))+'px';
+  }
+  $('prompt').addEventListener('input',growPrompt);
+  $('prompt').addEventListener('focus',growPrompt);
+  $('prompt').addEventListener('blur',function(){ setTimeout(growPrompt,0) });
+  // the stage is sized to what the composer leaves it (Mac); the picture follows
+  if(window.ResizeObserver) new ResizeObserver(function(){
+    var h=$('stage').clientHeight; if(h>60) $('scr-console').style.setProperty('--stage-h',(h-2)+'px');
+  }).observe($('stage'));
+  addEventListener('resize',function(){ requestAnimationFrame(function(){ growPrompt(); keepTabInView() }) });
+  $('prompt').addEventListener('keydown',function(e){
+    if(e.key==='Enter' && (e.metaKey||e.ctrlKey) && !$('submit').disabled){ e.preventDefault(); submit() }
+  });
+  // the type panel (Add words) opens where the settings open; its header says so
+  new MutationObserver(function(){
+    if(document.body.classList.contains('typing')){
+      $('pop-title').textContent='Words on the picture';
+      if(!document.body.classList.contains('wide')) openSheet('pane-ctl');
+    }else if(!chipOpen()){
+      $('pop-title').textContent='Setting';
+      if(!document.body.classList.contains('wide') && sheetPanel==='pane-ctl') shutSheet();
+    }
+  }).observe(document.body,{attributes:true,attributeFilter:['class']});
+  requestAnimationFrame(function(){ growPrompt(); paintChips() });
+
+
+  /* ---------- THE GALLERY RULES (2026-09-23) ----------
+     Hector decides what is in the gallery, from the page: any of his own fal renders,
+     on or off. The rig checks the code on the server (Flag Allowed?), so a guest who
+     edits this page gets a 403; the button is simply never shown to them. */
+  function isOwner(){ return !!(who && who.guest===false) }
+  var GAL_FLAGS={};                       // this session's own switches, until the list is fetched again
+  function inGallery(url){
+    if(url in GAL_FLAGS) return GAL_FLAGS[url];
+    var list=GAL; if(!list){ try{ var k=JSON.parse(localStorage.getItem(galKey())||'null'); list=k&&k.items } catch(e){} }
+    return !!(list && list.some(function(x){ return x.url===url }));
+  }
+  function setGallery(url,on){
+    var fd=new FormData(); fd.append('action','flag'); fd.append('password',pw); fd.append('url',url); fd.append('on',on?'1':'0');
+    return fetch(BASE,{method:'POST',body:fd}).then(function(r){
+      return r.json().catch(function(){ return {} }).then(function(d){
+        if(!r.ok || !d.ok) throw new Error(d.error==='owner only' ? 'Only Hector can change the gallery.'
+          : (d.ok===false && d.rows===0) ? 'That render is not in the rig’s records, so it cannot go in the gallery.'
+          : 'The gallery did not change (HTTP '+r.status+').');
+        // the kept list is stale now: the next gallery open fetches it fresh (one execution)
+        GAL=null; GAL_AT=0; try{ localStorage.removeItem(galKey()) }catch(e){}
+        return d;
+      });
+    });
+  }
+  function paintGalFlag(){
+    var b=$('gal-flag'), it=lastOut;
+    var ok=isOwner() && it && !it.local && /^https:\/\/[a-z0-9.-]+\.fal\.media\//i.test(it.url||'')
+           && !$('stage-out').hidden;
+    b.hidden=!ok; if(!ok) return;
+    var on=inGallery(it.url); b.setAttribute('aria-pressed',String(on));
+    b.innerHTML = on ? '&#9733; In gallery' : '&#9734; Add to gallery';
+    b.title = on ? 'In the gallery. Click to take it out.' : 'Show this render in the gallery';
+  }
+  $('gal-flag').addEventListener('click',function(){
+    var b=this, it=lastOut; if(!it || b.disabled) return;
+    var on=b.getAttribute('aria-pressed')!=='true';
+    b.disabled=true; b.textContent=on?'Adding…':'Removing…';
+    setGallery(it.url,on).then(function(){
+      b.disabled=false; b.setAttribute('aria-pressed',String(on));
+      b.innerHTML = on ? '&#9733; In gallery' : '&#9734; Add to gallery';
+      GAL_FLAGS[it.url]=on;
+    }).catch(function(e){ b.disabled=false; paintGalFlag(); genErr(e.message||'The gallery did not change.',true) });
+  });
+
+
+  /* ---------- THE H3 FAMILY (2026-09-24) ----------
+     Video Lite: a Style (the engine paints it; 768P, no end frame, no audio of his), an Engine
+     (Max / Turbo) and Sound (H3 makes it / his own audio). Camera: a still and a named move.
+     Talk: a face speaks his audio (the owner's only for now). One audio picker serves both. */
+  var H3_STYLE='', H3_DMG='medium', H3_TURBO=false, SOUND='h3', AUDIO=null, REC=null,
+      CAM_MOVE='orbit-right', CAM_DUR='5', CAM_RES='768P', TALK_RES='768P', CAM_SND='silent';
+  var H3_STYLE_NAME={'vhs':'VHS','retro-toon-70s':'Retro Toon 70s','low-poly':'Low Poly','hand-drawn':'Hand Drawn','16bit-pixel':'16-bit Pixel'};
+  var CAM_NAME={'orbit-left':'Orbit left','orbit-right':'Orbit right','orbit-360':'Full 360','crane-up':'Crane up','drop-down':'Drop down',
+    'push-in':'Push in','pull-out':'Pull out','top-down':'Top-down reveal','hero-arc':'Hero arc'};
+  function isClipT(t){ return t==='video'||t==='lite'||t==='camera'||t==='talk' }
+  function perSec(r){ return r==='480P'?0.05:r==='1080P'?0.16:r==='2K'?0.32:0.08 }
+  function talkSecs(){ return AUDIO ? Math.ceil(Math.min(14.8,Math.max(5,AUDIO.secs))) : 0 }
+  function engineLabel(t){
+    if(t==='lite'){ if(H3_STYLE) return 'MiniMax H3 Max '+H3_STYLE_NAME[H3_STYLE]; if(H3_TURBO) return 'MiniMax H3 Max Turbo' }
+    return ENGINE_NAME[t]||'';
+  }
+  function needsAudio(){ return type==='talk' || (type==='lite' && !H3_STYLE && SOUND==='mine') }
+  function paintAud(msg){
+    var p=$('aud-play');
+    $('aud-read').textContent = msg || (AUDIO ? AUDIO.name+' · '+AUDIO.secs.toFixed(1)+' s'+
+      (AUDIO.secs>14.8 ? ' — only the first 14.8 s is used' : (AUDIO.secs<5 && type==='talk' ? ' — billed as 5 s' : '')) : 'No audio yet.');
+    $('aud-clear').hidden=!AUDIO; p.hidden=!AUDIO;
+    if(AUDIO && p.getAttribute('src')!==AUDIO.url) p.setAttribute('src',AUDIO.url);
+    if(!AUDIO) p.removeAttribute('src');
+  }
+  // the length is read off the decoded audio: the meter prices Talk by it
+  function audSet(blob,name){
+    AUDIO=null; paintAud('Reading…');
+    if(blob.size>15*1024*1024){ paintAud('That file is over 15 MB. Trim it first.'); return }
+    var fr=new FileReader();
+    fr.onload=function(){
+      var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return fin(NaN);
+      var ctx; try{ ctx=new AC() }catch(e){ return fin(NaN) }
+      try{ ctx.decodeAudioData(fr.result.slice(0),function(b){ fin(b.duration); try{ctx.close()}catch(e){} },
+                                                  function(){ fin(NaN); try{ctx.close()}catch(e){} }) }catch(e){ fin(NaN) }
+    };
+    fr.onerror=function(){ fin(NaN) };
+    fr.readAsArrayBuffer(blob);
+    function fin(secs){
+      if(!(secs>0)){ paintAud('That file could not be read as audio. Try an .m4a, .mp3 or .wav.'); return }
+      AUDIO={blob:blob, name:name||'audio', secs:secs, url:URL.createObjectURL(blob)};
+      paintAud(); paintCost(); paintChips();
+    }
+  }
+  function recToggle(){
+    if(REC){ try{ REC.stop() }catch(e){} return }
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
+      paintAud('This browser cannot record here. Choose a file instead.'); return }
+    navigator.mediaDevices.getUserMedia({audio:true}).then(function(st){
+      var mt=(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/mp4')) ? 'audio/mp4' : '';
+      var mr=mt ? new MediaRecorder(st,{mimeType:mt}) : new MediaRecorder(st), parts=[], t0=Date.now(), tick=null;
+      mr.ondataavailable=function(e){ if(e.data && e.data.size) parts.push(e.data) };
+      mr.onstop=function(){
+        clearInterval(tick); st.getTracks().forEach(function(t){ t.stop() }); REC=null;
+        $('aud-rec').textContent='Record'; $('aud-rec').classList.remove('on');
+        var b=new Blob(parts,{type:mr.mimeType||mt||'audio/webm'});
+        audSet(b,'recording.'+(/mp4/.test(b.type)?'m4a':'webm'));
+      };
+      REC=mr; mr.start(); $('aud-rec').textContent='Stop'; $('aud-rec').classList.add('on');
+      tick=setInterval(function(){ var s=(Date.now()-t0)/1000; paintAud('Recording… '+s.toFixed(1)+' s of 14.8'); if(s>=14.8 && REC) REC.stop() },100);
+    }).catch(function(){ paintAud('No microphone: the permission was refused.') });
+  }
+  $('aud-pick').onclick=function(){ $('aud-file').click() };
+  $('aud-file').addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0]; if(f) audSet(f,f.name); e.target.value='' });
+  $('aud-rec').onclick=recToggle;
+  $('aud-clear').onclick=function(){ AUDIO=null; paintAud(); paintCost(); paintChips() };
+  seg($('seg-h3style'),function(v){ H3_STYLE=v; syncMode(); paintCost() });
+  seg($('seg-h3dmg'),function(v){ H3_DMG=v; paintChips() });
+  seg($('seg-h3eng'),function(v){ H3_TURBO=(v==='turbo'); syncMode(); paintCost() });
+  seg($('seg-sound'),function(v){ SOUND=v; syncMode(); paintCost() });
+  seg($('seg-cam'),function(v){ CAM_MOVE=v; $('cam-opt').textContent=CAM_NAME[v]||v; paintCost() });
+  seg($('seg-camres'),function(v){ CAM_RES=v; paintCost() });
+  // Camera's sound is his (2026-09-24): H3 always makes some, and left alone it invented gibberish speech
+  seg($('seg-camsnd'),function(v){ CAM_SND=v; $('cam-snd').hidden=(v!=='mine'); paintChips() });
+  $('cam-snd').addEventListener('input',function(){ paintChips() });
+  seg($('seg-talkres'),function(v){ TALK_RES=v; paintCost() });
+  $('cam-dur').addEventListener('input',function(){ CAM_DUR=this.value; $('camdur-read').textContent=this.value; paintCost() });
+
   function paintTabs(){
     $('tab-mode').textContent = {video:'Video',lite:'Video Lite',image:'Image',compose:'Compose',design:'Design',upscale:'Upscale'}[type]||'';
     $('tab-src').textContent  = SRC.length;
     $('tab-hist').textContent = HIST.length;
+    paintChips();
   }
 
   document.querySelector('.cards').addEventListener('click',function(e){
@@ -3836,6 +4925,8 @@ window.RigMascot=(function(){
     [].slice.call($('seg-type').querySelectorAll('button')).forEach(function(x){
       x.setAttribute('aria-pressed',String(x.dataset.v===v))});
     type=v; picked=true; syncMode(); paintCost(); show('scr-console');
+    closeChip(); requestAnimationFrame(keepTabInView); setTimeout(keepTabInView,80);
+    if(document.fonts && document.fonts.ready) document.fonts.ready.then(keepTabInView);   // a late webfont widens the tabs
   });
   $('add-src').onclick=function(){$('file').click()};
   $('file').addEventListener('change',function(e){addFiles(e.target.files);e.target.value=''});
@@ -3892,7 +4983,7 @@ window.RigMascot=(function(){
       [A,B].forEach(function(v){
         v.addEventListener('error',function(){A.style.display='none';B.style.display='none'});
         v.preload='auto';
-        v.src='gargantua.mp4';
+        v.src='../gargantua.mp4';
       });
       A.addEventListener('loadedmetadata', function(){
         A.playbackRate=RATE;
@@ -3932,7 +5023,7 @@ window.RigMascot=(function(){
      camera, grade!?" - he was right, it was my overreach. Upscale has no writer. */
   var LOOK_BY_MODE={image:'all',compose:'all',video:'all',lite:'all',design:[],upscale:[]};
   var LOOK={};
-  function lookFams(){ var m=LOOK_BY_MODE[type]||[];
+  function lookFams(){ var m=(type==='lite' && H3_STYLE) ? [] : (LOOK_BY_MODE[type]||[]);
     return m==='all' ? LOOK_FAMS : LOOK_FAMS.filter(function(f){return m.indexOf(f[0])>-1}) }
   function lookSave(){ try{ localStorage.setItem('rig_look',JSON.stringify(LOOK)) }catch(e){} }
   function lookLoad(){ try{ var r=JSON.parse(localStorage.getItem('rig_look')||'{}');

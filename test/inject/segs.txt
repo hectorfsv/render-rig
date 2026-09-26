@@ -12,7 +12,7 @@
   window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
   window.fetch=function(u,o){
     var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
-    if(a==='auth') return Promise.resolve({ok:true,status:200,text:function(){return Promise.resolve('')}});
+    if(a==='auth')return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve({guest:false,user:'hector'})},text:function(){return Promise.resolve('')}});
     if(a==='balance') return Promise.resolve({ok:true,json:function(){return Promise.resolve({balance:4.95,currency:'USD'})}});
     if(a==='gallery') return Promise.resolve({ok:true,json:function(){return Promise.resolve({items:[],count:0})}});
     if(b&&b.get){ sent=b; return new Promise(function(){}); }   // capture, never resolve
@@ -21,10 +21,12 @@
   function vis(el){ if(!el||el.hidden) return false;
     var c=getComputedStyle(el); if(c.display==='none') return false;
     var r=el.getBoundingClientRect(); return r.width>0&&r.height>0; }
-  var SEGS=['seg-type','seg-ar','seg-res','seg-crea','seg-shot','seg-subj'];
+  var SEGS=['seg-type','seg-ar','seg-res','seg-crea','seg-shot','seg-subj',
+    'seg-vres','seg-h3style','seg-h3eng','seg-sound','seg-cam','seg-camres','seg-talkres'];   // + the H3 family, 2026-09-24
   function checkGroup(id,mode){
     var el=$(id); if(!el||!vis(el)) return 0;
-    var btns=[].slice.call(el.querySelectorAll('button[data-v]'));
+    // a DISABLED option cannot be picked (Turbo while a Style is on): it is not a control to sweep
+    var btns=[].slice.call(el.querySelectorAll('button[data-v]')).filter(function(b){ return !b.disabled });
     if(btns.length<2) return 0;
     var checked=0;
     btns.forEach(function(b){
@@ -65,6 +67,14 @@
     });
     T(Math.abs(lab.getBoundingClientRect().height-h0)<1, mode+' / aspect: naming the shape does not grow the label line');
   }
+  /* The director's console (2026-09-23): a setting lives behind its chip, so the
+     sweep opens the chip first - exactly what a person does. */
+  function openFor(id){
+    var row=$(id); while(row && row.parentNode && !(row.parentNode.classList && row.parentNode.classList.contains('ctl-scroll'))) row=row.parentNode;
+    if(!row || !row.id) return;
+    var c=document.querySelector('#chips .chip-s[data-row="'+row.id+'"]');
+    if(c && c.getAttribute('aria-pressed')!=='true') c.click();
+  }
   function go(){
     $('pw').value='x'; $('unlock').click();
     // unlock lands on the hub; the controls live in the console
@@ -73,14 +83,14 @@
       setTimeout(function(){ step(0) },250);
     },250);
   }
-  var MODES=['video','image','compose','design','upscale'], n=0;
+  var MODES=['video','image','compose','design','upscale','lite','camera','talk'], n=0;
   function step(i){
     if(i>=MODES.length) return finish();
     var m=MODES[i];
     document.querySelector('#seg-type button[data-v="'+m+'"]').click();
     setTimeout(function(){
-      checkMarks(m);
-      SEGS.forEach(function(id){ n+=checkGroup(id,m) });
+      openFor('seg-ar'); checkMarks(m);
+      SEGS.forEach(function(id){ openFor(id); n+=checkGroup(id,m) });
       step(i+1);
     },140);
   }

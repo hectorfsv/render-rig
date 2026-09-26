@@ -1,0 +1,139 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* ARRANGE THE GALLERY (Hector only, 2026-09-24): "can you give me acces to organize
+   the images in the gallery, just me". Arranging IS the gallery ("the images dont show
+   the same when you arrange them" killed the first version, a grid of square crops):
+   the same rows and frames with a number and arrows on each; the arrows and a drag move
+   a picture; Save sends the WHOLE order once (action=order). It loads nothing ("you are
+   killing my CPU just by clicking arrange"). Nobody else gets the button, a refusal
+   changes nothing, and Cancel or Back sends nothing.
+   ?who=owner|guest  ?o=ok|refuse */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search),
+      who=q.get('who')||'owner', omode=q.get('o')||'ok', orders=[];
+  try{ localStorage.clear() }catch(e){}
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m)}
+  window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
+  function vis(el){ if(!el||el.hidden) return false; var c=getComputedStyle(el); if(c.display==='none') return false;
+    var r=el.getBoundingClientRect(); return r.width>0&&r.height>0 }
+  function hit(el){var r=el.getBoundingClientRect(); if(r.width<1||r.height<1) return 'zero';
+    if(r.top<0||r.bottom>innerHeight||r.left<0||r.right>innerWidth) return 'offscreen';
+    var e=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); return e&&(el.contains(e)||e.contains(el))?'yes':'NO'}
+  function pic(n){ return 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="'+(30+n*7)+'"><rect width="100%" height="100%" fill="#'+(n*2)+'42"/><text x="4" y="20" fill="#fff">'+n+'</text></svg>') }
+  var ITEMS=[1,2,3,4,5].map(function(n){ return {url:pic(n),gen_type:'image',model:'krea',engine:'Krea 2 Large',price:0.06,
+    created_at:'2026-09-0'+n+'T10:00:00',specs:{w:40,h:30+n*7}} });
+  function J(o,st){ return Promise.resolve({ok:!st||st<300,status:st||200,json:function(){return Promise.resolve(o)},
+    text:function(){return Promise.resolve(JSON.stringify(o))}}) }
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return J({guest:who!=='owner', user:who==='owner'?'hector':'tanner', balance:9.5, budget:who==='owner'?null:10});
+    if(a==='gallery') return J({items:ITEMS,count:ITEMS.length});
+    if(a==='order'){
+      orders.push({pw:b.get('password'), order:b.get('order')});
+      return omode==='refuse' ? J({ok:false,error:'owner only'},403) : J({ok:true,rows:JSON.parse(b.get('order')).length});
+    }
+    return Promise.reject(new Error('no net'));
+  };
+  function nOf(u){ for(var i=0;i<ITEMS.length;i++) if(ITEMS[i].url===u) return i+1; return '?' }
+  function frames(){ return [].slice.call(document.querySelectorAll('#gal-grid .frame')) }
+  // rows read left to right, so DOM order is reading order
+  function order(){ return frames().map(function(f){ return nOf(f.querySelector('img').getAttribute('src')) }).join('') }
+  function media(){ return [].slice.call(document.querySelectorAll('#scr-gallery img,#scr-gallery video')) }
+  function shapesKept(){ return frames().every(function(f){ var m=f.querySelector('img'), b=m.getBoundingClientRect(),
+    want=parseFloat(m.style.getPropertyValue('--ar'))||0; return !want || (b.height>0 && Math.abs(b.width/b.height-want)/want<0.03) }) }
+  function readsInOrder(){ // each next picture is right of the last in its row, or starts the next row
+    var fr=frames(); for(var i=1;i<fr.length;i++){ var a=fr[i-1].getBoundingClientRect(), b=fr[i].getBoundingClientRect();
+      if(!((Math.abs(a.top-b.top)<2 && b.left>=a.right) || b.top>=a.bottom-1)) return false } return true }
+  function drag(from,to){
+    var fr=frames(), dt=new DataTransfer(), src=fr[from].querySelector('.arr-ov'), dst=fr[to].querySelector('.arr-ov')||fr[to];
+    src.dispatchEvent(new DragEvent('dragstart',{bubbles:true,dataTransfer:dt}));
+    dst.dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:dt}));
+    dst.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt}));
+    src.dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer:dt}));
+  }
+  function wait(c,cb,n){ n=n||0; if(c()) return cb(true); if(n>80) return cb(false); setTimeout(function(){wait(c,cb,n+1)},50) }
+  function done(){ T(true,'[done]'); document.title=S+out.join('\n')+S }
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    wait(function(){ return $('scr-hub').classList.contains('on') },function(){
+      $('hub-gallery').click();
+      wait(function(){ return frames().length===5 },function(ok){
+        T(ok,'the gallery shows the five pictures');
+        var arr=$('gal-arrange');
+        if(who!=='owner'){
+          T(!vis(arr) && !vis($('gal-save')), 'a guest gets no Arrange and no Save');
+          T(!document.body.classList.contains('owner'), 'a guest is not the owner');
+          T(!document.querySelector('.arr-ov'), 'a guest never gets the arrange handles');
+          T(orders.length===0, 'a guest sent no order'); return done();
+        }
+        T(vis(arr) && hit(arr)==='yes', 'Hector gets Arrange, on screen and clickable ('+hit(arr)+')');
+        T(!vis($('gal-save')) && !vis($('gal-cancel')), 'Save and Cancel wait for Arrange');
+        T(order()==='12345' && readsInOrder(), 'the gallery reads in list order ('+order()+')');
+        // positions inside the gallery grid (the caption above changes length while arranging)
+        function where(){ var g=$('gal-grid').getBoundingClientRect(); return frames().map(function(f){ var r=f.getBoundingClientRect();
+          return Math.round(r.left-g.left)+','+Math.round(r.top-g.top)+','+Math.round(r.width) }).join('|') }
+        var before=media(), n0=before.length, pos0=where();
+        arr.click();
+        T($('scr-gallery').classList.contains('arranging') && vis($('gal-grid')), 'Arrange stays in the gallery - no separate grid');
+        var pos1=where();
+        T(pos1===pos0, 'every picture stays exactly where and as big as it was'+(pos1===pos0?'':' ('+pos0+' -> '+pos1+')'));
+        T(shapesKept(), 'every picture keeps its full shape while arranging (nothing cropped)');
+        var during=media();
+        T(during.length===n0 && during.every(function(m){ return before.indexOf(m)>=0 }),
+          'Arrange loads NOTHING: the same picture elements ('+n0+' before, '+during.length+' during)');
+        var ovs=document.querySelectorAll('#gal-grid .frame .arr-ov');
+        T(ovs.length===5 && [].every.call(ovs,function(o,x){ return vis(o) && o.querySelector('.n').textContent===String(x+1) }), 'every picture shows its place, 1 to 5');
+        T(vis($('gal-save')) && vis($('gal-cancel')) && !vis(arr), 'Save and Cancel replace Arrange');
+        T(document.documentElement.scrollWidth<=innerWidth, 'nothing spills sideways ('+document.documentElement.scrollWidth+'<='+innerWidth+')');
+        var fr=frames();
+        T(fr[0].querySelector('[data-mv="-1"]').getAttribute('aria-disabled')==='true' && fr[4].querySelector('[data-mv="1"]').getAttribute('aria-disabled')==='true',
+          'the first cannot go earlier, the last cannot go later');
+        var nb=fr[0].querySelector('[data-mv="1"]'); nb.scrollIntoView({block:'nearest'});
+        T(hit(nb)==='yes', 'the arrow is clickable ('+hit(nb)+')');
+        nb.click();
+        T(order()==='21345' && readsInOrder(), 'the arrow moves a picture one place, and the rows follow ('+order()+')');
+        T($('scr-gallery').classList.contains('on') && !vis($('gal-one')), 'an arrow never opens the picture');
+        frames()[2].click();
+        T(!vis($('gal-one')), 'clicking a picture while arranging does not open it');
+        drag(4,0);
+        T(order()==='52134', 'a drag puts a picture where it is dropped ('+order()+')');
+        $('gal-cancel').click();
+        T(!$('scr-gallery').classList.contains('arranging') && !document.querySelector('.arr-ov'), 'Cancel takes the handles off');
+        T(orders.length===0 && order()==='12345', 'Cancel sends nothing and restores the order ('+orders.length+' sent, '+order()+')');
+        var after=media();
+        T(after.length===n0 && after.every(function(m){ return before.indexOf(m)>=0 }), 'the same elements all along, none rebuilt');
+        arr.click(); drag(2,0); $('gal-back').click();
+        T($('scr-gallery').classList.contains('on') && !$('scr-gallery').classList.contains('arranging') && orders.length===0 && order()==='12345',
+          'Back while arranging cancels it and stays in the gallery');
+        arr.click(); drag(4,0); drag(4,1);
+        T(order()==='54123', 'the working order before Save ('+order()+')');
+        $('gal-save').click();
+        wait(function(){ return orders.length && (omode==='refuse' ? /did not|Only/.test($('gal-arr-note').textContent) : !$('scr-gallery').classList.contains('arranging')) },function(ok2){
+          T(orders.length===1, 'Save sends ONE request ('+orders.length+')');
+          var sent=[]; try{ sent=JSON.parse(orders[0].order) }catch(e){}
+          T(sent.map(nOf).join('')==='54123' && sent.length===5, 'it sends the whole order, first to last ('+sent.map(nOf).join('')+')');
+          T(orders[0].pw==='x', 'with the code, so the rig can check who is asking');
+          if(omode==='refuse'){
+            T($('scr-gallery').classList.contains('arranging'), 'a refusal keeps the arranging open');
+            T(/Only Hector/.test($('gal-arr-note').textContent), 'and says why ('+$('gal-arr-note').textContent+')');
+            $('gal-cancel').click();
+            T(order()==='12345', 'a refused order changes nothing on the page ('+order()+')');
+            return done();
+          }
+          T(ok2 && !document.querySelector('.arr-ov'), 'a saved order closes the arranging');
+          T(order()==='54123' && readsInOrder(), 'the gallery reads in the saved order ('+order()+')');
+          T(media().length===n0, 'still the same elements after Save');
+          frames()[0].click();
+          var big=document.querySelector('#gal-one img'); T(big && nOf(big.getAttribute('src'))===5, 'the first picture opens picture 5, the new first');
+          $('gal-back').click();
+          var kept=null; try{ kept=JSON.parse(localStorage.getItem('rig_gallery2:hector')) }catch(e){}
+          T(kept && kept.items && kept.items.map(function(x){return nOf(x.url)}).join('')==='54123', 'this device keeps the new order, so the next open costs nothing');
+          done();
+        });
+      });
+    });
+  }
+  if(document.readyState==='complete') go(); else addEventListener('load',go);
+})();
+</script>

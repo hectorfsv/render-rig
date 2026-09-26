@@ -43,7 +43,18 @@
           if(m==='video'){ ['use-shots','use-el'].forEach(function(id){
             var c=$(id); if(c){ c.checked=true; c.dispatchEvent(new Event('change')); } });
             ['add-shot','add-el'].forEach(function(id){ var b=$(id); if(b) b.click(); }); }
-          setTimeout(function(){ sweep(m); next(); },120);
+          // the director's console (2026-09-23): each setting lives behind its chip,
+          // so open every chip in turn and sweep what it shows - as a person would
+          setTimeout(function(){
+            sweep(m);
+            [].map.call(document.querySelectorAll('#chips .chip-s:not(.ph)'),function(c){return c.dataset.row})
+              .forEach(function(id){
+                var c=document.querySelector('#chips .chip-s[data-row="'+id+'"]');
+                if(c && c.getAttribute('aria-pressed')!=='true') c.click();
+                sweep(m+' / '+id);
+              });
+            next();
+          },120);
         },160);
       })();
     },150);

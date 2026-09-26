@@ -1,0 +1,213 @@
+<style>*{animation:none!important;transition:none!important}</style>
+<script>
+/* THE H3 FAMILY ON THE PAGE (2026-09-24, Hector: "Go on groups 1 and 2"). Video Lite's Style,
+   Engine and Sound; the Camera and Talk modes. Proven on the meter AND on what is SENT - the
+   same list prices n8n's priceOf holds (check-rig-h3.js). Talk is the owner's only for now.
+   ?who=owner|guest */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search), who=q.get('who')||'owner', sent=[];
+  try{ localStorage.clear() }catch(e){}
+  function $(i){return document.getElementById(i)}
+  function T(c,m){out.push((c?'PASS':'FAIL')+'  '+m)}
+  window.onerror=function(m,f,l){T(false,'JS ERROR: '+m+' @'+l)};
+  function vis(el){ if(!el||el.hidden) return false; var c=getComputedStyle(el); if(c.display==='none') return false;
+    var r=el.getBoundingClientRect(); return r.width>0&&r.height>0 }
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(/jobId=/.test(String(u))) return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve({status:'error',message:'harness'})}});
+    if(a==='auth') return Promise.resolve({ok:true,status:200,json:function(){return Promise.resolve({guest:who!=='owner',user:who==='owner'?'hector':'tanner',balance:9,budget:who==='owner'?null:10})},text:function(){return Promise.resolve('')}});
+    if(a==='generate'){ var f={}; b.forEach(function(v,k){ f[k]= (v && typeof v==='object' && 'size' in v) ? {blob:true,size:v.size,type:v.type,name:v.name,raw:v} : v }); sent.push(f);
+      // record what was sent, then refuse the job, so the page is free for the next check at once
+      return Promise.resolve({ok:false,status:503,json:function(){return Promise.resolve({error:'harness'})},text:function(){return Promise.resolve('harness')}}) }
+    return Promise.reject(new Error('no net'));
+  };
+  // a real 6-second WAV (silence), so the page decodes a true length
+  function wav(secs){ var sr=8000, n=Math.round(sr*secs), buf=new ArrayBuffer(44+n*2), v=new DataView(buf);
+    function w(o,s){ for(var i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)) }
+    w(0,'RIFF'); v.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,'data'); v.setUint32(40,n*2,true);
+    return new File([buf],'voice.wav',{type:'audio/wav'}) }
+  // the size of a picture the page sent
+  function dims(blob,cb){ var im=new Image(), u=URL.createObjectURL(blob); im.onload=function(){ cb(im.naturalWidth+'x'+im.naturalHeight) }; im.onerror=function(){ cb('unreadable') }; im.src=u }
+  function still(cb,W,H){ W=W||300; H=H||400; var c=document.createElement('canvas'); c.width=W; c.height=H; var x=c.getContext('2d'); x.fillStyle='#834'; x.fillRect(0,0,W,H);
+    c.toBlob(function(bl){ var dt=new DataTransfer(); dt.items.add(new File([bl],'face.jpg',{type:'image/jpeg'})); $('file').files=dt.files;
+      $('file').dispatchEvent(new Event('change',{bubbles:true})); cb() },'image/jpeg',0.9) }
+  function mode(m){ $('seg-type').querySelector('button[data-v="'+m+'"]').click() }
+  function pick(id,v){ $(id).querySelector('button[data-v="'+v+'"]').click() }
+  function cost(){ return $('cost').textContent }
+  function wait(c,cb,n){ n=n||0; if(c()) return cb(true); if(n>120) return cb(false); setTimeout(function(){wait(c,cb,n+1)},50) }
+  function submitThen(cb){ var k=sent.length; $('submit').click(); wait(function(){ return sent.length>k },function(ok){ cb(ok?sent[sent.length-1]:null) }) }
+  // a refusal is decided on the page, synchronously: read the message at once (it fades later)
+  function refused(cb){ var k=sent.length; $('submit').click(); var msg=$('gen-err').textContent;
+    setTimeout(function(){ cb(sent.length===k, msg) },400) }
+  function freeGenerate(cb){ wait(function(){ return !$('submit').disabled && !document.body.classList.contains('rendering') },function(){ setTimeout(cb,150) }) }
+  function done(){ T(true,'[done]'); document.title=S+out.join('\n')+S }
+  function go(){
+    $('pw').value='x'; $('unlock').click();
+    wait(function(){ return $('scr-hub').classList.contains('on') },function(){
+      var tabs=[].map.call($('seg-type').querySelectorAll('button'),function(b){return b.dataset.v}).join(',');
+      T(tabs==='image,compose,design,upscale,video,lite,camera,talk', 'eight modes, Camera and Talk after Video Lite ('+tabs+')');
+      var talkCard=document.querySelector('.card[data-go="talk"]'), camCard=document.querySelector('.card[data-go="camera"]');
+      T(vis(camCard), 'the hub offers Camera');
+      if(who!=='owner'){
+        T(!vis(talkCard), 'a guest is not offered Talk on the hub');
+        camCard.click();
+        setTimeout(function(){
+          T(!vis($('seg-type').querySelector('button[data-v="talk"]')), 'a guest has no Talk tab');
+          T(vis($('seg-type').querySelector('button[data-v="camera"]')), 'a guest keeps Camera');
+          done();
+        },250);
+        return;
+      }
+      T(vis(talkCard), 'Hector is offered Talk');
+      document.querySelector('.card[data-go="lite"]').click();
+      setTimeout(function(){
+        // ---- Video Lite: Style ----
+        T(!$('row-h3style').hidden && !$('row-h3eng').hidden && !$('row-sound').hidden, 'Video Lite shows Style, Engine and Sound');
+        $('prompt').value='a car chase at night'; $('prompt').dispatchEvent(new Event('input',{bubbles:true}));
+        $('dur').value='8'; $('dur').dispatchEvent(new Event('input',{bubbles:true}));
+        pick('seg-vres','1080P');
+        pick('seg-h3style','vhs');
+        T(!$('row-h3dmg').hidden, 'VHS shows the tape damage');
+        T($('seg-h3eng').querySelector('[data-v="turbo"]').disabled, 'a Style runs on Max only (Turbo disabled)');
+        T($('row-sound').hidden, 'a Style takes none of his audio (Sound hidden)');
+        T($('seg-vres').querySelector('[aria-pressed=true]').dataset.v==='768P' && $('seg-vres').querySelector('[data-v="1080P"]').disabled, 'a Style is 768P only');
+        T(cost()==='$0.64', 'a Style: 8 s at $0.08 = $0.64 ('+cost()+')');
+        T(/VHS/.test($('cost-sub').textContent), 'the meter names the style ('+$('cost-sub').textContent.replace(/\s+/g,' ')+')');
+        // a VHS tape is 4:3 (job 6680: a 2.33:1 canvas broke the tape frame)
+        var arBtns=[].map.call($('seg-ar').querySelectorAll('button'),function(x){return x.dataset.v+(x.getAttribute('aria-pressed')==='true'?'*':'')}).join(',');
+        T(!$('row-ar').hidden && arBtns==='4:3*' && /4:3/.test($('ar-hint').textContent), 'words-only VHS: the ratio is 4:3 only ('+arBtns+')');
+        T(/4:3 tape/.test($('cost-sub').textContent), 'the meter says 4:3 tape');
+        pick('seg-h3dmg','heavy');
+        submitThen(function(f){
+          T(f && f.model==='h3' && f.h3_style==='vhs' && f.h3_damage==='heavy' && f.resolution==='768P' && !f.h3_turbo && !f.audio,
+            'sent: h3, the VHS style, heavy damage, 768P - no Turbo, no audio ('+JSON.stringify(f&&{s:f.h3_style,d:f.h3_damage,r:f.resolution,t:f.h3_turbo})+')');
+          T(f && f.aspect_ratio==='4:3', 'sent: words-only VHS is 4:3 ('+(f&&f.aspect_ratio)+')');
+          freeGenerate(function(){
+            // ---- Turbo ----
+            pick('seg-h3style','');
+            T(!$('seg-h3eng').querySelector('[data-v="turbo"]').disabled && $('row-h3dmg').hidden, 'no style: Turbo is back, no tape damage');
+            var arBack=[].map.call($('seg-ar').querySelectorAll('button'),function(x){return x.dataset.v+(x.getAttribute('aria-pressed')==='true'?'*':'')}).join(',');
+            T(arBack==='16:9*,9:16,1:1,4:3,3:4,21:9', 'style off: all six ratios back, his 16:9 still picked ('+arBack+')');
+            pick('seg-h3eng','turbo'); $('dur').value='10'; $('dur').dispatchEvent(new Event('input',{bubbles:true})); pick('seg-vres','768P');
+            T(cost()==='$0.40', 'Turbo: 10 s at $0.04 = $0.40 ('+cost()+')');
+            pick('seg-vres','1080P'); T(cost()==='$0.80', 'Turbo 1080P: $0.08/s = $0.80 ('+cost()+')'); pick('seg-vres','768P');
+            submitThen(function(f2){
+              T(f2 && f2.h3_turbo==='on' && !f2.h3_style && f2.resolution==='768P' && f2.aspect_ratio==='16:9', 'sent: h3_turbo on, no style, his 16:9');
+              freeGenerate(function(){
+                // ---- his own soundtrack ----
+                pick('seg-h3eng','max'); pick('seg-sound','mine');
+                T(!$('aud-box').hidden, 'My audio opens the audio picker');
+                refused(function(none3,m3){
+                  T(none3 && /Add your audio/.test(m3), 'My audio without a file: refused on the page, nothing sent ('+m3+')');
+                  var dt=new DataTransfer(); dt.items.add(wav(6)); $('aud-file').files=dt.files; $('aud-file').dispatchEvent(new Event('change',{bubbles:true}));
+                  wait(function(){ return /6\.0 s/.test($('aud-read').textContent) },function(okA){
+                    T(okA, 'the page reads the audio’s real length ('+$('aud-read').textContent+')');
+                    T(cost()==='$0.80', 'his soundtrack costs nothing extra: 10 s 768P = $0.80 ('+cost()+')');
+                    submitThen(function(f4){
+                      T(f4 && f4.audio && f4.audio.blob && f4.audio.type==='audio/wav' && !f4.h3_turbo, 'sent: his audio file rides the request');
+                      freeGenerate(function(){
+                        // ---- Camera ----
+                        mode('camera');
+                        T($('row-prompt').hidden && !$('row-cam').hidden && $('row-h3style').hidden && $('row-sound').hidden, 'Camera: no prompt, the move picker, none of Video Lite’s rows');
+                        T($('row-ar').hidden, 'Camera: no ratio (the still decides)');
+                        T(!vis($('row-ups')) && !vis($('upf')), 'Camera shows nothing of Upscale\u2019s (the inline bar leaked its Enlarge row)');
+                        var wide=document.body.classList.contains('wide');
+                        if(wide) T(vis($('seg-cam')) && $('scr-console').classList.contains('inline-set'), 'on the Mac the moves sit in the bar');
+                        T(cost()==='$0.40', 'Camera 5 s 768P = $0.40 ('+cost()+')');
+                        pick('seg-cam','push-in'); pick('seg-camres','480P');
+                        $('cam-dur').value='12'; $('cam-dur').dispatchEvent(new Event('input',{bubbles:true}));
+                        T(cost()==='$0.60', 'Camera 12 s 480P = $0.60 ('+cost()+')');
+                        pick('seg-camres','1080P'); T(cost()==='$1.92', 'Camera 12 s 1080P = $1.92 ('+cost()+')'); pick('seg-camres','480P');
+                        refused(function(nonec,mc){
+                          T(nonec && /Add a still/.test(mc), 'Camera without a still: refused on the page ('+mc+')');
+                          still(function(){
+                            wait(function(){ return document.querySelectorAll('#tray .slot').length===1 },function(){
+                              submitThen(function(f5){
+                                T(f5 && f5.model==='h3cam' && f5.cam_move==='push-in' && f5.duration==='12' && f5.resolution==='480P' && f5.image_0 && f5.image_0.blob && !('prompt' in f5) && !('aspect_ratio' in f5),
+                                  'sent: h3cam, push-in, 12 s, 480P, the still - no prompt, no ratio');
+                                T(f5 && !('cam_sound' in f5), 'Sound defaults to Silent: nothing sent, n8n tells H3 silence');
+                                freeGenerate(function(){
+                                 pick('seg-camsnd','mine');
+                                 T(!$('cam-snd').hidden, 'I\u2019ll describe it opens the sound line');
+                                 refused(function(noneS,mS){
+                                  T(noneS && /Describe the sound/.test(mS), 'an empty sound line is refused on the page ('+mS+')');
+                                  $('cam-snd').value='wind through the trees, a distant thunder roll';
+                                  submitThen(function(fS){
+                                   T(fS && fS.cam_sound==='wind through the trees, a distant thunder roll', 'sent: his sound line');
+                                   pick('seg-camsnd','silent');
+                                   T($('cam-snd').hidden, 'Silent hides the sound line again');
+                                   freeGenerate(function(){
+                                  // ---- Talk ----
+                                  mode('talk');
+                                  T($('row-prompt').hidden && !$('row-talk').hidden && !$('aud-box').hidden && $('row-soundpick').hidden, 'Talk: no prompt, its size, the audio picker (always)');
+                                  T(cost()==='$0.48', 'Talk with 6 s of audio at 768P = $0.48 ('+cost()+')');
+                                  T(!vis($('row-ups')) && !vis($('row-cam')), 'Talk shows nothing of Upscale\u2019s or Camera\u2019s');
+                                  pick('seg-talkres','2K'); T(cost()==='$1.92', 'Talk 2K: 6 s x $0.32 = $1.92 ('+cost()+')');
+                                  $('talk-tr').checked=true;
+                                  submitThen(function(f6){
+                                    T(f6 && f6.model==='h3talk' && f6.audio && f6.audio.blob && f6.audio_secs==='6.00' && f6.resolution==='2K' && f6.talk_transcribe==='on' && f6.image_0 && !('prompt' in f6),
+                                      'sent: h3talk, his audio, its length, 2K, read-first - no prompt');
+                                    freeGenerate(function(){
+                                      $('aud-clear').click();
+                                      T(cost()==='$0.00' && /No audio yet/.test($('aud-read').textContent), 'Remove clears the audio and the price');
+                                      refused(function(none7,m7){
+                                        T(none7 && /Add what they say/.test(m7), 'Talk without audio: refused on the page ('+m7+')');
+                                        T(document.documentElement.scrollWidth<=innerWidth, 'nothing spills sideways');
+                                        // ---- VHS from a picture: it goes in on a 4:3 tape ----
+                                        mode('lite'); pick('seg-h3style','vhs');
+                                        T($('row-ar').hidden, 'VHS from a picture: no ratio row (the picture decides, fitted to 4:3)');
+                                        T(!$('row-h3dmg').hidden && /black bars/.test($('row-h3dmg').textContent), 'the tape damage row says a tape is 4:3');
+                                        submitThen(function(v1){
+                                          dims(v1.image_0.raw,function(d1){
+                                            T(d1==='533x400', 'a tall 300x400 picture goes in with bars at the sides: 533x400 ('+d1+')');
+                                            T(!('aspect_ratio' in v1), 'VHS from a picture: no ratio sent');
+                                            freeGenerate(function(){
+                                              pick('seg-h3style','hand-drawn');
+                                              submitThen(function(v2){
+                                                dims(v2.image_0.raw,function(d2){
+                                                  T(d2==='300x400', 'another style sends the picture as it is ('+d2+')');
+                                                  freeGenerate(function(){
+                                                    document.querySelector('#tray .slot .x').click();
+                                                    wait(function(){ return document.querySelectorAll('#tray .slot').length===0 },function(){
+                                                      still(function(){
+                                                        wait(function(){ return document.querySelectorAll('#tray .slot').length===1 },function(){
+                                                          pick('seg-h3style','vhs');
+                                                          submitThen(function(v3){
+                                                            dims(v3.image_0.raw,function(d3){
+                                                              T(d3==='700x525', 'a wide 700x300 picture goes in letterboxed: 700x525 ('+d3+')');
+                                                              done();
+                                                            });
+                                                          });
+                                                        });
+                                                      },700,300);
+                                                    });
+                                                  });
+                                                });
+                                              });
+                                            });
+                                          });
+                                        });
+                                      });
+                                   }); }); });
+                                    });
+                                  });
+                                });
+                              });
+                            });
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      },300);
+    });
+  }
+  if(document.readyState==='complete') go(); else addEventListener('load',go);
+})();
+</script>

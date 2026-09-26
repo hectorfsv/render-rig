@@ -64,7 +64,9 @@
     $('prompt').value='a test picture';
     submits=0; $('gen-err').textContent=''; $('submit').disabled=false;
     $('submit').click();
-    T(submits===1, 'the seed render submitted ('+submits+') err="'+$('gen-err').textContent+'"');
+    // since 2026-09-24 submit() waits one tick (the VHS tape frame is a promise even when it is not
+    // used), so the request goes out on the next turn of the loop: count it there, not on this one
+    setTimeout(function(){ T(submits===1, 'the seed render submitted ('+submits+') err="'+$('gen-err').textContent+'"') },0);
     waitFor('a result on the stage', function(){
         return $('out-actions') && !$('out-actions').hidden;
       }, 30000, function(ok){

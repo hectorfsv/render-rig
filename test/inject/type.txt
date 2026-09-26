@@ -139,8 +139,10 @@
     waitFor('the type panel', function(){ return document.body.classList.contains('typing') && !!$('ty-cv') }, function(){
       T(document.body.classList.contains('typing'),'opening it puts the page in type mode');
       T(!!$('ty-cv'),'the stage becomes a canvas');
-      T(getComputedStyle($('pane-ctl').querySelector('#row-prompt')).display==='none',
-        'the normal controls give way to the type controls');
+      T((function(){ var v=[].filter.call($('pane-ctl').querySelectorAll('.ctl-scroll > *'),function(e){
+            return !e.hidden && getComputedStyle(e).display!=='none' });
+          return getComputedStyle($('pane-ctl')).display!=='none' && v.length===1 && v[0].id==='row-type' })(),
+        'the type controls open alone in the settings panel');
       T($('ty-lines').value.indexOf('SUMMER JAM')===0,
         'the words he already typed in the Words box are carried over');
 

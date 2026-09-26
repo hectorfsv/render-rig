@@ -31,7 +31,15 @@
   function drop(files){var dt=new DataTransfer();files.forEach(function(f){dt.items.add(f)});var i=$('file');i.files=dt.files;i.dispatchEvent(new Event('change',{bubbles:true}))}
   function mode(m){document.querySelector('#seg-type button[data-v="'+m+'"]').click()}
   function pick(seg,v){var b=document.querySelector('#'+seg+' button[data-v="'+v+'"]');if(b)b.click()}
-  function shown(id){var e=$(id);return !!(e&&!e.hidden&&e.offsetParent!==null)}
+  function shown(id){ var e=$(id); if(!e||e.hidden) return false;
+    /* the director's console (2026-09-23): a setting lives behind its chip. Shown =
+       its chip is on the composer and, once tapped, the control is on screen. */
+    var row=e; while(row && row.parentNode && !(row.parentNode.classList && row.parentNode.classList.contains('ctl-scroll'))) row=row.parentNode;
+    if(row && row.parentNode && row.id){
+      var c=document.querySelector('#chips .chip-s[data-row="'+row.id+'"]'); if(!c) return false;
+      if(c.getAttribute('aria-pressed')!=='true') c.click();
+    }
+    return e.offsetParent!==null }
   function money(){return ($('cost').textContent||'').trim()}
   function setRange(id,v){var e=$(id);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}))}
   function press(){submits=0;lastBody=null;$('gen-err').textContent='';$('submit').disabled=false;$('submit').click()}

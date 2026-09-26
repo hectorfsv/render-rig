@@ -11,7 +11,8 @@
 #   ./test/run.sh mascot     the duel rides the render, cameos only in empty space, never over a click
 #   ./test/run.sh credit     credit left on screen, and every way the lookup fails
 #   ./test/run.sh gallery    the gallery: flagged work, prompts, empty and failed states
-#   ./test/run.sh ratio      Compose keeps the source's shape unless he picked one by hand
+#   ./test/run.sh h3         the H3 family: Video Lite's Style/Turbo/audio, Camera, Talk
+#   ./test/run.sh arrange    Hector orders the gallery (owner only), and Compose keeps the source's shape
 #   ./test/run.sh segs       every segmented control reacts to the click that made it
 #   ./test/run.sh zoom       no field under 16px (iOS zooms the page and stays)
 #   ./test/run.sh magnify    zoom on the stage and in the gallery (Chromium + WebKit)
@@ -50,7 +51,7 @@ if [ "$WHAT" = all ] || [ "$WHAT" = mobile ]; then
   build "$INJ/mob.txt" "$B/m.html"
   line; echo "MOBILE  (6 viewports x 4 modes)"
   for v in "393 852" "393 700" "360 780" "852 393" "430 900" "932 430"; do
-    for m in video lite image compose design upscale; do set -- $v
+    for m in video lite image compose design upscale camera talk; do set -- $v
       R=$(title "$1" "$2" "file://$B/m.html?m=$m")
       p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' ')
       f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
@@ -66,22 +67,38 @@ if [ "$WHAT" = all ] || [ "$WHAT" = desktop ]; then
   line; echo "DESKTOP  (5 viewports: console x4 modes, hub, guide)"
   dp=0; df=0
   for v in "2560 1400" "2026 1037" "1440 900" "1180 820" "1040 800"; do set -- $v
-    for m in video lite image compose design upscale; do
+    for m in video lite image compose design upscale camera talk; do
       E=$(title "$1" "$2" "file://$B/h.html?s=scr-console&m=$m" 3500 | python3 -c "
 import json,sys
 r=json.load(sys.stdin); bad=[]
 if r['hscroll']>0: bad.append('horizontal overflow %d'%r['hscroll'])
 if r['genHit']!='yes': bad.append('Generate '+r['genHit'])
 if r['vscroll']>0: bad.append('console scrolls the page %d'%r['vscroll'])
-e=[r['stage']['b'],r['gen']['b'],r['hist']['b']]
-if max(e)-min(e)>60: bad.append('columns ragged')
+if r.get('cmp') and r['cmp']['h']>0:
+  if abs(r['cmp']['b']-r['hist']['b'])>60: bad.append('composer and session column do not end together (%d vs %d)'%(r['cmp']['b'],r['hist']['b']))
+  if r['stage']['b']>r['cmp']['t']+1: bad.append('stage runs under the composer (%d > %d)'%(r['stage']['b'],r['cmp']['t']))
+  if r['gen']['b']>r['cmp']['b']+1 or r['gen']['t']<r['cmp']['t']-1: bad.append('Generate outside the composer')
+  if r['stage']['h']<0.45*r['vh']: bad.append('stage only %dpx of a %dpx window'%(r['stage']['h'],r['vh']))
+else:
+  e=[r['stage']['b'],r['gen']['b'],r['hist']['b']]
+  if max(e)-min(e)>60: bad.append('columns ragged')
+hh=r.get('head',{})
+if hh and r['wide'] and hh.get('modeH') and abs(hh['modeH']-hh['h'])>1: bad.append('mode tabs %dpx in a %dpx strip'%(hh['modeH'],hh['h']))
+u=r.get('ups')
+if u:
+  if 'yes' not in (u['upfHit'],) or u['modelHit']!='yes' or u['advHit']!='yes': bad.append('Upscale settings not clickable (enlarge %s, model %s, advanced %s)'%(u['upfHit'],u['modelHit'],u['advHit']))
+  if not u['inCmp']: bad.append('Upscale settings outside the bar')
+  if u['model']['r']<u['gen']['l']-80: bad.append('Upscale settings stop %dpx short of the button'%(u['gen']['l']-u['model']['r']))
+  if u['upf']['w']<0.2*r['vw']: bad.append('Enlarge slider only %dpx wide'%u['upf']['w'])
+  if u['upf']['t']<u['stage']['b']: bad.append('Upscale settings over the stage')
 h=r.get('head',{})
 if h and r['wide']:
-  if h['h']!=55: bad.append('header strip %dpx, was 55'%h['h'])
-  if h['btnH']!=23: bad.append('Guide button %dpx tall, was 23'%h['btnH'])
+  k=h.get('k',1)
+  if abs(h['h']-55*k)>1: bad.append('header strip %dpx, wants 55 x %.2f'%(h['h'],k))
+  if abs(h['btnH']-23*k)>1.5: bad.append('Guide button %dpx tall, wants 23 x %.2f'%(h['btnH'],k))
   if min(h['mkI'],h['btn'],h['chip'])<11: bad.append('header type under 11px (fal.ai %s, buttons %s, chip %s)'%(h['mkI'],h['btn'],h['chip']))
   if h['gap']<0 or h['mkSpill']>0: bad.append('title meets the buttons (gap %d, spill %d)'%(h['gap'],h['mkSpill']))
-print('|'.join(bad))")
+print('|'.join(bad))" 2>&1)
       [ -z "$E" ] && dp=$((dp+1)) || { df=$((df+1)); echo "  FAIL ${1}x${2} $m: $E"; }
     done
     for s in scr-hub scr-guide; do
@@ -93,11 +110,12 @@ if r.get('noteW',0)>620: bad.append('guide measure %dpx (cap 620)'%r['noteW'])
 if r.get('cards') is not None and (r['cards']!=r.get('modes') or 'NO' in r.get('hit','')): bad.append('hub cards %s vs %s modes, hit=%s'%(r['cards'],r.get('modes'),r.get('hit')))
 h=r.get('head',{})
 if h and r['wide']:
-  if h['h']!=55: bad.append('header strip %dpx, was 55'%h['h'])
-  if h['btnH']!=23: bad.append('Guide button %dpx tall, was 23'%h['btnH'])
+  k=h.get('k',1)
+  if abs(h['h']-55*k)>1: bad.append('header strip %dpx, wants 55 x %.2f'%(h['h'],k))
+  if abs(h['btnH']-23*k)>1.5: bad.append('Guide button %dpx tall, wants 23 x %.2f'%(h['btnH'],k))
   if min(h['mkI'],h['btn'],h['chip'])<11: bad.append('header type under 11px (fal.ai %s, buttons %s, chip %s)'%(h['mkI'],h['btn'],h['chip']))
   if h['gap']<0 or h['mkSpill']>0: bad.append('title meets the buttons (gap %d, spill %d)'%(h['gap'],h['mkSpill']))
-print('|'.join(bad))")
+print('|'.join(bad))" 2>&1)
       [ -z "$E" ] && dp=$((dp+1)) || { df=$((df+1)); echo "  FAIL ${1}x${2} $s: $E"; }
     done
   done
@@ -143,18 +161,42 @@ if [ "$WHAT" = all ] || [ "$WHAT" = gallery ]; then
   echo "  -> $gp pass / $gf fail"; PASS=$((PASS+gp)); FAIL=$((FAIL+gf))
 fi
 
-if [ "$WHAT" = all ] || [ "$WHAT" = ratio ]; then
-  build "$INJ/ratio.txt" "$B/ra.html"
-  line; echo "RATIO  (Compose keeps the source's shape unless he picked one by hand)"
-  rp=0; rf=0
+if [ "$WHAT" = all ] || [ "$WHAT" = arrange ]; then
+  build "$INJ/arrange.txt" "$B/ar.html"; build "$INJ/ratio.txt" "$B/ra.html"
+  line; echo "ARRANGE  (Hector orders the gallery; nobody else can) + RATIO (Compose keeps the source's shape)"
+  ap=0; af=0
+  for w in "owner ok" "owner refuse" "guest ok"; do set -- $w; who=$1; o=$2
+    for v in "2026 1037" "1440 900" "393 852"; do set -- $v
+      R=$(title "$1" "$2" "file://$B/ar.html?who=$who&o=$o" 20000)
+      echo "$R" | grep -q '\[done\]' || R="$R FAIL  harness never finished ($who/$o ${1}x${2})"
+      p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+      ap=$((ap+p)); af=$((af+f))
+      [ "$f" != 0 ] && { echo "  $who/$o ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+    done
+  done
   for v in "2026 1037 auto" "393 852 auto" "2026 1037 hand" "393 852 hand"; do set -- $v
     R=$(title "$1" "$2" "file://$B/ra.html?case=$3" 20000)
-    echo "$R" | grep -q '\[done\]' || R="$R FAIL  harness never finished (ratio ${1}x${2} $3)"
+    echo "$R" | grep -q '\[done\]' || R="$R FAIL  harness never finished (ratio ${1}x${2})"
     p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
-    rp=$((rp+p)); rf=$((rf+f))
-    [ "$f" != 0 ] && { echo "  ratio ${1}x${2} $3"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+    ap=$((ap+p)); af=$((af+f))
+    [ "$f" != 0 ] && { echo "  ratio ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
   done
-  echo "  -> $rp pass / $rf fail"; PASS=$((PASS+rp)); FAIL=$((FAIL+rf))
+  echo "  -> $ap pass / $af fail"; PASS=$((PASS+ap)); FAIL=$((FAIL+af))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = h3 ]; then
+  build "$INJ/h3.txt" "$B/h3.html"
+  line; echo "H3 FAMILY  (Style / Turbo / his audio in Video Lite; Camera; Talk - the meter and what is sent)"
+  hp=0; hf=0
+  for w in owner guest; do for v in "2026 1037" "393 852"; do set -- $v
+    # in REAL WebKit (his engine): headless Chromium's virtual clock never finishes decoding audio
+    R=$(node "$ROOT/test/webkit.js" "$B/h3.html?who=$w" "$1" "$2")
+    echo "$R" | grep -q '\[done\]' || R="$R FAIL  harness never finished ($w ${1}x${2})"
+    p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    hp=$((hp+p)); hf=$((hf+f))
+    [ "$f" != 0 ] && { echo "  $w ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  done; done
+  echo "  -> $hp pass / $hf fail"; PASS=$((PASS+hp)); FAIL=$((FAIL+hf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = credit ]; then

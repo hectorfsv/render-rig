@@ -12,7 +12,7 @@
  */
 const path = require('path');
 let pw;
-try { pw = require(path.join(__dirname, '../../webkit-check/node_modules/playwright')); }
+try { pw = require(path.join(__dirname, '../../../webkit-check/node_modules/playwright')); }
 catch (e) { console.log('FAIL  playwright not found in ../webkit-check (npm install there)'); process.exit(0); }
 
 (async () => {

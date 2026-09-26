@@ -45,7 +45,15 @@
   function mode(m){var b=document.querySelector('#seg-type button[data-v="'+m+'"]');if(b)b.click()}
   function pick(seg,v){var b=document.querySelector('#'+seg+' button[data-v="'+v+'"]');if(b)b.click()}
   function press(){submits=0;$('gen-err').textContent='';$('submit').disabled=false;$('submit').click()}
-  function shown(id){var e=$(id);return !!(e&&!e.hidden&&e.offsetParent!==null)}
+  function shown(id){ var e=$(id); if(!e||e.hidden) return false;
+    /* the director's console (2026-09-23): a setting lives behind its chip. Shown =
+       its chip is on the composer and, once tapped, the control is on screen. */
+    var row=e; while(row && row.parentNode && !(row.parentNode.classList && row.parentNode.classList.contains('ctl-scroll'))) row=row.parentNode;
+    if(row && row.parentNode && row.id){
+      var c=document.querySelector('#chips .chip-s[data-row="'+row.id+'"]'); if(!c) return false;
+      if(c.getAttribute('aria-pressed')!=='true') c.click();
+    }
+    return e.offsetParent!==null }
   function money(){return ($('cost').textContent||'').trim()}
   function waitFor(w,t,ms,then){var t0=Date.now();(function tick(){
     if(t())return then(true);

@@ -144,22 +144,33 @@
       T(vis(document.querySelector('.gal-empty')), 'a failed lookup shows the empty state, not a broken screen ('+mode+')');
       T($('scr-gallery').classList.contains('on'), 'the screen still works');
     }
-    // The bug Hector reported: Safari's multicol balancer left a whole empty
-    // column between the 2nd and 3rd picture. The columns are explicit now, so
-    // assert the two things that can never be true again.
-    if(mode==='ok'||mode==='empty'){
-      var cols=[].slice.call(document.querySelectorAll('.gal-col'));
-      var emptyCols=cols.filter(function(c){return !c.querySelector('.frame')}).length;
-      var holes=0;
-      cols.forEach(function(c){
-        var prev=null;
-        [].forEach.call(c.querySelectorAll('.frame'),function(f){
-          var r=f.getBoundingClientRect();
-          if(prev!==null && Math.round(r.top-prev)>24) holes++;
-          prev=r.bottom;});
+    // ROWS, READ LEFT TO RIGHT (2026-09-24). The masonry (explicit columns since Safari's
+    // multicol left an empty column) scattered an order: his flyer 6th landed top right,
+    // its realistic version 7th three columns over. Now: every full row ends at the edge,
+    // nothing is cropped or stretched, a row shares one height, and what you read left to
+    // right, top to bottom IS the list order.
+    if(mode==='ok'){
+      var rows=(function(){ var by={}, keys=[]; [].forEach.call(document.querySelectorAll('#gal-grid > .frame'),function(f){
+            var t=Math.round(f.getBoundingClientRect().top); if(!by[t]){ by[t]=[]; keys.push(t) } by[t].push(f) });
+            return keys.sort(function(a,b){return a-b}).map(function(t){ return {querySelectorAll:function(){ return by[t] }} }) })(),
+          G=$('gal-grid').getBoundingClientRect(), ragged=0, bent=0, uneven=0, order=[], over=0;
+      rows.forEach(function(r,k){
+        var fr=[].slice.call(r.querySelectorAll('.frame')), hs=[];
+        if(k<rows.length-1 && Math.abs(fr[fr.length-1].getBoundingClientRect().right-G.right)>2) ragged++;
+        fr.forEach(function(f){
+          order.push(+f.dataset.i);
+          var m=f.querySelector('img,video'), b=m.getBoundingClientRect(), want=parseFloat(m.style.getPropertyValue('--ar'))||0;
+          if(want && b.height>0 && Math.abs(b.width/b.height-want)/want>0.03) bent++;
+          if(f.getBoundingClientRect().right>G.right+1) over++;
+          hs.push(Math.round(b.height));
+        });
+        if(Math.max.apply(null,hs)-Math.min.apply(null,hs)>2) uneven++;
       });
-      T(emptyCols===0, 'no column is left empty ('+cols.length+' columns, '+emptyCols+' empty)');
-      T(holes===0, 'no hole between pictures inside a column ('+holes+')');
+      T(rows.length>0 && ragged===0, 'every full row ends at the edge ('+rows.length+' rows, '+ragged+' ragged)');
+      T(over===0, 'no picture spills past the edge ('+over+')');
+      T(bent===0, 'every picture keeps its own shape - nothing cropped or stretched ('+bent+')');
+      T(uneven===0, 'the pictures in a row share one height ('+uneven+' uneven rows)');
+      T(order.length===ITEMS.length && order.every(function(v,x){ return v===x }), 'what you read left to right IS the list order ('+order.join(',')+')');
     }
     // every mode
     var dd=document.documentElement;
