@@ -979,6 +979,55 @@ body:not(.wide) .console.director .cmp-main,
 body:not(.wide) .console.director .ctl-commit{flex:0 0 auto}
 }
 
+/* ---- pass 2 (2026-09-26): THE PHONE IS A FORM, THE MAC KEEPS THE BAR ----
+   Hector, on the live page: "on iphone everything's so tight together and hard to
+   understand". The desktop console had been squeezed onto the phone: chips scrolling off
+   the edge, a one-line prompt, an empty stage owning 60% of the screen. Under 1040px in
+   portrait (or any tall window) the console is now one column: the modes wrapped so all
+   eight are in view, the stage a strip until something renders, then the composer scrolls
+   as a FORM (prompt, every setting as a labelled section, Sources, Session) with the price
+   and Generate pinned under it. The sheet, the chips and the popover stay for the Mac and
+   for a phone on its side. Nothing here matches body.wide. */
+@media (orientation:portrait),(min-height:561px){
+  /* all eight modes in view: two rows of four */
+  body:not(.wide) .console.director #seg-type.seg-modes{flex-wrap:wrap;overflow:visible;padding:0 2px;border-bottom:1px solid var(--rule)}
+  body:not(.wide) .console.director #seg-type.seg-modes::after{display:none}
+  body:not(.wide) .console.director #seg-type.seg-modes button{flex:1 1 25%;min-width:0;justify-content:center;padding:7px 4px 6px;font-size:11.5px;letter-spacing:.05em}
+  body:not(.wide) .console.director #seg-type.seg-modes button small{font-size:9.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* the stage is a strip until there is something to watch */
+  body:not(.wide) .console.director:has(#stage-idle:not([hidden])) #pane-stage{flex:0 0 auto;min-height:0}
+  body:not(.wide) .console.director:has(#stage-idle:not([hidden])) .stage{flex:0 0 auto;min-height:0;height:54px}
+  body:not(.wide) .console.director:has(#stage-idle:not([hidden])) .stage-idle{padding:0 14px;max-width:none;display:flex;align-items:center;gap:10px}
+  body:not(.wide) .console.director:has(#stage-idle:not([hidden])) .stage-idle h3{margin:0;font-size:12.5px;white-space:nowrap}
+  body:not(.wide) .console.director:has(#stage-idle:not([hidden])) .stage-idle p{display:none}
+  body:not(.wide) .console.director:has(#stage-idle:not([hidden])) .stage-foot{display:none}
+  /* with a render on it, or one on the way, the stage takes a firm share of the screen and the
+     form scrolls under it: stage-first still holds when there is something to look at */
+  body:not(.wide) .console.director:has(#stage-out:not([hidden])) #pane-stage,
+  body:not(.wide) .console.director:has(#stage-prog:not([hidden])) #pane-stage{flex:0 0 auto;min-height:40dvh;height:40dvh}
+  body:not(.wide) .console.director:has(#stage-out:not([hidden])) .composer,
+  body:not(.wide) .console.director:has(#stage-prog:not([hidden])) .composer{flex:1 1 0}
+  /* the composer is the form: it scrolls, the price and Generate stay */
+  body:not(.wide) .console.director .composer{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:0}
+  body:not(.wide) .console.director .cmp-main{order:1;margin-bottom:0}
+  body:not(.wide) .console.director .cmp-main #prompt{min-height:84px;max-height:30dvh}
+  body:not(.wide) .console.director .chips{display:none}
+  /* nothing in the form shrinks (the sheet's "give way" rule would squeeze the settings and
+     spill them over Sources); the form scrolls instead */
+  body:not(.wide) .console.director .composer > *{flex:0 0 auto;min-height:auto}
+  body:not(.wide) #scr-console.director #pane-ctl{order:2;flex:0 0 auto;display:block;position:static;max-height:none;overflow:visible;margin:0;padding:0;border:none;background:none;box-shadow:none;clip-path:none}
+  body:not(.wide) .console.director #pop-h{display:none}
+  body:not(.wide):not(.typing) #scr-console.director #pane-ctl .ctl-scroll > :not([hidden]){display:block;padding:12px 0 10px;border-top:1px solid var(--rule)}
+  body:not(.wide) .console.director #pane-ctl .ctl-scroll > [data-name]::before{content:attr(data-name);display:block;font-family:var(--disp);font-size:11px;font-weight:600;color:var(--ink-faint);margin-bottom:8px}
+  body:not(.wide) #scr-console.director #pane-src{order:3;display:block;max-height:none;overflow:visible;margin:0;padding:12px 0 10px;border-top:1px solid var(--rule);background:none}
+  body:not(.wide) #scr-console.director #pane-src>.pane-h{display:flex}
+  body:not(.wide) #scr-console.director .hist{order:4;display:block;max-height:none;overflow:visible;margin:0;padding:12px 0 10px;border-top:1px solid var(--rule);background:none}
+  body:not(.wide) .console.director .ctl-commit{order:5;position:sticky;bottom:0;z-index:4;margin:0 -10px;padding:8px 10px calc(7px + env(safe-area-inset-bottom));border-top:1px solid var(--rule-hot);background:rgba(9,6,7,.97)}
+  body:not(.wide) .console.director .meter-l{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
+  /* a setting the page points at (Use as source, a tap elsewhere) is marked, not popped up */
+  body:not(.wide) .console.director .row-open{box-shadow:inset 3px 0 0 var(--red)}
+}
+
 /* ---- the gallery rules (2026-09-23) ----
    (Outside the phone block above since 2026-09-24: inside it, a phone on its side
    under 561px tall got none of them, so a guest could long-press to save there.) */
@@ -3048,7 +3097,18 @@ window.RigMascot=(function(){
   }
 
   /* ---------- layout ---------- */
-  function measure(){document.body.classList.toggle('wide', window.innerWidth>=1040)}
+  /* the phone form (2026-09-26): Sources and Session live INSIDE the composer, so they
+     scroll with the prompt and the settings and Generate stays pinned under all of it.
+     The Mac keeps them as columns. Moved, never copied: every id and listener stays. */
+  function placePanels(){
+    var wide=document.body.classList.contains('wide'), src=$('pane-src'), hist=document.querySelector('.hist'),
+        comp=$('composer'), bay=document.querySelector('.bay'); if(!src||!hist||!comp||!bay) return;
+    if(!wide){ if(src.parentNode!==comp){ var c=comp.querySelector('.ctl-commit'); comp.insertBefore(src,c); comp.insertBefore(hist,c) } }
+    else if(src.parentNode===comp){ bay.insertBefore(src,$('pane-stage')); bay.insertBefore(hist,$('sheet-tabs')) }
+  }
+  // portrait, or any tall window: the form. A phone on its side keeps the sheet.
+  function formMode(){ return !document.body.classList.contains('wide') && !(innerWidth>innerHeight && innerHeight<560) }
+  function measure(){document.body.classList.toggle('wide', window.innerWidth>=1040); placePanels()}
   window.addEventListener('resize',measure);measure();
 
   /* ---------- sources ---------- */
@@ -3751,7 +3811,7 @@ window.RigMascot=(function(){
     // On a phone the controls are covering the stage at this point. Close them:
     // the whole reason the stage comes first is so you watch the render, not a
     // form you have already finished with.
-    shutSheet();
+    if(formMode()) $('composer').scrollTop=0; else shutSheet();
     var fd=new FormData();
     // Omission is meaningful: a field left out becomes null upstream and is
     // dropped from the fal body, so the model applies its OWN default. Never
@@ -4643,6 +4703,8 @@ window.RigMascot=(function(){
     ['row-seed','Seed'],['look','Look'],['adv','More']];
   var CHIP_NAME={}; CHIP_ROWS.forEach(function(c){ CHIP_NAME[c[0]]=c[1] });
   CHIP_NAME['pane-src']='Sources'; CHIP_NAME['hist']='This session';
+  // the form (phone) shows every row at once: the three with no heading of their own get one
+  [['row-shots','Shots'],['row-sound','Sound'],['row-nbp','Compose']].forEach(function(x){ var r=$(x[0]); if(r) r.dataset.name=x[1] });
   function chipPressed(sel){ var b=document.querySelector(sel+' button[aria-pressed=true]');
     return b ? b.textContent.replace(/\s+/g,' ').trim() : '' }
   function chipVal(id){
@@ -4704,6 +4766,14 @@ window.RigMascot=(function(){
   function openChip(id){
     var wide=document.body.classList.contains('wide');
     [].forEach.call(document.querySelectorAll('#pane-ctl .row-open'),function(x){ x.classList.remove('row-open') });
+    if(formMode()){
+      // the form: every setting is already on the screen; mark it and bring it into view
+      var el=(id==='hist') ? document.querySelector('.hist') : $(id); if(!el) return;
+      if(el.tagName==='DETAILS') el.open=true;
+      if(id!=='pane-src' && id!=='hist') el.classList.add('row-open');
+      try{ el.scrollIntoView({block:'start',behavior:'smooth'}) }catch(e){ el.scrollIntoView() }
+      paintChips(); return;
+    }
     if(id==='pane-src' || id==='hist'){
       delete $('composer').dataset.open;
       if(!wide){ openSheet(id); $('scr-console').classList.add('chip-open') }
@@ -4720,6 +4790,7 @@ window.RigMascot=(function(){
   }
   function closeChip(){
     [].forEach.call(document.querySelectorAll('#pane-ctl .row-open'),function(x){ x.classList.remove('row-open') });
+    if(formMode()){ delete $('composer').dataset.open; paintChips(); return }
     delete $('composer').dataset.open;
     $('scr-console').classList.remove('chip-open');
     if(!document.body.classList.contains('wide')) shutSheet();
@@ -4758,7 +4829,7 @@ window.RigMascot=(function(){
     var focused=(document.activeElement===t);
     var side=!wide && innerWidth>innerHeight && innerHeight<560;
     var K=wide ? (parseFloat(getComputedStyle(document.body).getPropertyValue('--k'))||1) : 1;
-    var min=wide?Math.round(62*K):44, max=wide?Math.round(190*K):(focused ? Math.round(innerHeight*(side?0.3:0.24)) : ((chipOpen()||side||!$('scr-console').classList.contains('sheet-shut')) ? 44 : 92));
+    var min=wide?Math.round(62*K):(formMode()?84:44), max=wide?Math.round(190*K):(focused ? Math.round(innerHeight*(side?0.3:0.24)) : ((chipOpen()||side||!$('scr-console').classList.contains('sheet-shut')) ? 44 : 92));
     t.style.height=Math.max(min,Math.min(max,t.scrollHeight+2))+'px';
   }
   $('prompt').addEventListener('input',growPrompt);

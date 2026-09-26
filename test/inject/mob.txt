@@ -1,12 +1,13 @@
 <script>
 (function(){
-  /* THE PHONE CONSOLE, the director's console version (2026-09-23). The sheet tabs
-     are gone: every setting is a chip on the composer, and Sources and Session are
-     chips too. What the old checks guaranteed still holds - Generate always
-     reachable, the page never scrolls, one panel at a time, collapsing gives the
-     stage its room back, the open panel scrolls without moving Generate - plus
-     what is new: the console opens stage-first, every chip opens exactly its own
-     setting, and the chosen mode's tab is in view. */
+  /* THE PHONE CONSOLE, pass 2 (2026-09-26): THE PHONE IS A FORM. Hector on the live
+     page: "on iphone everything's so tight together and hard to understand." In portrait,
+     or any tall window, the console is one column: the modes wrapped so all eight are in
+     view, the stage a strip until something renders, then the composer scrolls as a form
+     (prompt, every setting as a labelled section, Sources, Session) with the price and
+     Generate pinned under it. A phone on its side keeps the 2026-09-23 sheet: those
+     checks are the `else` branch, unchanged. What both must guarantee: Generate always
+     reachable, the page never scrolls, the chosen mode's tab pressed and in view. */
   var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search);
   window.fetch=function(u,o){var b=o&&o.body,a=(b&&b.get)?b.get('action'):'';
     // as the owner since 2026-09-24: Talk is the owner's mode
@@ -26,6 +27,7 @@
   function chip(id){ return document.querySelector('#chips .chip-s[data-row="'+id+'"]') }
   function openRows(){ return [].filter.call($('pane-ctl').querySelectorAll('.ctl-scroll > *'),vis) }
   function box(){ var r=$('pane-stage').getBoundingClientRect(); return r }
+  var form = innerHeight>innerWidth || innerHeight>=561;   // the same rule as the page's formMode()
   function go(){
     $('pw').value='x'; $('unlock').click();
     setTimeout(function(){
@@ -58,7 +60,6 @@
         var noWords=(m==='upscale'||m==='camera'||m==='talk');
         T(noWords ? !vis($('prompt')) : (vis($('prompt')) && onScreen($('prompt'))),
           noWords ? m+' shows no prompt (it needs none)' : 'the prompt is on screen');
-        T(vis($('chips')) && $('chips').children.length>0, 'the settings chips are on screen ('+$('chips').children.length+')');
         // the chosen mode's tab is pressed and fully inside the strip
         var strip=$('seg-type'), tb=strip.querySelector('button[aria-pressed=true]'),
             sr=strip.getBoundingClientRect(), br=tb?tb.getBoundingClientRect():null;
@@ -66,52 +67,80 @@
         T(br && br.left>=sr.left-1 && br.right<=sr.right+1, 'the '+m+' tab is in view in the mode strip'+
           (br ? ' (tab '+Math.round(br.left)+'-'+Math.round(br.right)+', strip '+Math.round(sr.left)+'-'+Math.round(sr.right)+
                 ', scroll '+strip.scrollLeft+' of '+(strip.scrollWidth-strip.clientWidth)+')' : ''));
-        // stage-first: nothing open
-        T(!vis($('pane-ctl')) && !vis($('pane-src')) && !vis(document.querySelector('.hist')),
-          'the console opens stage-first (no panel open)');
         var st0=box();
-        out.push('      stage closed '+Math.round(st0.width)+'x'+Math.round(st0.height)+
+        out.push('      stage at open '+Math.round(st0.width)+'x'+Math.round(st0.height)+
                  '  = '+Math.round(st0.height/innerHeight*100)+'% of the screen');
-        // every setting chip opens exactly its own row
-        var ids=[].map.call(document.querySelectorAll('#chips .chip-s:not(.ph)'),function(c){return c.dataset.row});
-        var bad=[];
-        ids.forEach(function(id){
-          chip(id).click();
-          var rows=openRows(), ok=vis($('pane-ctl')) && rows.length===1 && rows[0].id===id
-                   && chip(id).getAttribute('aria-pressed')==='true' && onScreen($('submit'));
-          if(!ok) bad.push(id+'('+rows.map(function(r){return r.id}).join('+')+')');
-        });
-        T(ids.length>0 && !bad.length, 'every setting chip opens exactly its own setting, Generate on screen ('+
-          ids.join(' ')+(bad.length?' | BAD '+bad.join(' '):'')+')');
-        // the last one is open now: the stage keeps a floor, the page does not scroll
-        var st1=box();
-        out.push('      stage with a setting open '+Math.round(st1.width)+'x'+Math.round(st1.height));
-        T(st1.height>=100 || st1.width>=240, 'the stage keeps real room with a setting open ('+Math.round(st1.width)+'x'+Math.round(st1.height)+')');
-        T(d.scrollHeight<=innerHeight+1, 'no page scroll with a setting open');
-        var pc=$('pane-ctl');
-        T(pc.clientHeight >= Math.min(120, pc.scrollHeight-2), 'the open setting shows at least 120px of itself ('+pc.clientHeight+' of '+pc.scrollHeight+')');
-        T(!vis($('pane-src')) && !vis(document.querySelector('.hist')), 'exactly one panel open (the setting)');
-        // the open setting scrolls inside itself and Generate does not move
-        var p=$('pane-ctl'), gy=$('submit').getBoundingClientRect().top; p.scrollTop=p.scrollHeight;
-        T(p.scrollHeight>p.clientHeight ? p.scrollTop>0 : true,
-          'the open setting scrolls internally ('+(p.scrollHeight-p.clientHeight)+'px)');
-        T(Math.abs($('submit').getBoundingClientRect().top-gy)<1 && onScreen($('submit')), 'Generate does not move while the panel scrolls');
-        // tapping the pressed chip closes it and gives the stage its room back
-        chip(ids[ids.length-1]).click();
-        var st2=box();
-        T(!vis($('pane-ctl')), 'tapping the open chip closes the setting');
-        T(st2.width*st2.height>=st1.width*st1.height, 'closing gives the stage its room back ('+
-          Math.round(st1.width)+'x'+Math.round(st1.height)+' -> '+Math.round(st2.width)+'x'+Math.round(st2.height)+')');
-        // Sources and Session are chips of the same sheet
-        chip('pane-src').click();
-        T(vis($('pane-src')) && !vis($('pane-ctl')) && !vis(document.querySelector('.hist')), 'the Sources chip opens Sources alone');
-        T(onScreen($('submit')), 'Generate still on screen with Sources open');
-        chip('hist').click();
-        T(vis(document.querySelector('.hist')) && !vis($('pane-src')), 'the Session chip swaps the panel');
-        chip('hist').click();
-        T(!vis(document.querySelector('.hist')) && !vis($('pane-src')) && !vis($('pane-ctl')), 'tapping the open Session chip closes the sheet');
-        T(onScreen($('submit')), 'Generate survives the collapse');
-        T(d.scrollHeight<=innerHeight+1, 'still no page scroll when collapsed');
+
+        if(form){
+          /* ---------- the form ---------- */
+          T(!vis($('chips')), 'the form has no chip row');
+          T(strip.scrollWidth<=strip.clientWidth+1, 'all '+modes+' modes are in view, nothing scrolls sideways ('+strip.scrollWidth+' of '+strip.clientWidth+')');
+          T(st0.height<=90, 'the empty stage is a strip, not the screen ('+Math.round(st0.height)+'px)');
+          if(!noWords) T($('prompt').getBoundingClientRect().height>=80, 'the prompt shows three lines ('+Math.round($('prompt').getBoundingClientRect().height)+'px)');
+          var rows=openRows();
+          T(rows.length>=1, 'the settings are sections of the form ('+rows.map(function(r){return r.id}).join(' ')+')');
+          T(rows.every(function(r){ return r.dataset.name || r.querySelector('.lab, summary, .check, .hint') }),
+            'every section carries a heading');
+          T(vis($('pane-src')) && vis(document.querySelector('.hist')), 'Sources and Session are sections of the form');
+          // every section scrolls into view inside the composer, and Generate never moves
+          var comp=$('composer'), gy=$('submit').getBoundingClientRect().top, bad=[];
+          rows.concat([$('pane-src'), document.querySelector('.hist')]).forEach(function(r){
+            r.scrollIntoView({block:'start'});
+            var rr=r.getBoundingClientRect();
+            if(!(rr.top>=-1 && rr.top<innerHeight) || !onScreen($('submit'))) bad.push(r.id||r.className);
+          });
+          T(!bad.length, 'every section scrolls into view with Generate still on screen'+(bad.length?' | BAD '+bad.join(' '):''));
+          T(Math.abs($('submit').getBoundingClientRect().top-gy)<1, 'Generate does not move while the form scrolls');
+          T(comp.scrollHeight>comp.clientHeight ? comp.scrollTop>0 : true, 'the form scrolls inside the composer ('+(comp.scrollHeight-comp.clientHeight)+'px of it)');
+          T(d.scrollHeight<=innerHeight+1, 'still no page scroll after scrolling the form');
+          T(hit($('submit'))==='yes', 'Generate is still tappable over the scrolled form ('+hit($('submit'))+')');
+          // a render arriving gives the stage the screen back
+          $('stage-idle').hidden=true; $('stage-out').hidden=false;
+          var st2=box();
+          T(st2.height>=100, 'with a render the stage gets real room ('+Math.round(st2.height)+'px)');
+          $('stage-idle').hidden=false; $('stage-out').hidden=true;
+          T(box().height<=90, 'and folds back to a strip when cleared ('+Math.round(box().height)+'px)');
+        } else {
+          /* ---------- a phone on its side: the sheet, unchanged since 2026-09-23 ---------- */
+          T(vis($('chips')) && $('chips').children.length>0, 'the settings chips are on screen ('+$('chips').children.length+')');
+          T(!vis($('pane-ctl')) && !vis($('pane-src')) && !vis(document.querySelector('.hist')),
+            'the console opens stage-first (no panel open)');
+          var ids=[].map.call(document.querySelectorAll('#chips .chip-s:not(.ph)'),function(c){return c.dataset.row});
+          var bad2=[];
+          ids.forEach(function(id){
+            chip(id).click();
+            var rows2=openRows(), ok=vis($('pane-ctl')) && rows2.length===1 && rows2[0].id===id
+                     && chip(id).getAttribute('aria-pressed')==='true' && onScreen($('submit'));
+            if(!ok) bad2.push(id+'('+rows2.map(function(r){return r.id}).join('+')+')');
+          });
+          T(ids.length>0 && !bad2.length, 'every setting chip opens exactly its own setting, Generate on screen ('+
+            ids.join(' ')+(bad2.length?' | BAD '+bad2.join(' '):'')+')');
+          var st1=box();
+          out.push('      stage with a setting open '+Math.round(st1.width)+'x'+Math.round(st1.height));
+          T(st1.height>=100 || st1.width>=240, 'the stage keeps real room with a setting open ('+Math.round(st1.width)+'x'+Math.round(st1.height)+')');
+          T(d.scrollHeight<=innerHeight+1, 'no page scroll with a setting open');
+          var pc=$('pane-ctl');
+          T(pc.clientHeight >= Math.min(120, pc.scrollHeight-2), 'the open setting shows at least 120px of itself ('+pc.clientHeight+' of '+pc.scrollHeight+')');
+          T(!vis($('pane-src')) && !vis(document.querySelector('.hist')), 'exactly one panel open (the setting)');
+          var p=$('pane-ctl'), gy2=$('submit').getBoundingClientRect().top; p.scrollTop=p.scrollHeight;
+          T(p.scrollHeight>p.clientHeight ? p.scrollTop>0 : true,
+            'the open setting scrolls internally ('+(p.scrollHeight-p.clientHeight)+'px)');
+          T(Math.abs($('submit').getBoundingClientRect().top-gy2)<1 && onScreen($('submit')), 'Generate does not move while the panel scrolls');
+          chip(ids[ids.length-1]).click();
+          var st3=box();
+          T(!vis($('pane-ctl')), 'tapping the open chip closes the setting');
+          T(st3.width*st3.height>=st1.width*st1.height, 'closing gives the stage its room back ('+
+            Math.round(st1.width)+'x'+Math.round(st1.height)+' -> '+Math.round(st3.width)+'x'+Math.round(st3.height)+')');
+          chip('pane-src').click();
+          T(vis($('pane-src')) && !vis($('pane-ctl')) && !vis(document.querySelector('.hist')), 'the Sources chip opens Sources alone');
+          T(onScreen($('submit')), 'Generate still on screen with Sources open');
+          chip('hist').click();
+          T(vis(document.querySelector('.hist')) && !vis($('pane-src')), 'the Session chip swaps the panel');
+          chip('hist').click();
+          T(!vis(document.querySelector('.hist')) && !vis($('pane-src')) && !vis($('pane-ctl')), 'tapping the open Session chip closes the sheet');
+          T(onScreen($('submit')), 'Generate survives the collapse');
+          T(d.scrollHeight<=innerHeight+1, 'still no page scroll when collapsed');
+        }
         document.title=S+out.join('\n')+S;
       },200);
     },150);
