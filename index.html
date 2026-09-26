@@ -1198,10 +1198,6 @@ body.wide:not(.typing) .console.director.inline-set #row-sound{margin-top:calc(1
 @media (min-width:1400px){body.wide .cards{grid-template-columns:repeat(8,minmax(0,1fr))}
   body.wide.guest .cards{grid-template-columns:repeat(7,minmax(0,1fr))}}
 
-/* THIS IS THE PREVIEW (render-rig/next/). A pseudo-element in the header's top padding,
-   so it cannot change the title's measured width. It goes when next/ replaces the Rig. */
-.panel::before{content:'PREVIEW · THE DIRECTOR’S CONSOLE';position:absolute;top:4px;left:18px;z-index:7;
-  font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.2em;color:var(--amber);pointer-events:none}
 
 </style>
 </head>
@@ -4983,7 +4979,7 @@ window.RigMascot=(function(){
       [A,B].forEach(function(v){
         v.addEventListener('error',function(){A.style.display='none';B.style.display='none'});
         v.preload='auto';
-        v.src='../gargantua.mp4';
+        v.src='./gargantua.mp4';
       });
       A.addEventListener('loadedmetadata', function(){
         A.playbackRate=RATE;
