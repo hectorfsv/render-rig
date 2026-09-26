@@ -1,0 +1,351 @@
+<script>
+/* THE CANVAS HARNESS (2026-09-26). Appended to canvas.html by test/run.sh canvas. Nothing is sent:
+   fetch answers auth and the gallery, refuses the rest, and counts any generate that tries.
+   ?guest=1 a guest is refused · a window under 900px gets the desktop-only screen · ?demo=1 builds
+   a sample board for a screenshot and asserts nothing. */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search), $=function(i){ return document.getElementById(i) };
+  var errs=[]; window.addEventListener('error',function(e){ errs.push(e.message) });
+  function ok(c,label,got){ out.push((c?'PASS':'FAIL')+'  '+label+(c||got===undefined?'':'  got '+got)) }
+  function eq(got,exp,label){ var g=JSON.stringify(got), x=JSON.stringify(exp); ok(g===x,label+(g===x?'':'  expected '+x),g) }
+  var STEP='start';
+  function step(n){ STEP=n; document.title=S+out.join(' ')+' [running: '+n+']'+S }   // Chromium dumps whatever is there when its time runs out
+  function finish(){ document.title=S+out.join(' ')+' [done]'+S }
+  function tick(ms){ return new Promise(function(r){ setTimeout(r,ms||0) }) }
+  function until(f,ms){ var t0=Date.now(); return new Promise(function(r){ (function go(){ if(f()||Date.now()-t0>ms) return r(); setTimeout(go,25) })() }) }
+  function png(w,h,c){ var cv=document.createElement('canvas'); cv.width=w; cv.height=h; var x=cv.getContext('2d');
+    var g=x.createLinearGradient(0,0,w,h); g.addColorStop(0,c); g.addColorStop(1,'#140c0c'); x.fillStyle=g; x.fillRect(0,0,w,h); return cv.toDataURL('image/png') }
+  function fileOf(u,name){ var p=u.split(','), bin=atob(p[1]), a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new File([a],name,{type:'image/png'}) }
+  function wav(secs,name){ var sr=8000, n=Math.round(secs*sr), buf=new ArrayBuffer(44+n*2), v=new DataView(buf);
+    function s(o,t){ for(var i=0;i<t.length;i++) v.setUint8(o+i,t.charCodeAt(i)) }
+    s(0,'RIFF'); v.setUint32(4,36+n*2,true); s(8,'WAVE'); s(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true); s(36,'data'); v.setUint32(40,n*2,true);
+    for(var i=0;i<n;i++) v.setInt16(44+i*2,Math.round(Math.sin(i/(6+secs))*6000),true);
+    return new File([buf],name||'line.wav',{type:'audio/wav'}) }
+
+  var GUEST=q.get('guest')==='1', galCalls=0, SENT=0;
+  var GAL=[{url:png(64,36,'#a33'),specs:{w:2048,h:1152},engine:'Krea 2 Large',gen_type:'image'},
+           {url:'data:video/mp4;base64,AAAA',specs:{w:1280,h:720},engine:'Kling 3.0 Pro',gen_type:'video'},
+           {url:png(40,30,'#3a6'),specs:{},engine:'Nano Banana Pro',gen_type:'image'}];
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve(GUEST?{guest:true,user:'amy'}:{guest:false,user:'hector'}) }});
+    if(a==='gallery'){ galCalls++; return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve({items:GAL}) }}) }
+    if(a==='generate') SENT++;
+    return Promise.reject(new Error('harness: no network'));
+  };
+  ['rig_board_cur:hector','rig_boards:hector','rig_gallery2:hector'].forEach(function(k){ try{ localStorage.removeItem(k) }catch(e){} });
+  try{ sessionStorage.removeItem('rig_pw') }catch(e){}
+
+  var R, on=function(id){ return $(id).classList.contains('on') }, card=function(id){ return document.querySelector('#world .card[data-id="'+id+'"]') };
+  function st(id){ return R.info(id).st } function price(id){ return R.info(id).price }
+  function node(id){ return R.exportBoard().nodes.filter(function(n){ return n.id===id })[0] }
+  function edgeIdx(f,t){ var e=R.state().edges; for(var i=0;i<e.length;i++) if(e[i][0]===f&&e[i][1]===t) return i; return -1 }
+
+  ok(on('scr-login'),'locked until the passphrase');
+  $('pw').value='x'; $('unlock').click();
+  tick(80).then(function(){
+    if(GUEST){ ok(!on('scr-board')&&/Hector's/.test($('pw-err').textContent),'a guest is refused: '+$('pw-err').textContent); return }
+    if(innerWidth<900){ ok(on('scr-small')&&!on('scr-board'),'under 900px wide: the desktop-only screen, no board'); return }
+    ok(on('scr-board'),'the owner at '+innerWidth+'x'+innerHeight+': the board opens');
+    R=window.RigCanvas;
+    return q.get('demo')==='1' ? demo() : run();
+  }).catch(function(e){ ok(false,'harness threw: '+(e&&e.message||e)) }).then(function(){
+    if(q.get('demo')!=='1'){ ok(!errs.length,'no page errors',errs.join(' | ')); ok(SENT===0,'nothing was sent to generate',SENT) }
+    finish();
+  });
+
+  function run(){
+    /* ---------- kinds ---------- */
+    eq(document.querySelectorAll('#add-list button[data-kind]').length,12,'the Add menu lists 12 kinds (3 sources, 8 engines, a note)');
+    ok($('run-all').disabled,'Run all stays off until day 3');
+    ok(!$('empty-hint').hidden,'an empty board says how to start');
+    var N={}; ['upload','gallery','audio','image','compose','design','upscale','video','lite','camera','talk','note'].forEach(function(k){ N[k]=R.add(k).id });
+    eq(document.querySelectorAll('#world .card').length,12,'one card per kind');
+    ok($('empty-hint').hidden,'the hint goes once there is a card');
+    (function(){ var cs=[].slice.call(document.querySelectorAll('#world .card')).map(function(c){ return c.getBoundingClientRect() }), hit=0;
+      for(var i=0;i<cs.length;i++) for(var j=i+1;j<cs.length;j++){ var a=cs[i], b=cs[j]; if(a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top) hit++ }
+      eq(hit,0,'twelve cards added from the menu land without covering each other') })();
+    eq(card(N.note).querySelectorAll('.port').length,0,'a note has no ports');
+    eq(card(N.image).querySelector('.foot .price').textContent,'$0.06','Image shows its price on the card');
+
+    /* ---------- wires ---------- */
+    eq(R.connect(N.upload+':out',N.compose+':images'),'','Upload wires into Compose');
+    eq(R.connect(N.image+':out',N.compose+':images'),'','Image wires into Compose');
+    eq(R.connect(N.compose+':out',N.lite+':image'),'','Compose wires into Video Lite');
+    var w=R.connect(N.lite+':out',N.design+':images'); ok(/takes pictures there, not clips/.test(w),'a clip into Design is refused with a sentence',w);
+    w=R.connect(N.audio+':out',N.lite+':image'); ok(/not sound/.test(w),'a sound into a picture port is refused',w);
+    w=R.connect(N.compose+':out',N.image+':refs'); ok(/loop/.test(w),'a loop is refused',w);
+    w=R.connect(N.compose+':out',N.compose+':images'); ok(/itself/.test(w),'a node cannot feed itself',w);
+    ok(R.connect(N.note+':out',N.compose+':images')!=='','a note gives nothing');
+    ok(R.connect(N.upload+':out',N.note+':text')!=='','a note takes nothing');
+    R.connect(N.upload+':out',N.design+':images'); R.connect(N.image+':out',N.design+':images'); R.connect(N.gallery+':out',N.design+':images');
+    w=R.connect(N.compose+':out',N.design+':images'); ok(/at most 3/.test(w),'Design takes at most 3 sources (Grok\'s cap)',w);
+    R.connect(N.upload+':out',N.upscale+':image'); R.connect(N.gallery+':out',N.upscale+':image');
+    eq(R.info(N.upscale).img,[N.gallery],'a one-wire input: a new wire replaces the old one');
+    eq(R.info(N.compose).img,[N.upload,N.image],'Compose sends its pictures as image_0..N in wire order');
+    R.disconnect(edgeIdx(N.upload+':out',N.compose+':images'));
+    eq(R.info(N.compose).img,[N.image],'cut the first wire: the second becomes image_0');
+    R.connect(N.upload+':out',N.compose+':images');
+    eq(R.info(N.compose).img,[N.image,N.upload],'wired again, it goes last');
+    eq(card(N.compose).querySelector('.row[data-port="images"] .n').textContent,'2/14','the port counts its wires (2/14)');
+    eq(document.querySelectorAll('#wires path:not(.hit)').length,R.state().edges.length,'one drawn wire per edge');
+    var ord=R.order(); ok(ord.indexOf(N.compose)<ord.indexOf(N.lite)&&ord.indexOf(N.upload)<ord.indexOf(N.compose),'run order puts every input first');
+
+    /* the wire meets the port, at 100% and zoomed */
+    function aligned(label){
+      var i=edgeIdx(N.compose+':out',N.lite+':image'), p=document.querySelectorAll('#wires path:not(.hit)')[i];
+      var m=/^M([-\d.]+),([-\d.]+)/.exec(p.getAttribute('d')), s=R.state(), b=$('board').getBoundingClientRect();
+      var sx=b.left+s.pan.x+(+m[1])*s.zoom, sy=b.top+s.pan.y+(+m[2])*s.zoom;
+      var r=card(N.compose).querySelector('.port.out').getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+      ok(Math.abs(sx-cx)<1.5&&Math.abs(sy-cy)<1.5,'the wire starts on the port '+label,(sx-cx).toFixed(1)+','+(sy-cy).toFixed(1));
+    }
+    aligned('at 100%');
+    var cr=card(N.compose).getBoundingClientRect(), pr=card(N.compose).querySelector('.port.out').getBoundingClientRect();
+    ok(Math.abs(pr.left+pr.width/2-cr.right)<2,'the output port sits on the card\'s right edge',(pr.left+pr.width/2-cr.right).toFixed(1));
+    var ir=card(N.lite).querySelector('.port.in').getBoundingClientRect(), lr=card(N.lite).getBoundingClientRect();
+    ok(Math.abs(ir.left+ir.width/2-lr.left)<2,'an input port sits on the card\'s left edge',(ir.left+ir.width/2-lr.left).toFixed(1));
+    var br=$('board').getBoundingClientRect(); R.zoomAt(1.5,br.left+300,br.top+200); aligned('at 150%');
+    R.zoomAt(0.6,br.left+100,br.top+100); aligned('at 60%'); R.fit();
+
+    /* ---------- conditional settings ---------- */
+    ok(card(N.video).querySelector('[data-k="ar"]'),'Video from words shows the aspect ratio');
+    eq(R.info(N.video).f.model,'kling-t2v','Video from words is text-to-video');
+    R.connect(N.upload+':out',N.video+':image');
+    ok(!card(N.video).querySelector('[data-k="ar"]'),'with an opening frame the ratio goes (Kling inherits it)');
+    eq([R.info(N.video).f.model,R.info(N.video).f.aspect_ratio],['kling-i2v',undefined],'…and it is image-to-video with no ratio sent');
+    R.set(N.lite,'style','vhs');
+    ok(card(N.lite).querySelector('[data-k="dmg"]')&&!card(N.lite).querySelector('[data-k="eng"]'),'a VHS style shows tape damage and hides the engine');
+    ok(card(N.lite).querySelector('.row[data-port="audio"]').classList.contains('off'),'…and its own-sound input goes off');
+    w=R.connect(N.audio+':out',N.lite+':audio'); ok(/with a style/.test(w),'a sound into Video Lite with a style is refused',w);
+    R.set(N.lite,'style','');
+    eq(R.connect(N.audio+':out',N.lite+':audio'),'','without a style it takes your sound');
+    R.set(N.lite,'style','hand-drawn');
+    ok(document.querySelector('#wires path.audio.off'),'a style on: the sound wire stays, dimmed, and is not sent');
+    eq(R.info(N.lite).aud,null,'…nothing goes up for it');
+    R.set(N.lite,'style','');
+    eq(R.info(N.lite).aud,N.audio,'style off: the sound goes up again');
+    R.set(N.upscale,'model','Redefine');
+    ok(card(N.upscale).querySelector('[data-k="up_prompt"]'),'Upscale\'s Redefine shows its own prompt');
+    eq(R.info(N.upscale).from,true,'…and its price reads "from" (unpublished)');
+    R.set(N.upscale,'model','Standard V2');
+    var c1=R.add('compose').id; R.connect(N.upload+':out',c1+':images');
+    ok(card(c1).querySelector('[data-k="keep_framing"]'),'Compose with one picture asks about framing');
+    eq(R.info(c1).f.keep_framing,'on','…on by default, like the classic view');
+    R.connect(N.gallery+':out',c1+':images');
+    ok(!card(c1).querySelector('[data-k="keep_framing"]')&&R.info(c1).f.keep_framing===undefined,'with two pictures the question goes');
+    eq(card(R.add('compose').id).querySelectorAll('[data-k="ar"][data-v="auto"]').length,0,'Compose with nothing wired offers no Auto ratio');
+
+    /* ---------- what it needs ---------- */
+    eq(st(N.image),'needs','Image with no prompt needs something');
+    ok(/Write a prompt/.test(R.info(N.image).why),'…and says what',R.info(N.image).why);
+    ok(/Write a prompt/.test(card(N.image).querySelector('.why').textContent),'…on the card');
+    ok(/Wire a still/.test(R.info(N.camera).why),'Camera without a still says so');
+    ok(/Wire a face/.test(R.info(N.talk).why),'Talk without a face says so');
+    ok(/Fix Image first/.test(R.info(N.compose).why),'an input that needs something blocks what it feeds (its first wire first)',R.info(N.compose).why);
+    R.set(N.image,'prompt','a tiger');
+    ok(/Upload is empty/.test(R.info(N.compose).why),'an empty Upload wired in blocks what it feeds',R.info(N.compose).why);
+    ok(/Fix Compose first/.test(R.info(N.lite).why),'…and what that feeds says to fix Compose first',R.info(N.lite).why);
+
+    /* ---------- prices: the classic meter's figures (test/inject/cost.txt, the guide) ---------- */
+    var v=R.add('video').id;
+    R.set(v,'dur','3'); eq(price(v),0.336,'Video 3 s silent $0.336');
+    R.set(v,'dur','5'); eq(price(v),0.56,'Video 5 s silent $0.56');
+    R.set(v,'audio',true); eq(price(v),0.84,'Video 5 s with audio $0.84');
+    R.set(v,'dur','15'); eq(price(v),2.52,'Video 15 s with audio $2.52');
+    eq(card(v).querySelector('.foot .price').textContent,'$2.52','…the card shows it');
+    var l=R.add('lite').id;
+    eq(price(l),0.4,'Video Lite 5 s 768P $0.40');
+    R.set(l,'dur','11'); eq(price(l),0.88,'Video Lite 11 s 768P $0.88');
+    R.set(l,'vres','1080P'); eq(price(l),1.76,'Video Lite 11 s 1080P $1.76');
+    R.set(l,'eng','turbo'); eq(price(l),0.88,'Turbo 11 s 1080P $0.88');
+    R.set(l,'vres','768P'); eq(price(l),0.44,'Turbo 11 s 768P $0.44');
+    R.set(l,'dur','5'); eq(price(l),0.2,'Turbo 5 s 768P $0.20');
+    R.set(l,'style','vhs'); eq(price(l),0.4,'a Style 5 s $0.40, whatever the engine');
+    var lf=R.info(l).f; eq([lf.h3_style,lf.h3_damage,lf.resolution,lf.aspect_ratio,lf.h3_turbo],['vhs','medium','768P','4:3',undefined],'VHS goes up at 768P on a 4:3 tape, no Turbo');
+    var k=R.add('image').id; eq(price(k),0.06,'Image $0.06');
+    R.connect(N.gallery+':out',k+':refs'); eq(price(k),0.065,'Image with a style ref $0.065');
+    eq(R.info(k).f.use_style_refs,'on','…sent as style refs');
+    var c=R.add('compose').id; eq(price(c),0.15,'Compose 2K $0.15');
+    R.set(c,'res','4K'); eq(price(c),0.3,'Compose 4K $0.30');
+    R.set(c,'web',true); eq(price(c),0.315,'Compose 4K + web $0.315');
+    R.set(c,'res','2K'); eq(price(c),0.165,'Compose 2K + web $0.165');
+    eq(card(c).querySelector('.foot .price').textContent,'$0.165','…three decimals when the third is real');
+    var d=R.add('design').id;
+    R.set(d,'res','1K'); R.set(d,'quality','low'); eq(price(d),0.04,'Design 1K low $0.04');
+    R.set(d,'quality','medium'); eq(price(d),0.06,'Design 1K medium $0.06');
+    R.set(d,'res','2K'); R.set(d,'quality','low'); eq(price(d),0.06,'Design 2K low $0.06');
+    R.set(d,'quality','medium'); eq(price(d),0.08,'Design 2K medium $0.08');
+    R.connect(N.upload+':out',d+':images'); R.connect(N.image+':out',d+':images'); R.connect(N.gallery+':out',d+':images');
+    eq(price(d),0.11,'Design 2K medium + 3 sources $0.11');
+    var cm=R.add('camera').id; eq(price(cm),0.4,'Camera 5 s 768P $0.40');
+    R.set(cm,'dur','10'); R.set(cm,'res','1080P'); eq(price(cm),1.6,'Camera 10 s 1080P $1.60');
+    R.set(cm,'dur','3'); R.set(cm,'res','480P'); eq(price(cm),0.15,'Camera 3 s 480P $0.15');
+    R.set(cm,'snd','mine'); ok(card(cm).querySelector('[data-k="snd_text"]'),'Camera "I\'ll describe it" asks for the sound');
+
+    step('gallery');
+    /* ---------- the gallery picker ---------- */
+    var g=R.add('gallery').id;
+    return R.openGallery(g).then(function(){
+      ok(!$('gal-pick').hidden,'the gallery picker opens');
+      eq(galCalls,1,'one gallery call');
+      eq([document.querySelectorAll('#gp-grid button.gp-tile').length,document.querySelectorAll('#gp-grid .gp-tile.clip').length],[2,1],'pictures can be picked, clips cannot');
+      document.querySelector('#gp-grid button[data-i="0"]').click();
+      ok($('gal-pick').hidden,'picking closes it');
+      eq([node(g).src.w,node(g).src.h],[2048,1152],'the Gallery card takes the picture and its size');
+      ok(card(g).querySelector('.pic img'),'…and shows it');
+      eq(st(g),'ready','…ready');
+      return R.openGallery(g);
+    }).then(function(){
+      eq(galCalls,1,'a second open is free (the list is kept an hour, the classic view\'s copy)');
+      ok(!!localStorage.getItem('rig_gallery2:hector'),'…under the classic view\'s own key');
+      document.querySelector('#gp-grid button[data-i="0"]').click();
+      /* Upscale prices by the picture that comes OUT */
+      var u=R.add('upscale').id; R.connect(g+':out',u+':image');
+      eq(price(u),0.08,'Upscale 2× of 2048×1152 (9.4 MP out) $0.08');
+      R.set(u,'factor','4'); eq(price(u),0.16,'Upscale 4× (37.7 MP out) $0.16');
+      R.set(u,'factor','3'); eq(price(u),0.08,'Upscale 3× (21.2 MP out) $0.08');
+      var k2=R.add('image').id; R.set(k2,'prompt','a tiger'); var u2=R.add('upscale').id; R.connect(k2+':out',u2+':image');
+      eq(R.info(u2).known,false,'Upscale after an engine that has not run: priced once its picture exists');
+      eq(card(u2).querySelector('.foot .price').textContent,'priced later','…the card says so');
+      ok(R.totals().unknown.indexOf(u2)>=0&&/priced when/.test($('total').textContent),'…and the total says so');
+      var g3=R.add('gallery').id;
+      return R.openGallery(g3).then(function(){ document.querySelector('#gp-grid button[data-i="2"]').click(); return until(function(){ return node(g3).src.w },3000) })
+        .then(function(){ eq(node(g3).src.w,40,'a gallery picture with no recorded size is measured once') });
+    }).then(function(){
+      step('upload');
+      /* ---------- a picture and a sound of your own ---------- */
+      var up=R.add('upload').id, f=fileOf(png(300,200,'#48c'),'me.png');
+      return R.intake(up,f).then(function(){
+        eq([node(up).src.w,node(up).src.h],[300,200],'an uploaded picture is read, with its size');
+        ok(card(up).querySelector('.pic img'),'…and shown on its card');
+        eq(st(up),'ready','…ready');
+        var id1=node(up).src.id;
+        return R.intake(up,fileOf(png(300,200,'#48c'),'again.png')).then(function(){ eq(node(up).src.id,id1,'the same picture added again is the same input (content, not name)') });
+      }).then(function(){
+        // chrome-headless-shell has no audio decoder (decodeAudioData never answers); WebKit runs this part
+        if(/HeadlessChrome/.test(navigator.userAgent)){ out.push('NOTE  audio lane skipped in headless Chromium, covered in WebKit'); return }
+        step('audio');
+        var au=R.add('audio').id, tk=R.add('talk').id;
+        R.connect(up+':out',tk+':image'); R.connect(au+':out',tk+':audio');
+        return R.intake(au,wav(7.3)).then(function(){
+          ok(Math.abs(node(au).src.secs-7.3)<0.05,'a sound file is read, with its length',node(au).src.secs);
+          ok(card(au).querySelector('audio'),'…and can be played on its card');
+          eq(price(tk),0.64,'Talk on 7.3 s of audio at 768P: 8 s billed, $0.64');
+          R.set(tk,'res','2K'); eq(price(tk),2.56,'Talk at 2K $2.56');
+          R.set(tk,'res','768P');
+          eq(st(tk),'new','Talk with a face and a voice is ready to run');
+          return R.intake(au,wav(3,'short.wav'));
+        }).then(function(){ eq(price(tk),0.4,'Talk on 3 s: billed as 5 s, $0.40') })
+          .catch(function(e){ ok(false,'audio could not be decoded here: '+e.message) });
+      });
+    }).then(function(){ step('staleness'); staleness(); step('undo'); undoAndNotes(); step('saving'); return saving() });
+  }
+
+  function staleness(){
+    /* ---------- fresh, stale and never paying twice ---------- */
+    R.importBoard({v:1,name:'',nodes:[
+      {id:'n1',kind:'gallery',x:0,y:0,src:{url:'https://v3.fal.media/files/g.png',w:2048,h:1152}},
+      {id:'n2',kind:'compose',x:320,y:0,settings:{prompt:'a'}},
+      {id:'n3',kind:'lite',x:660,y:0,settings:{prompt:'b'}},
+      {id:'n4',kind:'image',x:0,y:420,settings:{prompt:'c'}}],
+      edges:[['n1:out','n2:images'],['n2:out','n3:image']]});
+    eq(R.totals().run,['n2','n3','n4'],'a new board: every engine is to run');
+    eq(R.totals().sum,0.61,'…$0.15 + $0.40 + $0.06 = $0.61');
+    ok(/\$0\.61/.test($('total').textContent)&&/3 to run/.test($('total').textContent),'…the header says so',$('total').textContent);
+    R.setRan('n2',{sig:R.info('n2').sig,url:png(64,36,'#c84'),w:2048,h:1152,price:0.15,job:1});
+    eq(st('n2'),'fresh','a node that ran with these settings is fresh');
+    ok(card('n2').querySelector('.pic img'),'…and shows its result');
+    R.setRan('n3',{sig:R.info('n3').sig,url:'https://v3.fal.media/files/v.mp4',price:0.4,job:2});
+    R.setRan('n4',{sig:R.info('n4').sig,url:png(32,32,'#48c'),w:1024,h:1024,price:0.06,job:3});
+    eq([st('n2'),st('n3'),st('n4')],['fresh','fresh','fresh'],'all three ran: all fresh');
+    eq([R.totals().sum,$('total').textContent],[0,'nothing to pay'],'nothing to pay: a fresh node is never paid for twice');
+    R.set('n2','prompt','a2');
+    eq([st('n2'),st('n3'),st('n4')],['changed','changed','fresh'],'change Compose: it and what it feeds go stale, the rest stays fresh');
+    eq([R.totals().run,R.totals().sum],[['n2','n3'],0.55],'…$0.55 to pay, for those two only');
+    R.undo(); eq([st('n2'),st('n3')],['fresh','fresh'],'undo: fresh again');
+    R.redo(); eq(st('n2'),'changed','redo: stale again');
+    R.set('n2','prompt','a'); eq([st('n2'),st('n3')],['fresh','fresh'],'typing the old words back makes it fresh (content, not history)');
+    R.set('n3','ar','9:16'); eq(st('n3'),'fresh','a setting that is not sent (a ratio, from a frame) changes nothing');
+    R.set('n3','dur','6'); eq(st('n3'),'changed','a setting that is sent does'); R.undo();
+    /* ---------- freeze ---------- */
+    R.set('n2','prompt','a3');
+    R.freeze('n2',true);
+    eq([st('n2'),st('n3')],['frozen','fresh'],'freeze a changed Compose: it keeps its result, and what it feeds stays fresh');
+    eq(R.totals().run,[],'…nothing to pay');
+    ok(card('n2').querySelector('fieldset').disabled,'…its settings are locked');
+    R.set('n2','prompt','zzz'); eq(node('n2').settings.prompt,'a3','…and cannot change');
+    eq(card('n2').querySelector('[data-act="freeze"]').getAttribute('aria-pressed'),'true','…the snowflake shows it');
+    R.freeze('n2',false); eq([st('n2'),st('n3')],['changed','changed'],'unfreeze: stale again');
+    var k5=R.add('image').id; R.set(k5,'prompt','p'); var u5=R.add('upscale').id; R.connect(k5+':out',u5+':image');
+    R.freeze(k5,true);
+    eq(st(k5),'frozen-empty','frozen before it ever ran');
+    ok(/frozen with no result/.test(R.info(u5).why),'…what it feeds says so',R.info(u5).why);
+    ok(R.totals().needs.indexOf(k5)>=0,'…and it is counted as needing something');
+    R.freeze(k5,false); R.remove(u5); R.remove(k5);
+    ok(!card('n1').querySelector('[data-act="freeze"]'),'a source has nothing to freeze');
+  }
+
+  function undoAndNotes(){
+    /* ---------- undo, redo ---------- */
+    var before=R.state().nodes.length, tall=R.add('lite').id;
+    R.undo(); eq(R.state().nodes.length,before,'undo removes a tall card just added, in one step (its placement is part of the add)');
+    var t=R.add('talk').id;
+    R.undo(); eq(R.state().nodes.length,before,'undo removes the card just added');
+    R.redo(); eq(R.state().nodes.length,before+1,'redo puts it back'); R.remove(t);
+    var e0=R.state().edges.length; R.remove('n2');
+    eq(R.state().edges.length,e0-2,'deleting a card takes its wires');
+    R.undo(); eq([R.state().edges.length,!!card('n2')],[e0,true],'undo brings the card and its wires back');
+    ok(!$('undo').disabled,'the undo button is live');
+    /* ---------- notes ---------- */
+    var nt=R.add('note').id; R.set(nt,'text','Kratos, VHS test: draft on Turbo, finish on Max');
+    eq(node(nt).settings.text,'Kratos, VHS test: draft on Turbo, finish on Max','a note keeps its words');
+    eq(card(nt).querySelector('textarea').value,'Kratos, VHS test: draft on Turbo, finish on Max','…on the card');
+    ok(!card(nt).querySelector('.foot'),'…and has no price');
+    ok(R.totals().run.indexOf(nt)<0,'…and is never run');
+  }
+
+  function saving(){
+    /* ---------- save, load, new ---------- */
+    var core=function(b){ return JSON.stringify({nodes:b.nodes,edges:b.edges}) }, ex=core(R.exportBoard());
+    $('board-name').value='test board'; $('board-name').dispatchEvent(new Event('input',{bubbles:true}));
+    $('save-btn').click();
+    var all=JSON.parse(localStorage.getItem('rig_boards:hector')||'{}');
+    ok(all['test board']&&all['test board'].nodes.length===R.state().nodes.length,'Save keeps the board under its name, in this browser');
+    ok(JSON.stringify(all).indexOf('data:image/jpeg')<0,'…as JSON: no picture bytes');
+    $('new-btn').click(); eq(R.state().nodes.length,0,'New clears the board');
+    R.undo(); ok(R.state().nodes.length>0,'…and ⌘Z brings it back');
+    $('new-btn').click();
+    $('load-btn').click();
+    var b=document.querySelector('#load-list button[data-name="test board"]'); ok(!!b,'the saved board is in Load');
+    if(b) b.click();
+    ok(core(R.exportBoard())===ex,'Load restores it card for card, wire for wire');
+    eq([st('n2'),st('n3')],['changed','changed'],'…with each card\'s run and state');
+    try{ R.importBoard({v:2}); ok(false,'a non-board is refused') }catch(e){ ok(/not a board/.test(e.message),'a non-board is refused') }
+    var cur=JSON.parse(localStorage.getItem('rig_board_cur:hector')||'null');
+    ok(cur&&cur.nodes.length===R.state().nodes.length,'the board on screen is kept for the next visit');
+    /* ---------- the Mac: nothing moves when nothing happens ---------- */
+    var loops=document.getAnimations ? document.getAnimations().filter(function(a){ var t=a.effect&&a.effect.getTiming&&a.effect.getTiming(); return t&&t.iterations===Infinity }).length : 0;
+    eq(loops,0,'no endless animation on the board (idle = no CPU)');
+    return tick(0);
+  }
+
+  function demo(){
+    R.importBoard({v:1,name:'kratos-vhs',nodes:[
+      {id:'n1',kind:'gallery',x:40,y:40,src:{url:png(640,360,'#b6382e'),w:2048,h:1152,engine:'Krea 2 Large'}},
+      {id:'n2',kind:'upload',x:40,y:330},
+      {id:'n3',kind:'compose',x:340,y:60,settings:{prompt:'Kratos from the first picture standing in the arena of the second, dusk light, dust in the air',res:'2K',ar:'auto'}},
+      {id:'n4',kind:'lite',x:700,y:40,settings:{prompt:'He turns to camera and roars; the crowd rises',dur:'6',eng:'turbo'}},
+      {id:'n5',kind:'audio',x:40,y:640},
+      {id:'n6',kind:'upscale',x:1060,y:300,settings:{factor:'2'}},
+      {id:'n7',kind:'note',x:1060,y:40,settings:{text:'Arena shot for the reel. Draft on Turbo, finish on Max. Freeze Compose once the frame is right.'}}],
+      edges:[['n1:out','n3:images'],['n2:out','n3:images'],['n3:out','n4:image'],['n3:out','n6:image'],['n5:out','n4:audio']]});
+    return R.intake('n2',fileOf(png(1200,800,'#3b5f8a'),'arena.png')).then(function(){
+      return R.intake('n5',wav(6.2,'roar.wav')).catch(function(){});
+    }).then(function(){
+      R.setRan('n3',{sig:R.info('n3').sig,url:png(640,360,'#8a5a2e'),w:2048,h:1152,price:0.15,job:1});
+      R.fit(); return tick(50);
+    });
+  }
+})();
+</script>

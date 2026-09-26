@@ -19,6 +19,8 @@
 #   ./test/run.sh type       words set in the browser: baked at native size, nothing spent
 #   ./test/run.sh look       the look menu: auto sends nothing, Design gets the grade only
 #   ./test/run.sh tape       the rail marquee: pitch, seam, direction, speed
+#   ./test/run.sh canvas     the Canvas (canvas.html): Chromium, real WebKit at 1440/1920/2560, a guest, the phone
+#   ./test/run.sh canvas-shot  a sample board to test/build/canvas-*.png (after canvas)
 #   ./test/run.sh shots      write previews to test/build/*.png
 #
 # Every harness is REGENERATED from the current index.html on every run. Never
@@ -416,6 +418,32 @@ if [ "$WHAT" = all ] || [ "$WHAT" = type ]; then
     [ "$f" != 0 ] && { echo "  webkit ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
   done
   echo "  -> $tp pass / $tf fail"; PASS=$((PASS+tp)); FAIL=$((FAIL+tf))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = canvas ]; then
+  # THE CANVAS (2026-09-26): canvas.html, not index.html. Chromium at two sizes, then real WebKit at
+  # his three desktop sizes, a guest, and the desktop-only screen at a narrow window and his iPhone.
+  python3 -c "import sys; s=open('canvas.html').read(); assert s.count('</body>')==1; open(sys.argv[2],'w').write(s.replace('</body>', open(sys.argv[1]).read()+'\n</body>'))" "$INJ/canvas.txt" "$B/cv.html"
+  line; echo "CANVAS  (board, wires, settings, prices, fresh/stale, freeze, undo, notes, save/load)"
+  cp=0; cf=0
+  cvcount(){ R="$1"; p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    [ "$p" = 0 ] && { f=$((f+1)); R="${R}FAIL  no assertions ran"; }
+    cp=$((cp+p)); cf=$((cf+f)); printf '  %-26s %3s pass / %s fail\n' "$2" "$p" "$f"
+    [ "$f" != 0 ] && printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  for v in "2026 1037" "1440 900"; do set -- $v; cvcount "$(title "$1" "$2" "file://$B/cv.html" 20000)" "chromium ${1}x${2}"; done
+  cvcount "$(title 1440 900 "file://$B/cv.html?guest=1" 6000)" "chromium guest"
+  cvcount "$(title 800 900 "file://$B/cv.html" 6000)" "chromium 800x900"
+  for v in "1440 900" "1920 1080" "2560 1400"; do set -- $v; cvcount "$(node "$ROOT/test/webkit.js" "$B/cv.html" "$1" "$2" 2)" "webkit ${1}x${2} @2x"; done
+  cvcount "$(node "$ROOT/test/webkit.js" "$B/cv.html" 440 956 3)" "webkit iPhone 440x956"
+  echo "  -> $cp pass / $cf fail"; PASS=$((PASS+cp)); FAIL=$((FAIL+cf))
+fi
+
+if [ "$WHAT" = canvas-shot ]; then
+  line; echo "CANVAS PREVIEWS -> test/build/"
+  for v in "1440 900" "2026 1037"; do set -- $v
+    "$CHR" --headless --disable-gpu --hide-scrollbars --virtual-time-budget=20000 --force-device-scale-factor=2 \
+      --window-size="$1","$2" --screenshot="$B/canvas-$1.png" "file://$B/cv.html?demo=1" >/dev/null 2>&1; echo "  canvas-$1.png"; done
+  exit 0
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = tape ]; then

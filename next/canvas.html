@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Render Rig · Canvas</title>
+<meta name="description" content="The Render Rig's canvas: the engines as nodes, pictures as cards, wires between them.">
+<link rel="icon" href="../icon-v2.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="../icon-32-v2.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../icon-180-v2.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* THE CANVAS (2026-09-26). The Rig's second view: the engines as nodes, pictures as cards, wires
+   between them, run through the same webhook as the classic view. Its own file so the classic
+   page stays untouched. Plan: research/rig-canvas-plan-20260925.md. Same tokens as index.html.
+   Day 1: the board. Day 2: every engine's settings and price, and what is fresh or stale.
+   Nothing on this page sends a render or spends money yet: running is day 3. */
+:root{
+  --void:#0A0708; --panel:#15100F; --panel-hi:#1F1817; --panel-lo:#100C0B;
+  --stage:#060405;
+  --rule:rgba(255,120,110,.11); --rule-hot:rgba(224,27,27,.42);
+  --ink:#F2EAE8; --ink-dim:#9A8C8A; --ink-faint:#5E5250;
+  --red:#E01B1B; --red-hot:#FF3B30; --red-deep:#7A0F0F;
+  --amber:#E8A33D; --go:#3FD07A; --ice:#8EC5E0;
+  --disp:'Chakra Petch','Trebuchet MS',sans-serif;
+  --mono:'IBM Plex Mono','SFMono-Regular',Menlo,Consolas,monospace;
+  /* port colours: one per type, the same on the port and the wire */
+  --t-image:#E8A33D; --t-video:#FF3B30; --t-audio:#3FD07A;
+}
+*{box-sizing:border-box}
+html{color-scheme:dark}   /* native controls (the sound player, lists, ticks) drawn dark */
+html,body{height:100%}
+body{margin:0;background:var(--void);color:var(--ink);font-family:var(--disp);overflow:hidden;
+  -webkit-font-smoothing:antialiased}
+button{font-family:var(--disp);font-weight:600;font-size:13px;color:var(--ink-dim);background:var(--panel);
+  border:1px solid var(--rule);border-radius:6px;padding:7px 12px;cursor:pointer;letter-spacing:.02em}
+button:hover{color:var(--ink);border-color:var(--rule-hot)}
+button[disabled]{opacity:.45;cursor:default}
+button[disabled]:hover{color:var(--ink-dim);border-color:var(--rule)}
+button.go{background:var(--red);border-color:var(--red);color:#fff}
+button.go:hover{background:var(--red-hot);border-color:var(--red-hot)}
+input[type=text],input[type=password]{font-size:16px;font-family:var(--disp);color:var(--ink);background:var(--panel-lo);
+  border:1px solid var(--rule);border-radius:6px;padding:8px 10px;outline:none}
+input:focus{border-color:var(--rule-hot);box-shadow:0 0 0 3px rgba(224,27,27,.10)}
+input[type=password]{font-family:var(--mono);letter-spacing:.3em;text-align:center;width:100%}
+.screen{display:none;position:absolute;inset:0}
+.screen.on{display:flex}
+/* ---------- lock ---------- */
+#scr-login{align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:24px}
+#scr-login .lock{max-width:420px;text-align:center}
+#scr-login h2{margin:0 0 6px;font-size:22px;letter-spacing:.06em;text-transform:uppercase}
+#scr-login p{margin:0;color:var(--ink-dim);font-size:14px;line-height:1.5}
+#scr-login input{max-width:320px}
+.err{color:var(--red-hot);font-family:var(--mono);font-size:12px;min-height:16px;text-align:center;max-width:420px}
+/* ---------- desktop only ---------- */
+#scr-small{align-items:center;justify-content:center;padding:28px 16px;text-align:center;flex-direction:column;gap:10px}
+#scr-small p{color:var(--ink-dim);max-width:360px;line-height:1.5;margin:0}
+/* ---------- the board ---------- */
+#scr-board{flex-direction:column}
+.head{position:relative;z-index:5;display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--rule);background:var(--panel-lo);flex:0 0 auto}
+.head h1{margin:0 6px 0 0;font-size:15px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
+.head h1 span{color:var(--red);margin-left:8px}
+.head .sp{flex:1}
+.head input[type=text]{width:200px;font-size:14px;padding:6px 9px}
+.head a{color:var(--ink-dim);font-size:12px;white-space:nowrap}
+.ibtn{padding:6px 8px;display:inline-flex;align-items:center}
+.ibtn svg{display:block}
+.chip{display:flex;align-items:center;gap:6px;padding:4px 11px;border:1px solid var(--rule);border-radius:99px;
+  font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+.chip::before{content:'';flex:0 0 5px;width:5px;height:5px;border-radius:50%;background:var(--ink-faint)}
+.chip.ok::before{background:var(--go)}
+.chip.err::before{background:var(--red-hot)}
+.total{font-family:var(--mono);font-size:12px;color:var(--ink-dim);white-space:nowrap}
+.total b{color:var(--ink)}
+.total .warn{color:var(--amber)}
+.menu{position:relative}
+.menu ul{display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:20;list-style:none;margin:0;padding:6px;
+  background:var(--panel);border:1px solid var(--rule-hot);border-radius:8px;min-width:250px;box-shadow:0 12px 30px rgba(0,0,0,.5);max-height:70vh;overflow:auto}
+.menu.right ul{left:auto;right:0}
+.menu.open ul{display:block}
+.menu li{display:flex;align-items:center}
+.menu li button{display:flex;flex:1;justify-content:space-between;gap:12px;border:0;background:none;padding:7px 9px;text-align:left}
+.menu li button:hover{background:var(--panel-hi)}
+.menu li button small{font-family:var(--mono);font-weight:400;color:var(--ink-faint);font-size:11px}
+.menu li button.x{flex:0 0 auto;padding:7px 8px;color:var(--ink-faint)}
+.menu li.h{padding:6px 9px 2px;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.12em;text-transform:uppercase}
+.board{position:relative;flex:1;overflow:hidden;touch-action:none;cursor:grab;
+  background-color:var(--stage);
+  background-image:radial-gradient(rgba(255,120,110,.10) 1px,transparent 1px);
+  background-size:24px 24px}
+.board.panning{cursor:grabbing}
+.board.drop{box-shadow:inset 0 0 0 2px var(--amber)}
+.world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.wires{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
+.wires path{fill:none;stroke-width:2.2;pointer-events:stroke;cursor:pointer}
+.wires path.hit{stroke:transparent;stroke-width:14}
+.wires path.image{stroke:var(--t-image)} .wires path.video{stroke:var(--t-video)} .wires path.audio{stroke:var(--t-audio)}
+.wires path.off{stroke-dasharray:3 6;opacity:.5}
+.wires path.sel{stroke:#fff;stroke-width:3}
+.wires path.temp{stroke:var(--ink-dim);stroke-dasharray:6 5}
+.empty-hint{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);text-align:center;color:var(--ink-faint);font-size:14px;line-height:1.6;pointer-events:none;max-width:420px}
+.empty-hint b{color:var(--ink-dim)}
+/* ---------- cards ---------- */
+.card{position:absolute;width:264px;background:var(--panel);border:1px solid var(--rule);border-radius:10px;
+  box-shadow:0 10px 26px rgba(0,0,0,.45);user-select:none;-webkit-user-select:none;cursor:default}
+.card.src{width:224px}
+.card.note{width:240px;background:#18130D;border-color:rgba(232,163,61,.28)}
+.card.sel{z-index:2;border-color:var(--red);box-shadow:0 0 0 3px rgba(224,27,27,.18),0 10px 26px rgba(0,0,0,.45)}
+.card.frozen{border-color:rgba(142,197,224,.55)}
+.card.frozen.sel{box-shadow:0 0 0 3px rgba(142,197,224,.18),0 10px 26px rgba(0,0,0,.45)}
+.card .top{display:flex;align-items:center;gap:6px;padding:7px 7px 6px 12px;cursor:grab;border-bottom:1px solid var(--rule)}
+.card .top:active{cursor:grabbing}
+.card .top b{font-size:13.5px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.card .top i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .top .ic{flex:0 0 24px;width:24px;height:24px;padding:0;border:0;background:none;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);border-radius:5px}
+.card .top .ic:hover{color:var(--ink);background:var(--panel-hi)}
+.card .top .ic[aria-pressed="true"]{color:var(--ice);background:rgba(142,197,224,.12)}
+.card .pic{height:96px;margin:8px 12px 0;border-radius:6px;background:var(--stage);border:1px dashed var(--rule);
+  display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-family:var(--mono);font-size:11px;text-align:center;padding:6px;overflow:hidden;line-height:1.45}
+.card .pic.has{padding:0;border-style:solid}
+.card .pic img,.card .pic video{width:100%;height:100%;object-fit:cover;border-radius:5px;display:block}
+.card.src .pic{height:132px;cursor:pointer}
+.card.src .pic:hover{border-color:var(--rule-hot);color:var(--ink-dim)}
+.card .pic.aud{flex-direction:column;gap:8px;padding:8px}
+.card .pic.aud b{font-family:var(--disp);font-size:12.5px;color:var(--ink);font-weight:500;word-break:break-all}
+.card .pic.aud audio{width:100%;height:30px}
+.card .ports{padding:8px 12px 0;display:grid;gap:5px}
+.card .row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-dim);min-height:18px;position:relative}
+.card .row.off{opacity:.45}
+.card .row .req{color:var(--ink-faint);font-family:var(--mono);font-size:10px}
+.card .row .n{font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-left:auto}
+.port{width:12px;height:12px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1.5px var(--ink-faint);
+  position:absolute;top:50%;cursor:crosshair;background:var(--ink-faint);transform:translateY(-50%)}
+.row .port.in{left:-19px}
+.outrow{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:6px 12px 0;font-size:12px;color:var(--ink-dim);position:relative;min-height:22px}
+.outrow .port{right:-7px}   /* the row spans the card, so this puts the centre on the card's edge */
+.port.image{background:var(--t-image);box-shadow:0 0 0 1.5px var(--t-image)}
+.port.video{background:var(--t-video);box-shadow:0 0 0 1.5px var(--t-video)}
+.port.audio{background:var(--t-audio);box-shadow:0 0 0 1.5px var(--t-audio)}
+.port.can{transform:translateY(-50%) scale(1.4)}
+/* settings: the classic view's pickers, small */
+.set{border:0;margin:0;padding:8px 12px 0;min-width:0;display:grid;gap:9px}
+.set[disabled]{opacity:.55}
+.ctl .lab{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px;display:flex;gap:6px;align-items:baseline}
+.ctl .lab b{color:var(--ink-dim);font-weight:500;letter-spacing:0;text-transform:none;font-size:11px}
+.ctl .lab span{letter-spacing:0;text-transform:none;margin-left:auto}
+.segs{display:flex;flex-wrap:wrap;gap:3px}
+.segs button{padding:4px 7px;font-size:11.5px;border-radius:5px;background:var(--panel-lo);font-weight:500;letter-spacing:0}
+.segs button[aria-pressed="true"]{color:var(--ink);border-color:var(--red);background:rgba(224,27,27,.16)}
+.set textarea,.set input[type=text]{display:block;width:100%;font-family:var(--disp);font-size:12.5px;line-height:1.4;color:var(--ink);background:var(--panel-lo);
+  border:1px solid var(--rule);border-radius:6px;padding:6px 8px;outline:none;resize:none;user-select:text;-webkit-user-select:text;box-shadow:none}
+.card.note textarea{min-height:96px}
+.set textarea:focus,.set input[type=text]:focus{border-color:var(--rule-hot);box-shadow:none}
+.set textarea::placeholder,.set input::placeholder{color:var(--ink-faint)}
+.set input[type=range]{display:block;width:100%;margin:2px 0 0;accent-color:var(--red)}
+.set select{display:block;width:100%;font-family:var(--disp);font-size:12px;color:var(--ink);background:var(--panel-lo);border:1px solid var(--rule);border-radius:6px;padding:5px 6px}
+.chk{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-dim);cursor:pointer}
+.chk input{margin:0;accent-color:var(--red)}
+.chk b{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);font-weight:400}
+details.more summary{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);cursor:pointer;list-style:none;padding:1px 0;letter-spacing:.06em}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::before{content:'+ '}
+details.more[open] summary::before{content:'\2212 '}
+details.more summary:hover{color:var(--ink-dim)}
+.more-in{display:grid;gap:9px;padding-top:7px}
+.more-in button.sm{padding:5px 9px;font-size:11.5px;justify-self:start}
+.card .det{padding:8px 12px 0;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);line-height:1.45}
+.card .det:empty{display:none}
+.card .foot{display:flex;align-items:center;gap:8px;padding:6px 12px 10px;font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
+.card .foot .price{color:var(--ink)}
+.card .foot .st{margin-left:auto;text-align:right}
+.st.new,.st.changed{color:var(--amber)} .st.fresh{color:var(--go)} .st.needs{color:var(--red-hot)} .st.frozen{color:var(--ice)}
+.card .why{padding:0 12px 10px;margin-top:-4px;font-size:11.5px;line-height:1.4;color:var(--amber)}
+.card .why:empty{display:none}
+.card.note .set{padding-bottom:12px}
+/* ---------- the gallery picker ---------- */
+.modal{position:absolute;inset:0;z-index:50;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:28px}
+.modal[hidden]{display:none}
+.modal .box{width:min(1040px,100%);height:min(82vh,900px);background:var(--panel);border:1px solid var(--rule-hot);border-radius:12px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal .mh{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--rule)}
+.modal .mh b{font-size:14px;letter-spacing:.1em;text-transform:uppercase}
+.modal .mh span{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)}
+.modal .mh .sp{flex:1}
+.gp-grid{flex:1;overflow:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-content:start}
+.gp-tile{position:relative;aspect-ratio:1;padding:0;border-radius:8px;overflow:hidden;background:var(--stage);border:1px solid var(--rule)}
+.gp-tile img{width:100%;height:100%;object-fit:cover;display:block}
+.gp-tile span{position:absolute;left:6px;bottom:6px;font-family:var(--mono);font-size:10px;color:var(--ink);background:rgba(10,7,8,.75);padding:2px 6px;border-radius:4px;font-weight:400}
+.gp-tile:hover{border-color:var(--red)}
+.gp-tile.clip{display:flex;align-items:center;justify-content:center;opacity:.5;cursor:default;font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-align:center;padding:10px}
+.gp-tile.clip:hover{border-color:var(--rule)}
+.gp-msg{grid-column:1/-1;color:var(--ink-dim);font-size:13px;padding:20px 4px}
+/* ---------- chrome ---------- */
+.toast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--rule-hot);
+  color:var(--ink);border-radius:8px;padding:9px 14px;font-size:13px;opacity:0;transition:opacity .18s;pointer-events:none;max-width:70%;text-align:center;z-index:30}
+.toast.on{opacity:1}
+.foot-bar{display:flex;gap:8px;align-items:center;padding:8px 14px;border-top:1px solid var(--rule);background:var(--panel-lo);font-family:var(--mono);font-size:11px;color:var(--ink-faint);flex:0 0 auto}
+.foot-bar .sp{flex:1}
+.foot-bar button{padding:4px 9px;font-size:12px}
+.foot-bar #hint{text-align:right;line-height:1.4}
+</style>
+</head>
+<body>
+
+<div class="screen on" id="scr-login">
+  <div class="lock">
+    <h2>Canvas</h2>
+    <p>The Render Rig's board. Once running arrives it spends real money on every node it runs. Enter the passphrase to unlock it.</p>
+  </div>
+  <input type="password" id="pw" placeholder="passphrase" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <div class="err" id="pw-err"></div>
+  <button class="go" id="unlock" type="button">Unlock</button>
+</div>
+
+<div class="screen" id="scr-small">
+  <h2 style="margin:0;letter-spacing:.06em">Desktop only, for now</h2>
+  <p>The Canvas is built for a big screen and a pointer. Open it on the Mac; the classic view works here.</p>
+  <a href="../" style="color:var(--amber)">Back to the Rig</a>
+</div>
+
+<div class="screen" id="scr-board">
+  <div class="head">
+    <h1>Render Rig<span>Canvas</span></h1>
+    <div class="menu" id="add-menu">
+      <button id="add-btn" type="button">+ Add</button>
+      <ul id="add-list"></ul>
+    </div>
+    <button class="ibtn" id="undo" type="button" disabled title="Undo (⌘Z)" aria-label="Undo"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+    <button class="ibtn" id="redo" type="button" disabled title="Redo (⇧⌘Z)" aria-label="Redo"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+    <button id="run-all" type="button" disabled title="Running arrives next (day 3). Nothing on this board sends a render or spends money yet.">Run all</button>
+    <span class="total" id="total">nothing to pay</span>
+    <span class="sp"></span>
+    <input type="text" id="board-name" placeholder="board name" spellcheck="false" maxlength="60">
+    <button id="save-btn" type="button">Save</button>
+    <div class="menu right" id="load-menu">
+      <button id="load-btn" type="button">Load</button>
+      <ul id="load-list"></ul>
+    </div>
+    <button id="new-btn" type="button">New</button>
+    <a href="../">Classic view</a>
+    <span class="chip" id="chip">Ready</span>
+  </div>
+  <div class="board" id="board">
+    <div class="world" id="world">
+      <svg class="wires" id="wires"></svg>
+    </div>
+    <div class="empty-hint" id="empty-hint" hidden><b>An empty board.</b><br>+ Add puts an engine, a source or a note on it. Drop a picture or a sound file anywhere to start from your own.</div>
+    <div class="toast" id="toast"></div>
+    <div class="modal" id="gal-pick" hidden>
+      <div class="box" role="dialog" aria-label="Pick from your gallery">
+        <div class="mh"><b>Your gallery</b><span id="gp-sub"></span><span class="sp"></span><button id="gp-close" type="button">Close</button></div>
+        <div class="gp-grid" id="gp-grid"></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot-bar">
+    <span id="zoom-lbl">100%</span>
+    <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+    <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+    <button id="zoom-fit" type="button">Fit</button>
+    <span class="sp"></span>
+    <span id="hint">Drag a card by its title · drag from a right-hand port to a left-hand one to wire · click a wire, then Delete, to cut it · two fingers pan, pinch or ⌘ + scroll zooms · ⌘Z undoes · the snowflake freezes a node: it keeps its result and never reruns</span>
+  </div>
+</div>
+
+<input type="file" id="up-file" accept="image/*,.heic,.heif" hidden>
+<input type="file" id="aud-file" accept="audio/*,.m4a,.mp3,.wav,.aac" hidden>
+
+<script>
+(function(){
+  'use strict';
+  var $=function(i){return document.getElementById(i)};
+  var N8N='https://hectorfsv.app.n8n.cloud';
+  var BASE=N8N+'/webhook/kling-form';
+  var K_PW='rig_pw';                       // the classic page's key: one unlock serves both views (same tab)
+  var PW_TTL_MS=12*60*60*1000;
+  var K_BOARDS='rig_boards', K_CUR='rig_board_cur';
+  var GAL_TTL_MS=60*60*1000;               // the classic view's gallery list, kept an hour under the same key
+  var MAXEDGE=2048;                        // the classic view shrinks every source to this before sending
+
+  /* ---------- the classic view's lists, copied (index.html) ---------- */
+  var AR_VID=[['16:9','16:9'],['9:16','9:16'],['1:1','1:1']];
+  var AR_KREA=[['1:1','1:1'],['4:5','4:5'],['2:3','2:3'],['9:16','9:16'],['4:3','4:3'],['3:2','3:2'],['16:9','16:9'],['2.35:1','2.35']];
+  var AR_NBP=[['auto','Auto'],['1:1','1:1'],['4:5','4:5'],['9:16','9:16'],['3:2','3:2'],['16:9','16:9']];
+  var AR_DESIGN=[['3:4','3:4'],['auto','Auto'],['2:3','2:3'],['1:1','1:1'],['4:3','4:3'],['16:9','16:9'],['9:16','9:16']];
+  var AR_LITE=[['16:9','16:9'],['9:16','9:16'],['1:1','1:1'],['4:3','4:3'],['3:4','3:4'],['21:9','21:9']];
+  var STYLES=[['','None'],['vhs','VHS'],['retro-toon-70s','70s Toon'],['low-poly','Low Poly'],['hand-drawn','Hand Drawn'],['16bit-pixel','16-bit Pixel']];
+  var STYLE_NAME={'vhs':'VHS','retro-toon-70s':'Retro Toon 70s','low-poly':'Low Poly','hand-drawn':'Hand Drawn','16bit-pixel':'16-bit Pixel'};
+  var MOVES=[['orbit-left','Orbit left'],['orbit-right','Orbit right'],['orbit-360','Full 360'],['crane-up','Crane up'],['drop-down','Drop down'],
+    ['push-in','Push in'],['pull-out','Pull out'],['top-down','Top-down reveal'],['hero-arc','Hero arc']];
+  var UPMODELS=[['Standard V2','Standard: most photos'],['High Fidelity V2','High Fidelity: fine detail'],['Low Resolution V2','Low Resolution: small or soft'],
+    ['CGI','CGI: renders, illustration'],['Text Refine','Text Refine: screenshots, type'],['Recovery V2','Recovery: damaged'],['Standard MAX','Standard MAX'],
+    ['Redefine','Redefine: its own prompt'],['Wonder 3','Wonder 3'],['Wonder','Wonder']];
+  var GEN_UPS=['Redefine','Wonder','Wonder 3','Standard MAX'];
+
+  /* ---------- THE KINDS: what a node is, what it takes, what it gives ----------
+     Ports are typed. `max` is how many wires an input takes (Compose stacks pictures, Upscale
+     takes one); a node's pictures go out as image_0..N in the order they were wired. `req`
+     marks an input it cannot run without. The caps are the server's: Krea reads 10 style
+     refs, Grok's edit 3, Nano Banana Pro takes up to 14. */
+  var KINDS={
+    upload: {name:'Upload',    eng:'your picture',        group:'sources', ins:[], out:'image'},
+    gallery:{name:'Gallery',   eng:'your render',         group:'sources', ins:[], out:'image'},
+    audio:  {name:'Audio',     eng:'your sound',          group:'sources', ins:[], out:'audio'},
+    image:  {name:'Image',     eng:'Krea 2 Large',        group:'engines', ins:[{id:'refs',type:'image',max:10,label:'style refs'}], out:'image'},
+    compose:{name:'Compose',   eng:'Nano Banana Pro',     group:'engines', ins:[{id:'images',type:'image',max:14,label:'pictures'}], out:'image'},
+    design: {name:'Design',    eng:'Grok Imagine 2.0',    group:'engines', ins:[{id:'images',type:'image',max:3,label:'sources'}], out:'image'},
+    upscale:{name:'Upscale',   eng:'Topaz',               group:'engines', ins:[{id:'image',type:'image',max:1,req:true,label:'picture'}], out:'image'},
+    video:  {name:'Video',     eng:'Kling 3.0 Pro',       group:'engines', ins:[{id:'image',type:'image',max:1,label:'opening frame'},{id:'end',type:'image',max:1,label:'end frame'}], out:'video'},
+    lite:   {name:'Video Lite',eng:'MiniMax H3 Max',      group:'engines', ins:[{id:'image',type:'image',max:1,label:'opening frame'},{id:'end',type:'image',max:1,label:'end frame'},{id:'audio',type:'audio',max:1,label:'your sound'}], out:'video'},
+    camera: {name:'Camera',    eng:'H3 Camera Controls',  group:'engines', ins:[{id:'image',type:'image',max:1,req:true,label:'still'}], out:'video'},
+    talk:   {name:'Talk',      eng:'H3 Lip Sync',         group:'engines', ins:[{id:'image',type:'image',max:1,req:true,label:'face'},{id:'audio',type:'audio',max:1,req:true,label:'voice'}], out:'video'},
+    note:   {name:'Note',      eng:'words for you',       group:'notes',   ins:[], out:null}
+  };
+  var ORDER=['upload','gallery','audio','image','compose','design','upscale','video','lite','camera','talk','note'];
+  var FROM={image:'$0.06',compose:'$0.15',design:'$0.04',upscale:'$0.08',video:'$0.336',lite:'$0.20',camera:'$0.15',talk:'$0.25'};
+  var OUTWORD={image:'picture',video:'clip',audio:'sound'};
+  // What a new node starts with: the classic view's own defaults
+  var DEF={
+    image:  {prompt:'',ar:'16:9',crea:'low',style_str:'0.5',seed:''},
+    compose:{prompt:'',res:'2K',ar:'auto',keep_framing:true,web:false,sysp:'',seed:''},
+    design: {prompt:'',words:'',quality:'medium',res:'2K',ar:'3:4',seed:''},
+    upscale:{factor:'2',model:'Standard V2',face:true,sharpen:'0',denoise:'0',fixc:'0',up_prompt:'',up_crea:'3',up_tex:'3'},
+    video:  {prompt:'',dur:'5',audio:false,ar:'16:9',neg:''},
+    lite:   {prompt:'',dur:'5',vres:'768P',style:'',dmg:'medium',eng:'max',ar:'16:9'},
+    camera: {move:'orbit-right',dur:'5',res:'768P',snd:'silent',snd_text:''},
+    talk:   {res:'768P',tr:false},
+    note:   {text:''}
+  };
+  var ICON_FRZ='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 2v20M3.4 7l17.2 10M3.4 17L20.6 7"/><path d="M9.3 3.6L12 6.3l2.7-2.7M9.3 20.4L12 17.7l2.7 2.7"/></svg>';
+  var ICON_X='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
+  /* ---------- state ---------- */
+  var G={v:1,name:'',nodes:[],edges:[]};   // nodes {id,kind,x,y,settings,src,ran,frozen}; edges [["n1:out","n3:images"]]
+  var pan={x:80,y:60}, zoom=1, sel=null;   // sel: {node:id} or {edge:index}
+  var pw='', who=null, seq=1;
+  var UP={}, AUD={};   // picture and sound bytes by content id: never saved, never in the undo history
+  var PL={};           // per node, recomputed on every change: {p: its plan, sig, st: its state}
+  var PORTS={};        // per node: each port's centre inside the card, in board units
+  var OPEN={};         // per node: its "More" fold is open
+
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] }) }
+  // Kling bills $0.112 a second, so real prices land on a third decimal: the classic meter's rule
+  function money(c){ return (Math.round(c*1000)%10) ? c.toFixed(3) : c.toFixed(2) }
+  function cyrb(str){   // cyrb53: a fast 53-bit string hash, enough to tell settings apart
+    var h1=0xdeadbeef, h2=0x41c6ce57;
+    for(var i=0,ch;i<str.length;i++){ ch=str.charCodeAt(i); h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677) }
+    h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+    h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+    return (h2>>>0).toString(16)+(h1>>>0).toString(16);
+  }
+  function cyrbBytes(u8){
+    var h1=0xdeadbeef, h2=0x41c6ce57;
+    for(var i=0,ch;i<u8.length;i++){ ch=u8[i]; h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677) }
+    h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+    h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+    return (h2>>>0).toString(16)+(h1>>>0).toString(16);
+  }
+  function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toast.t); toast.t=setTimeout(function(){t.classList.remove('on')},2800) }
+  function chip(t,c){ var e=$('chip'); e.textContent=t; e.title=t; e.className='chip'+(c?' '+c:'') }
+  function show(id){ [].forEach.call(document.querySelectorAll('.screen'),function(s){ s.classList.toggle('on',s.id===id) }) }
+  function copy(o){ return JSON.parse(JSON.stringify(o)) }
+  function num(v,lo,hi,d){ var x=parseFloat(v); if(!(x===x)) x=d; return Math.min(hi,Math.max(lo,x)) }
+
+  /* ---------- unlock: the same call and the same saved shape as the classic page ---------- */
+  function readPw(){ try{ var raw=sessionStorage.getItem(K_PW); if(!raw) return null; var o=JSON.parse(raw);
+    if(!o||!o.v||!o.ts) return null; if(Date.now()-o.ts>PW_TTL_MS){ sessionStorage.removeItem(K_PW); return null } return o }catch(e){ return null } }
+  function savePw(v,user,guest){ try{ sessionStorage.setItem(K_PW,JSON.stringify({v:v,ts:Date.now(),user:String(user||''),guest:(typeof guest==='boolean')?guest:null})) }catch(e){} }
+  function fail(m){ $('pw-err').textContent=m }
+  function auth(v){
+    // FormData keeps this a CORS "simple" request (a JSON content-type would preflight, which the webhook cannot answer)
+    var af=new FormData(); af.append('action','auth'); af.append('password',v);
+    return fetch(BASE,{method:'POST',body:af}).then(function(r){
+      if(r.status===401) return r.json().catch(function(){return {}}).then(function(b){ throw new Error((b&&b.reason==='expired')?'This code has expired.':'Wrong passphrase.') });
+      if(!r.ok) throw new Error('The rig did not answer properly (HTTP '+r.status+'). Try again in a moment.');
+      return r.json().catch(function(){ return {} });
+    });
+  }
+  function enter(v,body){
+    who=body||{};
+    if(who.guest!==false){ fail('The Canvas is Hector\'s for now. The classic view is open to you.'); try{ sessionStorage.removeItem(K_PW) }catch(e){} return }
+    pw=v; savePw(v,who.user,false);
+    if(small()){ show('scr-small'); return }
+    openBoard();
+  }
+  var opened=false;
+  function openBoard(){
+    show('scr-board'); chip('Unlocked','ok');
+    if(!opened){ opened=true; loadCurrent(); resetHistory() }
+    paintAll();
+    if(document.fonts&&document.fonts.ready) document.fonts.ready.then(remeasure);   // the webfont moves every port a little
+  }
+  function small(){ return window.innerWidth<900 || !!(window.matchMedia && matchMedia('(hover:none) and (pointer:coarse)').matches) }
+  $('unlock').addEventListener('click',function(){
+    var v=$('pw').value.trim(); if(!v){ fail('Enter the passphrase.'); return }
+    $('unlock').disabled=true; $('unlock').textContent='Checking'; fail('');
+    auth(v).then(function(b){ enter(v,b) }).catch(function(e){ fail(e.message||'Could not reach the rig.') })
+      .finally(function(){ $('unlock').disabled=false; $('unlock').textContent='Unlock' });
+  });
+  $('pw').addEventListener('keydown',function(e){ if(e.key==='Enter') $('unlock').click() });
+
+  /* ---------- the graph ---------- */
+  function node(id){ for(var i=0;i<G.nodes.length;i++) if(G.nodes[i].id===id) return G.nodes[i]; return null }
+  function from(e){ return e[0].split(':')[0] }
+  function to(e){ return e[1].split(':')[0] }
+  function into(nid,pid){ var r=[]; G.edges.forEach(function(e){ if(e[1]===nid+':'+pid){ var u=node(from(e)); if(u) r.push(u) } }); return r }
+  function portDef(kind,pid){ var r=null; KINDS[kind].ins.forEach(function(p){ if(p.id===pid) r=p }); return r }
+  function S(n){ var d=DEF[n.kind]||{}, s={}, k; for(k in d) s[k]=d[k]; for(k in (n.settings||{})) s[k]=n.settings[k]; return s }
+  // an input the current settings do not use: its wire stays, dimmed, and is not sent
+  function portOff(n,pid){ return (n.kind==='lite' && (pid==='end'||pid==='audio') && S(n).style) ? 'not with a style' : '' }
+  function order(){   // upstream first (Kahn); the run order on day 3
+    var indeg={}, outs={}, res=[], q=[];
+    G.nodes.forEach(function(n){ indeg[n.id]=0; outs[n.id]=[] });
+    G.edges.forEach(function(e){ var a=from(e), b=to(e); if(indeg[b]==null||!outs[a]) return; indeg[b]++; outs[a].push(b) });
+    G.nodes.forEach(function(n){ if(!indeg[n.id]) q.push(n.id) });
+    while(q.length){ var id=q.shift(); res.push(node(id)); outs[id].forEach(function(b){ if(!--indeg[b]) q.push(b) }) }
+    if(res.length<G.nodes.length) G.nodes.forEach(function(n){ if(res.indexOf(n)<0) res.push(n) });
+    return res;
+  }
+
+  /* ---------- PRICE, WHAT GOES UP, AND WHAT IS STALE ----------
+     plan(n) is one node's request as the classic view would build it: the fields, the pictures
+     in wire order, the sound, the price (the classic meter's cost(), the same table n8n's priceOf
+     charges) and, when it cannot run, the one sentence that says why. Every figure is fal's
+     list price, as the classic view charges. */
+  function perSec(r){ return r==='480P'?0.05:r==='1080P'?0.16:r==='2K'?0.32:0.08 }
+  function topazTier(mp){ return mp<=24?0.08:mp<=48?0.16:mp<=96?0.32:1.36 }
+  function dimsOf(u){
+    if(u.kind==='upload'||u.kind==='gallery') return (u.src&&u.src.w&&u.src.h)?{w:u.src.w,h:u.src.h}:null;
+    var e=PL[u.id]; if(e && (e.st==='fresh'||e.st==='frozen') && u.ran && u.ran.w && u.ran.h) return {w:u.ran.w,h:u.ran.h};
+    return null;
+  }
+  function upWhy(u){   // why a node wired into another cannot hand anything on yet
+    var K=KINDS[u.kind];
+    if(u.kind==='upload'){ if(!u.src) return 'Upload is empty: add a picture to it.'; if(!UP[u.src.id]) return 'Add the picture to Upload again: uploads are not kept after a reload.'; return '' }
+    if(u.kind==='gallery') return u.src ? '' : 'Pick a picture for the Gallery card.';
+    if(u.kind==='audio'){ if(!u.src) return 'Audio is empty: add a sound file to it.'; if(!AUD[u.src.id]) return 'Add the sound to Audio again: sounds are not kept after a reload.'; return '' }
+    var e=PL[u.id]; if(!e) return '';
+    if(e.st==='frozen-empty') return K.name+' is frozen with no result to hand on.';
+    if(e.st==='needs') return 'Fix '+K.name+' first.';
+    return '';
+  }
+  // what a node hands on, as an identity: a result's URL once it exists, else a promise of one
+  function outId(u){
+    if(u.kind==='upload') return u.src ? 'up:'+u.src.id : 'none';
+    if(u.kind==='audio') return u.src ? 'aud:'+u.src.id : 'none';
+    if(u.kind==='gallery') return u.src ? 'gal:'+u.src.url : 'none';
+    var e=PL[u.id]; if(!e) return 'none';
+    if((e.st==='fresh'||e.st==='frozen') && u.ran && u.ran.url) return 'res:'+u.ran.url;
+    return 'will:'+e.sig;
+  }
+  function plan(n){
+    var K=KINDS[n.kind], s=S(n), P={price:0,known:true,from:false,why:'',f:{},img:[],aud:null,det:''}, ins={};
+    function need(m){ if(!P.why) P.why=m }
+    K.ins.forEach(function(p){ ins[p.id]=portOff(n,p.id) ? [] : into(n.id,p.id);
+      ins[p.id].forEach(function(u){ var w=upWhy(u); if(w) need(w) }) });
+    var prompt=String(s.prompt||'').trim(), pl=function(k,one,many){ return k+' '+(k===1?one:many) };
+    switch(n.kind){
+    case 'image':
+      if(!prompt) need('Krea draws from words. Write a prompt.');
+      P.f={model:'krea',mode:'generate',prompt:prompt,aspect_ratio:s.ar,creativity:s.crea};
+      if(ins.refs.length){ P.f.use_style_refs='on'; P.f.style_strength=String(s.style_str); P.img=ins.refs }
+      P.price=ins.refs.length?0.065:0.06;
+      P.det=ins.refs.length ? pl(ins.refs.length,'style ref','style refs')+' · '+s.crea : s.crea+' · draws anyone';
+      break;
+    case 'compose':
+      if(!ins.images.length && !prompt) need('Write a prompt, or wire pictures to combine.');
+      P.f={model:'nbp',mode:'generate',prompt:prompt,aspect_ratio:(s.ar==='auto'&&!ins.images.length)?'1:1':s.ar,resolution:s.res};
+      if(ins.images.length===1) P.f.keep_framing=s.keep_framing?'on':'off';
+      if(s.web) P.f.enable_web_search='on';
+      if(String(s.sysp||'').trim()) P.f.system_prompt=String(s.sysp).trim();
+      P.img=ins.images;
+      P.price=+((s.res==='4K'?0.30:0.15)+(s.web?0.015:0)).toFixed(3);
+      P.det=(ins.images.length ? pl(ins.images.length,'picture','pictures')+' at '+s.res : s.res+' · refuses likenesses')+(s.web?' · web +$0.015':'');
+      break;
+    case 'design':
+      var dim=ins.images.slice(0,3), words=String(s.words||'').trim();
+      if(!prompt && !words && !dim.length) need('Describe the piece, type the words that go on it, or wire a source.');
+      P.f={model:'grok',mode:'design',prompt:prompt,aspect_ratio:(s.ar==='auto'&&!dim.length)?'3:4':s.ar,resolution:s.res,quality:s.quality};
+      if(words) P.f.exact_text=words;
+      P.img=dim;
+      P.price=+(((s.res==='1K')?(s.quality==='low'?0.04:0.06):(s.quality==='low'?0.06:0.08))+0.01*dim.length).toFixed(3);
+      P.det=s.res+' '+s.quality+(dim.length?' · '+pl(dim.length,'source','sources')+' +$'+(0.01*dim.length).toFixed(2):' · from words alone')+(words?'':' · no text')+'<br>Charged even if it refuses.';
+      break;
+    case 'upscale':
+      var u=ins.image[0], f=num(s.factor,1,4,2);
+      if(!u) need('Wire a picture to enlarge.');
+      P.f={model:'topaz',mode:'upscale',upscale_factor:String(s.factor),upscale_model:s.model,face_enhancement:s.face?'on':'off'};
+      if(parseFloat(s.sharpen)) P.f.sharpen=String(s.sharpen);
+      if(parseFloat(s.denoise)) P.f.denoise=String(s.denoise);
+      if(parseFloat(s.fixc)) P.f.fix_compression=String(s.fixc);
+      if(s.model==='Redefine'){ if(String(s.up_prompt||'').trim()) P.f.up_prompt=String(s.up_prompt).trim(); P.f.up_creativity=String(s.up_crea); P.f.up_texture=String(s.up_tex) }
+      P.img=u?[u]:[]; P.from=GEN_UPS.indexOf(s.model)>=0;
+      var dd=u?dimsOf(u):null;
+      if(dd){ var mp=(dd.w*f*dd.h*f)/1e6; P.price=topazTier(mp); P.det=Math.round(dd.w*f)+'×'+Math.round(dd.h*f)+' · '+mp.toFixed(1)+' MP' }
+      else { P.known=false; P.det=u?'priced by the picture that comes out, once its source exists':'wire a picture' }
+      if(P.from) P.det+=' · price not published';
+      break;
+    case 'video':
+      var vi=ins.image[0], ve=ins.end[0], vd=Math.round(num(s.dur,3,15,5));
+      if(!prompt && !vi) need('Write a prompt, or wire an opening frame.');
+      if(ve && !vi) need('An end frame needs an opening frame.');
+      P.f={model:vi?'kling-i2v':'kling-t2v',mode:'generate',prompt:prompt,duration:String(vd)};
+      if(!vi) P.f.aspect_ratio=s.ar;
+      if(s.audio) P.f.generate_audio='on';
+      if(String(s.neg||'').trim()) P.f.negative_prompt=String(s.neg).trim();
+      if(vi){ P.img=[vi]; if(ve){ if(ve===vi) P.f.end_image_idx='0'; else { P.img.push(ve); P.f.end_image_idx='1' } } }
+      P.price=+(vd*(s.audio?0.168:0.112)).toFixed(3);
+      P.det=vd+'s · '+(vi?'from the opening frame':'from words alone')+' · '+(s.audio?'with audio':'no audio')+(ve?' · ends on a frame':'');
+      break;
+    case 'lite':
+      var li=ins.image[0], le=ins.end[0], la=ins.audio[0], ld=Math.round(num(s.dur,5,15,5)), vhs=s.style==='vhs', turbo=!s.style&&s.eng==='turbo';
+      if(!prompt && !li) need('Write a prompt, or wire an opening frame.');
+      if(le && !li) need('An end frame needs an opening frame.');
+      P.f={model:'h3',mode:'generate',prompt:prompt,duration:String(ld),resolution:s.style?'768P':s.vres};
+      if(!li) P.f.aspect_ratio=vhs?'4:3':s.ar;
+      if(s.style){ P.f.h3_style=s.style; if(vhs) P.f.h3_damage=s.dmg }
+      else if(turbo) P.f.h3_turbo='on';
+      if(li){ P.img=[li]; if(le){ if(le===li) P.f.end_image_idx='0'; else { P.img.push(le); P.f.end_image_idx='1' } } }
+      if(la) P.aud=la;
+      P.price=+(s.style ? ld*0.08 : turbo ? ld*(s.vres==='1080P'?0.08:0.04) : ld*(s.vres==='1080P'?0.16:0.08)).toFixed(3);
+      P.det=ld+'s · '+(li?'from the opening frame':'from words alone')+(vhs?' · on a 4:3 tape':'')+' · '+(s.style?'768P':s.vres)+
+        (s.style?' · '+STYLE_NAME[s.style]:turbo?' · Turbo':'')+' · '+(la?'your sound':'sound included');
+      break;
+    case 'camera':
+      var ci=ins.image[0], cd=Math.round(num(s.dur,3,15,5)), mine=s.snd==='mine';
+      if(!ci) need('Wire a still: Camera moves through it.');
+      if(mine && !String(s.snd_text||'').trim()) need('Describe the sound you want, or set Sound to Silent.');
+      P.f={model:'h3cam',mode:'generate',cam_move:s.move,duration:String(cd),resolution:s.res};
+      if(mine) P.f.cam_sound=String(s.snd_text).trim();
+      P.img=ci?[ci]:[];
+      P.price=+(cd*perSec(s.res)).toFixed(3);
+      var mv=''; MOVES.forEach(function(m){ if(m[0]===s.move) mv=m[1] });
+      P.det=mv+' · '+cd+'s · '+s.res+' · '+(mine?'your sound words':'silent');
+      break;
+    case 'talk':
+      var ti=ins.image[0], ta=ins.audio[0], secs=(ta&&ta.src)?+ta.src.secs||0:0, billed=secs?Math.ceil(Math.min(14.8,Math.max(5,secs))):0;
+      if(!ti) need('Wire a face: Talk animates it.');
+      if(!ta) need('Wire what they say: an Audio card.');
+      P.f={model:'h3talk',mode:'generate',resolution:s.res};
+      if(secs) P.f.audio_secs=secs.toFixed(2);
+      if(s.tr) P.f.talk_transcribe='on';
+      P.img=ti?[ti]:[]; if(ta) P.aud=ta;
+      if(billed){ P.price=+(billed*perSec(s.res)).toFixed(3); P.det=billed+'s billed'+(secs>14.8?' · only the first 14.8 s is used':secs<5?' · under 5 s is billed as 5':'')+' · '+s.res }
+      else { P.known=false; P.det='priced by the length of the audio · '+s.res }
+      break;
+    }
+    return P;
+  }
+  // the whole board, upstream first: each node's plan, its signature and its state
+  function evaluate(){
+    PL={};
+    order().forEach(function(n){
+      var K=KINDS[n.kind], e={p:null,sig:'',st:''}; PL[n.id]=e;
+      if(K.group==='notes'){ e.st='note'; return }
+      if(K.group==='sources'){
+        e.st=!n.src ? 'empty' : ((n.kind==='upload'&&!UP[n.src.id])||(n.kind==='audio'&&!AUD[n.src.id])) ? 'readd' : 'ready';
+        e.p={price:0,known:true,why:e.st==='ready'?'':upWhy(n),f:{},img:[],det:''}; return;
+      }
+      var p=plan(n), ins={}; e.p=p;
+      K.ins.forEach(function(pd){ if(!portOff(n,pd.id)) ins[pd.id]=into(n.id,pd.id).map(outId) });
+      // THE SIGNATURE: the request's fields plus what each input hands on. Same signature as
+      // its last run = fresh, and a fresh node is never paid for twice.
+      e.sig=cyrb(JSON.stringify([n.kind,p.f,ins]));
+      if(n.frozen) e.st=(n.ran&&n.ran.url)?'frozen':'frozen-empty';
+      else if(n.ran && n.ran.sig===e.sig) e.st='fresh';
+      else if(p.why) e.st='needs';
+      else e.st=n.ran?'changed':'new';
+    });
+  }
+  function totals(){
+    var t={sum:0,run:[],unknown:[],needs:[]};
+    G.nodes.forEach(function(n){ var e=PL[n.id]; if(!e||KINDS[n.kind].group!=='engines') return;
+      if(e.st==='new'||e.st==='changed'){ if(e.p.known){ t.sum+=e.p.price; t.run.push(n) } else t.unknown.push(n) }
+      else if(e.st==='needs'||e.st==='frozen-empty') t.needs.push(n) });
+    t.sum=+t.sum.toFixed(3); return t;
+  }
+  function paintTotal(){
+    var t=totals(), n=t.run.length+t.unknown.length, h;
+    if(!n) h='nothing to pay';
+    else h='to pay <b>$'+money(t.sum)+'</b> · '+n+' to run'+(t.unknown.length?' · '+t.unknown.map(function(x){return KINDS[x.kind].name}).join(', ')+' priced when '+(t.unknown.length>1?'their inputs exist':'its input exists'):'');
+    if(t.needs.length) h+=' · <span class="warn">'+t.needs.length+' need'+(t.needs.length>1?'':'s')+' something</span>';
+    $('total').innerHTML=h;
+    $('total').title=n ? 'Would run: '+t.run.concat(t.unknown).map(function(x){ return KINDS[x.kind].name+(PL[x.id].p.known?' $'+money(PL[x.id].p.price):'') }).join(', ') : 'Every engine on the board is fresh, frozen or waiting on something.';
+    $('empty-hint').hidden=G.nodes.length>0;
+  }
+
+  /* ---------- geometry ---------- */
+  function toWorld(cx,cy){ var r=$('board').getBoundingClientRect(); return {x:(cx-r.left-pan.x)/zoom, y:(cy-r.top-pan.y)/zoom} }
+  var viewT=null;
+  function applyView(){ $('world').style.transform='translate('+pan.x+'px,'+pan.y+'px) scale('+zoom+')'; $('zoom-lbl').textContent=Math.round(zoom*100)+'%';
+    clearTimeout(viewT); viewT=setTimeout(saveCurrent,400) }
+  function zoomAt(z2,cx,cy){
+    // the point under the cursor stays under the cursor
+    z2=Math.min(2,Math.max(.25,z2)); var r=$('board').getBoundingClientRect(), px=cx-r.left, py=cy-r.top;
+    pan.x=px-(px-pan.x)*(z2/zoom); pan.y=py-(py-pan.y)*(z2/zoom); zoom=z2; applyView();
+  }
+  function fit(){
+    if(!G.nodes.length){ pan={x:80,y:60}; zoom=1; applyView(); return }
+    var r=$('board').getBoundingClientRect(), x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    G.nodes.forEach(function(n){ var el=cardEl(n.id); var w=el?el.offsetWidth:264, h=el?el.offsetHeight:220;
+      x0=Math.min(x0,n.x); y0=Math.min(y0,n.y); x1=Math.max(x1,n.x+w); y1=Math.max(y1,n.y+h) });
+    var z=Math.min(1.25,Math.max(.25,Math.min((r.width-80)/(x1-x0),(r.height-80)/(y1-y0))));
+    zoom=z; pan.x=(r.width-(x1-x0)*z)/2-x0*z; pan.y=(r.height-(y1-y0)*z)/2-y0*z; applyView();
+  }
+
+  /* ---------- cards ---------- */
+  function cardEl(id){ return $('world').querySelector('.card[data-id="'+id+'"]') }
+  function segH(k,label,opts,val,note){
+    return '<div class="ctl"><div class="lab">'+label+(note?'<span>'+note+'</span>':'')+'</div><div class="segs">'+opts.map(function(o){
+      return '<button type="button" data-k="'+k+'" data-v="'+esc(o[0])+'" aria-pressed="'+(o[0]===val)+'">'+esc(o[1])+'</button>' }).join('')+'</div></div>';
+  }
+  function rangeH(k,label,min,max,step,val,unit){
+    return '<div class="ctl"><div class="lab">'+label+' <b><b data-read="'+k+'">'+esc(val)+'</b>'+unit+'</b></div><input type="range" data-k="'+k+'" min="'+min+'" max="'+max+'" step="'+step+'" value="'+esc(val)+'" aria-label="'+label+'"></div>';
+  }
+  function textH(k,label,val,ph,rows,note){
+    return '<div class="ctl"><div class="lab">'+label+(note?'<span>'+note+'</span>':'')+'</div><textarea data-k="'+k+'" rows="'+(rows||3)+'" placeholder="'+esc(ph)+'" aria-label="'+label+'">'+esc(val)+'</textarea></div>';
+  }
+  function lineH(k,label,val,ph){ return '<div class="ctl"><div class="lab">'+label+'</div><input type="text" data-k="'+k+'" value="'+esc(val)+'" placeholder="'+esc(ph)+'" spellcheck="false" aria-label="'+label+'"></div>' }
+  function checkH(k,label,val,extra){ return '<label class="chk"><input type="checkbox" data-k="'+k+'"'+(val?' checked':'')+'><span>'+label+'</span>'+(extra?'<b>'+extra+'</b>':'')+'</label>' }
+  function selH(k,label,opts,val){ return '<div class="ctl"><div class="lab">'+label+'</div><select data-k="'+k+'" aria-label="'+label+'">'+opts.map(function(o){ return '<option value="'+esc(o[0])+'"'+(o[0]===val?' selected':'')+'>'+esc(o[1])+'</option>' }).join('')+'</select></div>' }
+  function arList(list,has){ return has?list:list.filter(function(x){ return x[0]!=='auto' }) }
+  function ctlHTML(n,s){
+    var ins={}; KINDS[n.kind].ins.forEach(function(p){ ins[p.id]=into(n.id,p.id) });
+    var h='', m='';
+    switch(n.kind){
+    case 'image':
+      h+=textH('prompt','Prompt',s.prompt,'What to draw. Krea draws from words alone, and will draw anyone.');
+      h+=segH('ar','Aspect ratio',AR_KREA,s.ar);
+      h+=segH('crea','Creativity',[['raw','Raw'],['low','Low'],['medium','Medium'],['high','High']],s.crea);
+      if(ins.refs.length) h+=rangeH('style_str','Style strength',0.1,1,0.05,s.style_str,'');
+      m+=lineH('seed','Seed',s.seed,'random');
+      break;
+    case 'compose':
+      h+=textH('prompt','Prompt',s.prompt,'How to combine the pictures wired in, or what to make.');
+      h+=segH('res','Resolution',[['2K','2K'],['4K','4K']],s.res,'4K costs double');
+      h+=segH('ar','Aspect ratio',arList(AR_NBP,ins.images.length),(s.ar==='auto'&&!ins.images.length)?'1:1':s.ar);
+      if(ins.images.length===1) h+=checkH('keep_framing','Keep the original framing',s.keep_framing);
+      m+=checkH('web','Let it check the web',s.web,'+$0.015');
+      m+=textH('sysp','System prompt',s.sysp,'e.g. You are a cinematographer. Prefer natural light.',2);
+      m+=lineH('seed','Seed',s.seed,'random');
+      break;
+    case 'design':
+      h+=textH('prompt','Prompt',s.prompt,'The flyer, poster or meme you want.');
+      h+=textH('words','Words on it',s.words,'SUMMER JAM\nFriday 9pm',2,'exactly as typed');
+      h+=segH('quality','Quality',[['low','Low'],['medium','Medium']],s.quality);
+      h+=segH('res','Resolution',[['1K','1K'],['2K','2K']],s.res);
+      h+=segH('ar','Aspect ratio',arList(AR_DESIGN,ins.images.length),(s.ar==='auto'&&!ins.images.length)?'3:4':s.ar);
+      m+=lineH('seed','Seed',s.seed,'random');
+      break;
+    case 'upscale':
+      h+=rangeH('factor','Enlarge by',1,4,0.1,s.factor,'×');
+      h+=selH('model','Model',UPMODELS,s.model);
+      h+=checkH('face','Enhance faces',s.face);
+      m+=rangeH('sharpen','Sharpen',0,1,0.05,s.sharpen,'');
+      m+=rangeH('denoise','Denoise',0,1,0.05,s.denoise,'');
+      m+=rangeH('fixc','Fix compression',0,1,0.05,s.fixc,'');
+      if(s.model==='Redefine'){ m+=textH('up_prompt','Redefine prompt',s.up_prompt,'e.g. restore the brickwork and the sign',2);
+        m+=rangeH('up_crea','Creativity',1,6,1,s.up_crea,''); m+=rangeH('up_tex','Texture',1,5,1,s.up_tex,'') }
+      break;
+    case 'video':
+      h+=textH('prompt','Prompt',s.prompt,'What happens. Kling writes the audio from these words too.');
+      h+=rangeH('dur','Duration',3,15,1,s.dur,' s');
+      h+=checkH('audio','Generate audio',s.audio,'+50%');
+      if(!ins.image.length) h+=segH('ar','Aspect ratio',AR_VID,s.ar);
+      m+=lineH('neg','Keep out',s.neg,'blur, distort, and low quality');
+      break;
+    case 'lite':
+      h+=textH('prompt','Prompt',s.prompt,'What happens. Grok writes the sound cues from these words.');
+      h+=rangeH('dur','Duration',5,15,1,Math.max(5,+s.dur||5),' s');
+      h+=segH('style','Style',STYLES,s.style);
+      if(s.style==='vhs') h+=segH('dmg','Tape damage',[['light','Light'],['medium','Medium'],['heavy','Heavy']],s.dmg);
+      if(!s.style){ h+=segH('eng','Engine',[['max','Max'],['turbo','Turbo']],s.eng,'Turbo is half');
+        h+=segH('vres','Resolution',[['768P','768P'],['1080P','1080P']],s.vres,'1080P costs double') }
+      if(!ins.image.length) h+=(s.style==='vhs') ? segH('ar','Aspect ratio',[['4:3','4:3']],'4:3','a tape is 4:3') : segH('ar','Aspect ratio',AR_LITE,s.ar);
+      break;
+    case 'camera':
+      h+=segH('move','The move',MOVES,s.move);
+      h+=rangeH('dur','Length',3,15,1,s.dur,' s');
+      h+=segH('res','Size',[['480P','480P'],['768P','768P'],['1080P','1080P']],s.res);
+      h+=segH('snd','Sound',[['silent','Silent'],['mine','I’ll describe it']],s.snd);
+      if(s.snd==='mine') h+=lineH('snd_text','What you hear',s.snd_text,'wind through the trees, a distant thunder roll');
+      break;
+    case 'talk':
+      h+=segH('res','Size',[['480P','480P'],['768P','768P'],['1080P','1080P'],['2K','2K']],s.res);
+      h+=checkH('tr','Read my words first',s.tr);
+      break;
+    }
+    m+='<button type="button" class="sm" disabled title="Takes this node\'s settings and pictures to the classic view. It arrives with the Canvas tab in the console.">Open in the classic view · soon</button>';
+    return h+'<details class="more"'+(OPEN[n.id]?' open':'')+'><summary>More</summary><div class="more-in">'+m+'</div></details>';
+  }
+  function picHTML(n){
+    var K=KINDS[n.kind], s=n.src;
+    if(n.kind==='upload'){
+      if(s && UP[s.id]) return '<div class="pic has" data-act="pick" title="Click, or drop a picture here, to replace it"><img alt="" src="'+UP[s.id].ref+'"></div>';
+      return '<div class="pic" data-act="pick">'+(s ? 'Add '+esc(s.name)+' again: uploads are not kept after a reload' : 'Click, or drop a picture here')+'</div>';
+    }
+    if(n.kind==='gallery'){
+      if(s) return '<div class="pic has" data-act="pick" title="Click to pick another"><img alt="" decoding="async" src="'+esc(s.url)+'"></div>';
+      return '<div class="pic" data-act="pick">Click to pick one of your renders</div>';
+    }
+    if(n.kind==='audio'){
+      if(s && AUD[s.id]) return '<div class="pic aud" data-act="pick" title="Click to replace it"><b>'+esc(s.name)+'</b><span>'+(+s.secs).toFixed(1)+' s</span><audio controls preload="none" src="'+AUD[s.id].url+'"></audio></div>';
+      return '<div class="pic" data-act="pick">'+(s ? 'Add '+esc(s.name)+' again: sounds are not kept after a reload' : 'Click, or drop a sound file here (up to 15 MB)')+'</div>';
+    }
+    if(n.ran && n.ran.url) return '<div class="pic has">'+(K.out==='video'
+      ? '<video muted playsinline preload="metadata" src="'+esc(n.ran.url)+'#t=0.1"></video>' : '<img alt="" decoding="async" src="'+esc(n.ran.url)+'">')+'</div>';
+    return '<div class="pic">'+(n.frozen?'frozen with no result':'no result yet')+'</div>';
+  }
+  function paintCard(n){
+    var K=KINDS[n.kind], el=cardEl(n.id), s=S(n);
+    if(!el){ el=document.createElement('div'); el.dataset.id=n.id; $('world').appendChild(el) }
+    el.className='card k-'+n.kind+(K.group==='sources'?' src':'')+(K.group==='notes'?' note':'')+(n.frozen?' frozen':'')+(sel&&sel.node===n.id?' sel':'');
+    el.style.left=n.x+'px'; el.style.top=n.y+'px';
+    var h='<div class="top"><b>'+K.name+'</b><i>'+K.eng+'</i>';
+    if(K.group==='engines') h+='<button class="ic" type="button" data-act="freeze" aria-pressed="'+!!n.frozen+'" aria-label="Freeze" title="'+(n.frozen?'Frozen: it keeps its result and never reruns. Click to unfreeze.':'Freeze: keep this result and never rerun it')+'">'+ICON_FRZ+'</button>';
+    h+='<button class="ic" type="button" data-act="del" aria-label="Delete this card" title="Delete">'+ICON_X+'</button></div>';
+    if(K.group==='notes'){
+      el.innerHTML=h+'<div class="set"><textarea data-k="text" rows="5" placeholder="A note for yourself: what this branch is for, what to try next." aria-label="Note">'+esc(s.text)+'</textarea></div>';
+      measurePorts(n); return;
+    }
+    h+=picHTML(n);
+    if(K.ins.length) h+='<div class="ports">'+K.ins.map(function(p){
+      var off=portOff(n,p.id), cnt=into(n.id,p.id).length;
+      return '<div class="row in'+(off?' off':'')+'" data-port="'+p.id+'"><span class="port in '+p.type+'" data-node="'+n.id+'" data-port="'+p.id+'" data-type="'+p.type+'"></span>'+
+        '<span>'+p.label+'</span>'+(off?'<span class="req">'+off+'</span>':p.req?'<span class="req">required</span>':'')+(p.max>1?'<span class="n">'+cnt+'/'+p.max+'</span>':'')+'</div>';
+    }).join('')+'</div>';
+    if(K.group==='engines') h+='<fieldset class="set"'+(n.frozen?' disabled':'')+'>'+ctlHTML(n,s)+'</fieldset>';
+    h+='<div class="det"></div>';
+    h+='<div class="outrow"><span>'+OUTWORD[K.out]+'</span><span class="port out '+K.out+'" data-node="'+n.id+'" data-port="out" data-type="'+K.out+'"></span></div>';
+    h+='<div class="foot"><span class="price"></span><span class="st"></span></div><div class="why"></div>';
+    el.innerHTML=h;
+    paintState(n);
+    measurePorts(n);
+  }
+  var LBL={'new':'not run','changed':'changed since its run','fresh':'fresh','needs':'needs something','frozen':'frozen','frozen-empty':'frozen, no result'};
+  function paintState(n){
+    var el=cardEl(n.id), e=PL[n.id], K=KINDS[n.kind]; if(!el||!e||K.group==='notes') return;
+    var price=el.querySelector('.price'), st=el.querySelector('.st'), why=el.querySelector('.why'), det=el.querySelector('.det');
+    if(!price) return;
+    if(K.group==='sources'){
+      price.textContent='free';
+      st.className='st '+(e.st==='ready'?'fresh':'new');
+      st.textContent=e.st==='ready' ? (n.kind==='audio' ? (+n.src.secs).toFixed(1)+' s' : (n.src.w&&n.src.h ? n.src.w+'×'+n.src.h : 'ready')) : e.st==='readd' ? 'add it again' : 'empty';
+      why.textContent=''; det.textContent=(n.kind==='gallery'&&n.src&&n.src.engine)?n.src.engine:'';
+      return;
+    }
+    var p=e.p;
+    price.textContent=p.known ? (p.from?'from $':'$')+money(p.price) : 'priced later';
+    st.className='st '+(e.st==='frozen-empty'?'frozen':e.st); st.textContent=LBL[e.st];
+    why.textContent=e.st==='needs' ? p.why : e.st==='frozen-empty' ? 'Frozen before it ever ran: unfreeze it to run it.' : '';
+    det.innerHTML=p.det||'';
+    KINDS[n.kind].ins.forEach(function(pd){ if(pd.max<=1) return; var c=el.querySelector('.row[data-port="'+pd.id+'"] .n'); if(c) c.textContent=into(n.id,pd.id).length+'/'+pd.max });
+  }
+  // each port's centre inside its card, in board units: dragging a card then reads no layout
+  function measurePorts(n){
+    var el=cardEl(n.id); PORTS[n.id]={}; if(!el) return; var c=el.getBoundingClientRect();
+    [].forEach.call(el.querySelectorAll('.port'),function(p){ var r=p.getBoundingClientRect();
+      PORTS[n.id][p.dataset.port]={x:(r.left-c.left+r.width/2)/zoom, y:(r.top-c.top+r.height/2)/zoom} });
+  }
+  function remeasure(){ G.nodes.forEach(measurePorts); paintWires() }
+  function paintAll(){
+    [].forEach.call($('world').querySelectorAll('.card'),function(c){ c.parentNode.removeChild(c) });
+    PORTS={}; evaluate(); G.nodes.forEach(paintCard); paintWires(); applyView(); paintTotal(); $('board-name').value=G.name||''; paintUndo();
+  }
+
+  /* ---------- wires ---------- */
+  function pt(nid,pid){ var n=node(nid), o=PORTS[nid]&&PORTS[nid][pid]; return (n&&o)?{x:n.x+o.x,y:n.y+o.y}:null }
+  function bez(a,b){ var d=Math.max(40,Math.abs(b.x-a.x)*.5); return 'M'+a.x+','+a.y+' C'+(a.x+d)+','+a.y+' '+(b.x-d)+','+b.y+' '+b.x+','+b.y }
+  function paintWires(){
+    var html='';
+    G.edges.forEach(function(e,i){
+      var f=e[0].split(':'), t=e[1].split(':'), a=pt(f[0],f[1]), b=pt(t[0],t[1]); if(!a||!b) return;
+      var type=KINDS[node(f[0]).kind].out, off=portOff(node(t[0]),t[1])?' off':'', s=(sel&&sel.edge===i)?' sel':'';
+      html+='<path class="hit" data-edge="'+i+'" d="'+bez(a,b)+'"></path><path class="'+type+off+s+'" data-edge="'+i+'" d="'+bez(a,b)+'"></path>';
+    });
+    $('wires').innerHTML=html;
+  }
+  function reaches(a,b){          // is there a path from node a down to node b?
+    var seen={}, stack=[a];
+    while(stack.length){ var x=stack.pop(); if(x===b) return true; if(seen[x]) continue; seen[x]=true;
+      G.edges.forEach(function(e){ if(from(e)===x) stack.push(to(e)) }) }
+    return false;
+  }
+  var WORD={image:'pictures',video:'clips',audio:'sound'};
+  function why2wire(fromP,toP){   // '' when this wire may be drawn, else the one sentence that says why not
+    var f=fromP.split(':'), t=toP.split(':'), fn=node(f[0]), tn=node(t[0]);
+    if(!fn||!tn) return 'That node is gone.';
+    if(f[1]!=='out'||!KINDS[fn.kind].out) return 'Wires start at a right-hand port.';
+    var port=portDef(tn.kind,t[1]);
+    if(!port) return KINDS[tn.kind].name+' has no such input.';
+    var type=KINDS[fn.kind].out;
+    if(type!==port.type) return KINDS[tn.kind].name+' takes '+WORD[port.type]+' there, not '+WORD[type]+'.';
+    if(fn.id===tn.id) return 'A node cannot feed itself.';
+    if(reaches(tn.id,fn.id)) return 'That would make a loop: '+KINDS[tn.kind].name+' already feeds '+KINDS[fn.kind].name+'.';
+    var off=portOff(tn,t[1]); if(off) return KINDS[tn.kind].name+' takes no '+port.label+' with a style on.';
+    return '';
+  }
+  function connect(fromP,toP){
+    var why=why2wire(fromP,toP); if(why) return why;
+    if(G.edges.some(function(e){ return e[0]===fromP&&e[1]===toP })) return '';
+    var port=portDef(node(toP.split(':')[0]).kind,toP.split(':')[1]), have=G.edges.filter(function(e){ return e[1]===toP });
+    if(port.max===1 && have.length) G.edges=G.edges.filter(function(e){ return e[1]!==toP });   // one wire in: the new one replaces it
+    else if(have.length>=port.max) return KINDS[node(toP.split(':')[0]).kind].name+' takes at most '+port.max+' '+port.label+'.';
+    G.edges.push([fromP,toP]); changed({repaint:[toP.split(':')[0]]}); return '';
+  }
+  function disconnect(i){ var e=G.edges[i]; if(!e) return; G.edges.splice(i,1); if(sel&&sel.edge!=null) sel=null; changed({repaint:[to(e)]}) }
+
+  /* ---------- nodes ---------- */
+  function add(kind,x,y){
+    if(!KINDS[kind]) throw new Error('no such kind: '+kind);
+    var id='n'+(seq++); while(node(id)) id='n'+(seq++);
+    var placed=x==null; if(placed){ var sp=freeSpot(kind); x=sp.x; y=sp.y }
+    var n={id:id,kind:kind,x:Math.round(x),y:Math.round(y),settings:copy(DEF[kind]||{})};
+    G.nodes.push(n); sel={node:id}; [].forEach.call($('world').querySelectorAll('.card.sel'),function(c){ c.classList.remove('sel') });
+    changed({repaint:[id]});
+    if(placed){ var el=cardEl(id); if(el&&el.offsetHeight>EST[KINDS[kind].group]){   // taller than guessed: place it again by its real size
+      var sp2=freeSpot(kind,el.offsetWidth,el.offsetHeight,id); if(sp2.x!==n.x||sp2.y!==n.y){ n.x=sp2.x; n.y=sp2.y; el.style.left=n.x+'px'; el.style.top=n.y+'px'; paintWires(); LAST=snap(); saveCurrent() } } }   // the same undo step as the add
+    return n;
+  }
+  // a new card goes in the free space nearest the middle of the view, never on top of another
+  var SPIRAL=null, EST={sources:250,engines:470,notes:190};
+  function freeSpot(kind,w,h,skip){
+    var K=KINDS[kind]; w=w||(K.group==='sources'?224:K.group==='notes'?240:264); h=h||EST[K.group];
+    var r=$('board').getBoundingClientRect(),
+        c=toWorld(r.left+r.width/2,r.top+r.height/2), x0=Math.round(c.x-w/2), y0=Math.round(c.y-h/2), gap=28;
+    var rects=G.nodes.filter(function(n){ return n.id!==skip }).map(function(n){ var el=cardEl(n.id); return {x:n.x,y:n.y,w:el?el.offsetWidth:264,h:el?el.offsetHeight:EST[KINDS[n.kind].group]} });
+    if(!SPIRAL){ SPIRAL=[]; for(var i=-40;i<=40;i++) for(var j=-40;j<=40;j++) SPIRAL.push([i*40,j*40]); SPIRAL.sort(function(a,b){ return a[0]*a[0]+a[1]*a[1]-b[0]*b[0]-b[1]*b[1] }) }
+    for(var k=0;k<SPIRAL.length;k++){ var x=x0+SPIRAL[k][0], y=y0+SPIRAL[k][1];
+      if(!rects.some(function(q){ return x<q.x+q.w+gap && x+w+gap>q.x && y<q.y+q.h+gap && y+h+gap>q.y })) return {x:x,y:y} }
+    return {x:x0,y:y0};
+  }
+  function remove(id){
+    var hit=[]; G.edges.forEach(function(e){ if(from(e)===id) hit.push(to(e)) });
+    G.nodes=G.nodes.filter(function(n){ return n.id!==id });
+    G.edges=G.edges.filter(function(e){ return from(e)!==id && to(e)!==id });
+    var el=cardEl(id); if(el) el.parentNode.removeChild(el); delete PORTS[id];
+    if(sel&&sel.node===id) sel=null; if(sel&&sel.edge!=null) sel=null;
+    changed({repaint:hit});
+  }
+  function setSetting(id,k,v){ var n=node(id); if(!n||n.frozen) return; n.settings[k]=v; changed({repaint:[id]}) }
+  function setFrozen(id,on){ var n=node(id); if(!n||KINDS[n.kind].group!=='engines') return; if(on) n.frozen=true; else delete n.frozen; changed({repaint:[id]}) }
+  function setRan(id,ran){ var n=node(id); if(!n) return; if(ran) n.ran=ran; else delete n.ran; changed({repaint:[id]}) }   // day 3 writes this after a run
+
+  /* ---------- every change goes through here: price, state, wires, total, undo, autosave ---------- */
+  var typeT=null;
+  function changed(o){
+    o=o||{};
+    evaluate();
+    (o.repaint||[]).forEach(function(id){ var n=node(id); if(n) paintCard(n) });
+    G.nodes.forEach(paintState);
+    paintWires(); paintTotal();
+    clearTimeout(typeT);
+    if(o.typing) typeT=setTimeout(commit,700); else commit();
+  }
+
+  /* ---------- undo / redo: whole-board snapshots, never the view, never the bytes ---------- */
+  var UNDO=[], REDO=[], LAST='';
+  function snap(){ return JSON.stringify({name:G.name,nodes:G.nodes,edges:G.edges}) }
+  function commit(){ typeT=null; var s=snap(); if(s!==LAST){ UNDO.push(LAST); if(UNDO.length>100) UNDO.shift(); REDO=[]; LAST=s; paintUndo() } saveCurrent() }
+  function flushTyping(){ if(typeT){ clearTimeout(typeT); commit() } }
+  function resetHistory(){ UNDO=[]; REDO=[]; LAST=snap(); paintUndo() }
+  function restore(s){ var j=JSON.parse(s); G={v:1,name:j.name||'',nodes:j.nodes,edges:j.edges}; reseq(); sel=null; paintAll(); saveCurrent() }
+  function undo(){ flushTyping(); if(!UNDO.length) return false; REDO.push(LAST); LAST=UNDO.pop(); restore(LAST); return true }
+  function redo(){ if(!REDO.length) return false; UNDO.push(LAST); LAST=REDO.pop(); restore(LAST); return true }
+  function paintUndo(){ $('undo').disabled=!UNDO.length; $('redo').disabled=!REDO.length }
+  $('undo').addEventListener('click',undo);
+  $('redo').addEventListener('click',redo);
+  function reseq(){ seq=1; G.nodes.forEach(function(n){ var m=/^n(\d+)$/.exec(n.id); if(m) seq=Math.max(seq,+m[1]+1) }) }
+
+  /* ---------- selection and keys ---------- */
+  function select(s){ sel=s; [].forEach.call($('world').querySelectorAll('.card'),function(c){ c.classList.toggle('sel',!!(s&&s.node===c.dataset.id)) }); paintWires() }
+  document.addEventListener('keydown',function(e){
+    if(!$('scr-board').classList.contains('on')) return;
+    if(!$('gal-pick').hidden){ if(e.key==='Escape') closeGallery(); return }
+    var t=e.target, tag=(t&&t.tagName||'').toLowerCase(),
+        typing=tag==='textarea'||tag==='select'||(tag==='input'&&t.type!=='checkbox'&&t.type!=='range');
+    var mod=e.metaKey||e.ctrlKey;
+    if(mod&&(e.key==='z'||e.key==='Z')){ if(typing) return; e.preventDefault(); if(e.shiftKey) redo(); else undo(); return }
+    if(mod&&(e.key==='y'||e.key==='Y')){ if(typing) return; e.preventDefault(); redo(); return }
+    if(typing||mod) return;
+    if((e.key==='Delete'||e.key==='Backspace')&&sel){ e.preventDefault(); if(sel.node!=null) remove(sel.node); else if(sel.edge!=null) disconnect(sel.edge); return }
+    if(e.key==='Escape'){ select(null); closeMenus() }
+    if(e.key==='='||e.key==='+'){ var r=$('board').getBoundingClientRect(); zoomAt(zoom*1.15,r.left+r.width/2,r.top+r.height/2) }
+    if(e.key==='-'){ var r2=$('board').getBoundingClientRect(); zoomAt(zoom/1.15,r2.left+r2.width/2,r2.top+r2.height/2) }
+  });
+
+  /* ---------- pointer: drag a card, draw a wire, pan the board ---------- */
+  var drag=null;   // {kind:'card',id,dx,dy,moved} | {kind:'wire',from,type,path,a} | {kind:'pan',x,y}
+  $('board').addEventListener('pointerdown',function(e){
+    if(e.button!==0) return;
+    if(e.target.closest('.modal')) return;
+    var card=e.target.closest('.card');
+    var port=e.target.closest('.port');
+    if(port){
+      if(!port.classList.contains('out')) return;        // wires are drawn from outputs
+      var path=document.createElementNS('http://www.w3.org/2000/svg','path'); path.setAttribute('class','temp'); $('wires').appendChild(path);
+      drag={kind:'wire',from:port.dataset.node+':out',type:port.dataset.type,path:path,a:pt(port.dataset.node,'out')};
+      $('board').setPointerCapture(e.pointerId); e.preventDefault(); return;
+    }
+    if(card){
+      var n=node(card.dataset.id); if(!n) return;
+      if(!(sel&&sel.node===n.id)) select({node:n.id});
+      // a control keeps its own pointer: typing, sliding, picking, playing
+      if(e.target.closest('button,input,textarea,select,audio,video,summary,label,a')) return;
+      if(e.target.closest('.top')){ var w=toWorld(e.clientX,e.clientY);
+        drag={kind:'card',id:n.id,dx:w.x-n.x,dy:w.y-n.y,moved:false}; $('board').setPointerCapture(e.pointerId); e.preventDefault() }
+      return;
+    }
+    var wire=e.target.closest('path[data-edge]');
+    if(wire){ select({edge:+wire.dataset.edge}); return }
+    closeMenus(); select(null);
+    if(document.activeElement&&document.activeElement.blur) document.activeElement.blur();
+    drag={kind:'pan',x:e.clientX-pan.x,y:e.clientY-pan.y}; $('board').classList.add('panning'); $('board').setPointerCapture(e.pointerId);
+  });
+  $('board').addEventListener('pointermove',function(e){
+    if(!drag) return;
+    if(drag.kind==='pan'){ pan.x=e.clientX-drag.x; pan.y=e.clientY-drag.y; applyView(); return }
+    if(drag.kind==='card'){ var w=toWorld(e.clientX,e.clientY), n=node(drag.id); n.x=Math.round(w.x-drag.dx); n.y=Math.round(w.y-drag.dy); drag.moved=true;
+      var el=cardEl(n.id); el.style.left=n.x+'px'; el.style.top=n.y+'px'; paintWires(); return }
+    if(drag.kind==='wire'){ var b=toWorld(e.clientX,e.clientY); if(drag.a) drag.path.setAttribute('d',bez(drag.a,b));
+      [].forEach.call($('world').querySelectorAll('.port.can'),function(p){ p.classList.remove('can') });
+      var over=document.elementFromPoint(e.clientX,e.clientY), p=over&&over.closest&&over.closest('.port.in');
+      if(p&&!why2wire(drag.from,p.dataset.node+':'+p.dataset.port)) p.classList.add('can') }
+  });
+  function endDrag(e){
+    if(!drag) return;
+    var d=drag; drag=null;
+    if(d.kind==='pan') $('board').classList.remove('panning');
+    if(d.kind==='card'&&d.moved) commit();
+    if(d.kind==='wire'){
+      if(d.path.parentNode) d.path.parentNode.removeChild(d.path);
+      [].forEach.call($('world').querySelectorAll('.port.can'),function(p){ p.classList.remove('can') });
+      var over=document.elementFromPoint(e.clientX,e.clientY), p=over&&over.closest&&over.closest('.port.in');
+      if(p){ var why=connect(d.from,p.dataset.node+':'+p.dataset.port); if(why) toast(why) }
+    }
+  }
+  $('board').addEventListener('pointerup',endDrag);
+  $('board').addEventListener('pointercancel',endDrag);
+  // trackpad: two fingers scroll the board; pinch (ctrlKey) or ⌘ + scroll zooms about the cursor.
+  // Inside a text box or a list, the wheel scrolls that instead.
+  $('board').addEventListener('wheel',function(e){
+    if(!e.ctrlKey&&!e.metaKey&&e.target.closest&&e.target.closest('textarea,select,.modal')) return;
+    e.preventDefault();
+    if(e.ctrlKey||e.metaKey){ zoomAt(zoom*Math.exp(-e.deltaY*0.01),e.clientX,e.clientY); return }
+    pan.x-=e.deltaX; pan.y-=e.deltaY; applyView();
+  },{passive:false});
+  $('zoom-in').addEventListener('click',function(){ var r=$('board').getBoundingClientRect(); zoomAt(zoom*1.2,r.left+r.width/2,r.top+r.height/2) });
+  $('zoom-out').addEventListener('click',function(){ var r=$('board').getBoundingClientRect(); zoomAt(zoom/1.2,r.left+r.width/2,r.top+r.height/2) });
+  $('zoom-fit').addEventListener('click',fit);
+  window.addEventListener('resize',function(){
+    if($('scr-board').classList.contains('on')&&small()) show('scr-small');
+    else if($('scr-small').classList.contains('on')&&pw&&!small()) openBoard();
+  });
+
+  /* ---------- the controls on the cards ---------- */
+  var world=$('world');
+  world.addEventListener('click',function(e){
+    var card=e.target.closest('.card'); if(!card) return; var n=node(card.dataset.id); if(!n) return;
+    var act=e.target.closest('[data-act]');
+    if(act){
+      if(act.dataset.act==='del'){ remove(n.id); return }
+      if(act.dataset.act==='freeze'){ setFrozen(n.id,!n.frozen); return }
+      if(act.dataset.act==='pick'){ if(!e.target.closest('audio')) pick(n); return }
+    }
+    var b=e.target.closest('button[data-k][data-v]');
+    if(b) setSetting(n.id,b.dataset.k,b.dataset.v);
+  });
+  world.addEventListener('input',function(e){
+    var t=e.target, k=t.dataset&&t.dataset.k; if(!k||t.type==='checkbox'||t.tagName==='SELECT') return;
+    var card=t.closest('.card'), n=card&&node(card.dataset.id); if(!n||n.frozen) return;
+    n.settings[k]=t.value;
+    if(t.type==='range'){ var r=card.querySelector('[data-read="'+k+'"]'); if(r) r.textContent=t.value }
+    changed({typing:true});   // price and state follow every keystroke; one undo step per pause
+  });
+  world.addEventListener('change',function(e){
+    var t=e.target, k=t.dataset&&t.dataset.k; if(!k) return;
+    var card=t.closest('.card'), n=card&&node(card.dataset.id); if(!n) return;
+    if(t.type==='checkbox') setSetting(n.id,k,t.checked);
+    else if(t.tagName==='SELECT') setSetting(n.id,k,t.value);
+    else flushTyping();
+  });
+  world.addEventListener('toggle',function(e){   // the "More" fold changes a card's height, so its ports move
+    var d=e.target; if(!d.classList||!d.classList.contains('more')) return;
+    var card=d.closest('.card'), n=card&&node(card.dataset.id); if(!n) return;
+    OPEN[n.id]=d.open; measurePorts(n); paintWires();
+  },true);
+
+  /* ---------- sources: a picture, a sound, one of his renders ---------- */
+  var PICK=null;
+  function pick(n){
+    if(n.kind==='gallery') return openGallery(n.id);
+    PICK=n.id; $(n.kind==='audio'?'aud-file':'up-file').click();
+  }
+  $('up-file').addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0], n=node(PICK); e.target.value=''; if(f&&n) intake(n,f).catch(function(err){ toast(err.message) }) });
+  $('aud-file').addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0], n=node(PICK); e.target.value=''; if(f&&n) intake(n,f).catch(function(err){ toast(err.message) }) });
+  function readImage(file){
+    return new Promise(function(res,rej){
+      var fr=new FileReader();
+      fr.onload=function(){ var im=new Image(); im.onload=function(){ res(im) }; im.onerror=function(){ rej(new Error('That file is not a picture this browser can read.')) }; im.src=fr.result };
+      fr.onerror=function(){ rej(new Error('Could not read that file.')) };
+      fr.readAsDataURL(file);
+    });
+  }
+  function shrink(im){   // the classic view's rule: every source goes up at 2048 on the long edge, JPEG 0.9
+    var w=im.naturalWidth,h=im.naturalHeight,s=Math.min(1,MAXEDGE/Math.max(w,h)),cw=Math.max(1,Math.round(w*s)),ch=Math.max(1,Math.round(h*s));
+    var c=document.createElement('canvas'); c.width=cw; c.height=ch; c.getContext('2d').drawImage(im,0,0,cw,ch);
+    return c.toDataURL('image/jpeg',0.9);
+  }
+  function decodeAudio(buf){
+    return new Promise(function(res){
+      var AC=window.AudioContext||window.webkitAudioContext, ctx; if(!AC) return res(NaN);
+      try{ ctx=new AC() }catch(e){ return res(NaN) }
+      // a decoder that never answers (an odd file, a browser with no audio) must not leave the card waiting forever
+      var t=setTimeout(function(){ done(NaN) },8000);
+      function done(v){ clearTimeout(t); try{ ctx.close() }catch(e){} res(v) }
+      try{ var p=ctx.decodeAudioData(buf.slice(0),function(b){ done(b.duration) },function(){ done(NaN) }); if(p&&p.catch) p.catch(function(){ done(NaN) }) }catch(e){ done(NaN) }
+    });
+  }
+  // A picture's identity is its content: the same file added again after a reload is the same
+  // input, so nothing downstream goes stale and nothing is paid for twice.
+  function intake(n,file){
+    if(n.kind==='upload') return readImage(file).then(function(im){
+      var ref=shrink(im), id=cyrb(ref);
+      UP[id]={file:file,ref:ref,w:im.naturalWidth,h:im.naturalHeight,name:file.name||'picture'};
+      n.src={id:id,name:file.name||'picture',w:im.naturalWidth,h:im.naturalHeight};
+      changed({repaint:[n.id]}); return n.src;
+    });
+    if(n.kind==='audio'){
+      if(file.size>15*1024*1024) return Promise.reject(new Error('That sound file is over 15 MB. Trim it first.'));
+      return file.arrayBuffer().then(function(buf){
+        return decodeAudio(buf).then(function(secs){
+          if(!(secs>0)) throw new Error('That file could not be read as audio. Try an .m4a, .mp3 or .wav.');
+          var id=cyrbBytes(new Uint8Array(buf));
+          if(!AUD[id]) AUD[id]={blob:file,name:file.name||'audio',secs:secs,url:URL.createObjectURL(file)};
+          n.src={id:id,name:file.name||'audio',secs:+secs.toFixed(3)};
+          changed({repaint:[n.id]}); return n.src;
+        });
+      });
+    }
+    return Promise.reject(new Error('Only Upload and Audio take a file.'));
+  }
+  // drop files anywhere: pictures become Upload cards, sounds Audio cards; onto a card, they replace its own
+  function hasFiles(e){ var t=e.dataTransfer&&e.dataTransfer.types; return !!t&&[].indexOf.call(t,'Files')>=0 }
+  $('board').addEventListener('dragover',function(e){ if(!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect='copy'; $('board').classList.add('drop') });
+  $('board').addEventListener('dragleave',function(e){ if(!e.relatedTarget||!$('board').contains(e.relatedTarget)) $('board').classList.remove('drop') });
+  $('board').addEventListener('drop',function(e){
+    if(!hasFiles(e)) return; e.preventDefault(); $('board').classList.remove('drop');
+    var files=[].slice.call(e.dataTransfer.files), w=toWorld(e.clientX,e.clientY), card=e.target.closest&&e.target.closest('.card'), onto=card&&node(card.dataset.id);
+    files.forEach(function(f,i){
+      var img=/^image\//.test(f.type)||/\.(heic|heif)$/i.test(f.name), aud=/^audio\//.test(f.type)||/\.(m4a|mp3|wav|aac)$/i.test(f.name), n=null;
+      if(i===0&&onto&&((onto.kind==='upload'&&img)||(onto.kind==='audio'&&aud))) n=onto;
+      else if(img) n=add('upload',w.x+i*30,w.y+i*30);
+      else if(aud) n=add('audio',w.x+i*30,w.y+i*30);
+      else { toast('That file is neither a picture nor a sound.'); return }
+      intake(n,f).catch(function(err){ toast(err.message) });
+    });
+  });
+
+  /* ---------- the gallery picker: the same list and the same one-hour copy as the classic view ---------- */
+  var GAL=null, GAL_AT=0, GP=null;
+  function galKey(){ return 'rig_gallery2'+((who&&who.user)?':'+who.user:'') }
+  function loadGallery(){
+    if(GAL && Date.now()-GAL_AT<GAL_TTL_MS) return Promise.resolve(GAL);
+    try{ var s=JSON.parse(localStorage.getItem(galKey())||'null');
+      if(s&&Array.isArray(s.items)&&s.t&&Date.now()-s.t<GAL_TTL_MS){ GAL=s.items; GAL_AT=s.t; return Promise.resolve(GAL) } }catch(e){}
+    var f=new FormData(); f.append('action','gallery'); f.append('password',pw);   // one n8n execution, then an hour for nothing
+    return fetch(BASE,{method:'POST',body:f}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json() }).then(function(d){
+      if(!d||!Array.isArray(d.items)) throw new Error('no list');
+      GAL=d.items; GAL_AT=Date.now(); try{ localStorage.setItem(galKey(),JSON.stringify({t:GAL_AT,items:GAL})) }catch(e){}
+      return GAL;
+    });
+  }
+  function openGallery(id){
+    GP=id; $('gal-pick').hidden=false; $('gp-sub').textContent=''; $('gp-grid').innerHTML='<div class="gp-msg">Loading your gallery…</div>';
+    return loadGallery().then(paintGP).catch(function(){ $('gp-grid').innerHTML='<div class="gp-msg">The gallery did not load. <button type="button" id="gp-retry">Try again</button></div>' });
+  }
+  function closeGallery(){ $('gal-pick').hidden=true; GP=null }
+  function paintGP(items){
+    var pics=items.filter(function(it){ return it.gen_type!=='video' }).length;
+    $('gp-sub').textContent=pics+(pics===1?' picture':' pictures');
+    if(!items.length){ $('gp-grid').innerHTML='<div class="gp-msg">Nothing in the gallery yet.</div>'; return }
+    $('gp-grid').innerHTML=items.map(function(it,i){
+      if(it.gen_type==='video') return '<div class="gp-tile clip" title="A clip cannot feed an engine yet">clip<br>'+esc(it.engine||'')+'</div>';
+      return '<button type="button" class="gp-tile" data-i="'+i+'" aria-label="Use this picture"><img alt="" loading="lazy" decoding="async" src="'+esc(it.url)+'"><span>'+esc(it.engine||'')+'</span></button>';
+    }).join('');
+  }
+  $('gp-grid').addEventListener('click',function(e){
+    if(e.target.id==='gp-retry'){ openGallery(GP); return }
+    var b=e.target.closest('button[data-i]'); if(!b||!GAL) return;
+    var it=GAL[+b.dataset.i], n=node(GP); if(!it||!n) return;
+    var sp=it.specs||{};
+    n.src={url:it.url,w:+sp.w||0,h:+sp.h||0,engine:it.engine||''};
+    closeGallery(); changed({repaint:[n.id]});
+    if(!n.src.w){   // a picture whose size the table never recorded is measured once: Upscale prices by it
+      var im=new Image(); im.onload=function(){ if(n.src&&n.src.url===it.url){ n.src.w=im.naturalWidth; n.src.h=im.naturalHeight; changed({repaint:[n.id]}) } }; im.src=it.url;
+    }
+  });
+  $('gp-close').addEventListener('click',closeGallery);
+  $('gal-pick').addEventListener('click',function(e){ if(e.target===$('gal-pick')) closeGallery() });
+
+  /* ---------- add menu ---------- */
+  (function(){
+    var html='', last='', GROUP={sources:'sources',engines:'engines',notes:'for you'};
+    ORDER.forEach(function(k){ var K=KINDS[k]; if(K.group!==last){ html+='<li class="h">'+GROUP[K.group]+'</li>'; last=K.group }
+      html+='<li><button type="button" data-kind="'+k+'">'+K.name+'<small>'+K.eng+(FROM[k]?' · from '+FROM[k]:'')+'</small></button></li>' });
+    $('add-list').innerHTML=html;
+  })();
+  function closeMenus(){ $('add-menu').classList.remove('open'); $('load-menu').classList.remove('open') }
+  $('add-btn').addEventListener('click',function(e){ e.stopPropagation(); $('load-menu').classList.remove('open'); $('add-menu').classList.toggle('open') });
+  $('add-list').addEventListener('click',function(e){ var b=e.target.closest('button[data-kind]'); if(!b) return; closeMenus();
+    var n=add(b.dataset.kind); if(n.kind==='gallery') openGallery(n.id) });
+  document.addEventListener('click',function(e){ if(!e.target.closest('.menu')) closeMenus() });
+
+  /* ---------- save, load, new: JSON only, never pixels ---------- */
+  function userKey(k){ return k+':'+String((who&&who.user)||'') }
+  function exportBoard(){ return copy({v:1,name:G.name,nodes:G.nodes,edges:G.edges,view:{pan:pan,zoom:zoom}}) }
+  function clean(j){   // a board from storage or a file: keep what makes sense, drop the rest
+    if(!j||j.v!==1||!Array.isArray(j.nodes)||!Array.isArray(j.edges)) throw new Error('That is not a board.');
+    var nodes=[], ids={};
+    j.nodes.forEach(function(n){ if(!n||!KINDS[n.kind]||ids[n.id]) return; var id=String(n.id); ids[id]=true;
+      var o={id:id,kind:n.kind,x:+n.x||0,y:+n.y||0,settings:(n.settings&&typeof n.settings==='object')?n.settings:copy(DEF[n.kind]||{})};
+      if(n.src&&typeof n.src==='object') o.src=n.src; if(n.ran&&typeof n.ran==='object') o.ran=n.ran; if(n.frozen&&KINDS[n.kind].group==='engines') o.frozen=true;
+      nodes.push(o) });
+    var old=G; G={v:1,name:'',nodes:nodes,edges:[]}; var edges=[];
+    j.edges.forEach(function(e){ if(!Array.isArray(e)||e.length!==2) return; var f=String(e[0]), t=String(e[1]);
+      var why=why2wire(f,t); if(why&&why.indexOf('with a style')<0) return;
+      var port=portDef(node(t.split(':')[0]).kind,t.split(':')[1]);
+      if(edges.some(function(x){ return x[0]===f&&x[1]===t })) return;
+      if(edges.filter(function(x){ return x[1]===t }).length>=port.max) return;
+      edges.push([f,t]); G.edges=edges });
+    G=old;
+    return {name:String(j.name||''),nodes:nodes,edges:edges};
+  }
+  function importBoard(j,keepView){
+    var c=clean(j);
+    G={v:1,name:c.name,nodes:c.nodes,edges:c.edges}; reseq(); sel=null;
+    if(!keepView&&j.view&&j.view.pan){ pan={x:+j.view.pan.x||0,y:+j.view.pan.y||0}; zoom=Math.min(2,Math.max(.25,+j.view.zoom||1)) }
+    paintAll();
+  }
+  function saveCurrent(){ try{ localStorage.setItem(userKey(K_CUR),JSON.stringify(exportBoard())) }catch(e){} }
+  function loadCurrent(){ try{ var r=localStorage.getItem(userKey(K_CUR)); if(r) importBoard(JSON.parse(r)) }catch(e){ G={v:1,name:'',nodes:[],edges:[]} } }
+  function boards(){ try{ return JSON.parse(localStorage.getItem(userKey(K_BOARDS))||'{}')||{} }catch(e){ return {} } }
+  $('board-name').addEventListener('input',function(){ G.name=$('board-name').value.trim(); clearTimeout(typeT); typeT=setTimeout(commit,700) });
+  $('save-btn').addEventListener('click',function(){
+    var name=$('board-name').value.trim(); if(!name){ toast('Give the board a name first.'); $('board-name').focus(); return }
+    G.name=name; flushTyping(); var all=boards(); all[name]=exportBoard();
+    try{ localStorage.setItem(userKey(K_BOARDS),JSON.stringify(all)); chip('Saved "'+name+'"','ok'); toast('Saved. Boards live in this browser for now.') }
+    catch(e){ toast('Could not save: '+e.message) }
+  });
+  function paintLoad(){
+    var all=boards(), names=Object.keys(all).sort(), html='';
+    if(!names.length) html='<li class="h">no saved boards</li>';
+    names.forEach(function(n){ var q=esc(n); html+='<li><button type="button" data-name="'+q+'">'+q+'<small>'+((all[n].nodes||[]).length)+' cards</small></button>'+
+      '<button type="button" class="x" data-drop="'+q+'" aria-label="Delete the saved board '+q+'" title="Delete this saved board">'+ICON_X+'</button></li>' });
+    $('load-list').innerHTML=html;
+  }
+  $('load-btn').addEventListener('click',function(e){ e.stopPropagation(); $('add-menu').classList.remove('open'); paintLoad(); $('load-menu').classList.toggle('open') });
+  $('load-list').addEventListener('click',function(e){
+    e.stopPropagation();
+    var d=e.target.closest('button[data-drop]');
+    if(d){ var nm=d.dataset.drop; if(!confirm('Delete the saved board "'+nm+'"? The board on screen stays.')) return;
+      var all=boards(); delete all[nm]; try{ localStorage.setItem(userKey(K_BOARDS),JSON.stringify(all)) }catch(err){} paintLoad(); return }
+    var b=e.target.closest('button[data-name]'); if(!b) return; closeMenus();
+    try{ flushTyping(); importBoard(boards()[b.dataset.name]); commit(); chip('Loaded "'+b.dataset.name+'"','ok') }catch(err){ toast(err.message) }
+  });
+  // New is one undo step: ⌘Z brings the old board back
+  $('new-btn').addEventListener('click',function(){ flushTyping(); G={v:1,name:'',nodes:[],edges:[]}; sel=null; seq=1; pan={x:80,y:60}; zoom=1; paintAll(); commit(); chip('New board') });
+
+  /* ---------- test hooks: the harness drives the board through these, never through fake events ---------- */
+  window.RigCanvas={add:add,remove:remove,connect:connect,disconnect:disconnect,select:select,fit:fit,zoomAt:zoomAt,
+    set:setSetting,freeze:setFrozen,setRan:setRan,intake:function(id,f){ return intake(node(id),f) },undo:undo,redo:redo,
+    exportBoard:exportBoard,importBoard:importBoard,openGallery:openGallery,
+    order:function(){ return order().map(function(n){ return n.id }) },
+    info:function(id){ var e=PL[id]; if(!e) return null; var p=e.p||{};
+      return {st:e.st,sig:e.sig,price:p.price,known:p.known,from:p.from,why:p.why,f:p.f,img:(p.img||[]).map(function(n){ return n.id }),aud:p.aud?p.aud.id:null} },
+    totals:function(){ var t=totals(), ids=function(a){ return a.map(function(n){ return n.id }) }; return {sum:t.sum,run:ids(t.run),unknown:ids(t.unknown),needs:ids(t.needs)} },
+    state:function(){ return {nodes:G.nodes.map(function(n){ return {id:n.id,kind:n.kind,x:n.x,y:n.y} }),edges:G.edges.slice(),pan:{x:pan.x,y:pan.y},zoom:zoom,sel:sel,undo:UNDO.length,redo:REDO.length} },
+    kinds:KINDS};
+
+  /* ---------- resume: the classic page's unlock serves this tab too ---------- */
+  var saved=readPw();
+  if(saved&&saved.guest===false){ enter(saved.v,{guest:false,user:saved.user}) }
+  else if(saved&&saved.v){ auth(saved.v).then(function(b){ enter(saved.v,b) }).catch(function(){ show('scr-login') }) }
+  else { show('scr-login'); setTimeout(function(){ $('pw').focus() },300) }
+})();
+</script>
+</body>
+</html>
