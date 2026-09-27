@@ -19,6 +19,7 @@
 #   ./test/run.sh type       words set in the browser: baked at native size, nothing spent
 #   ./test/run.sh look       the look menu: auto sends nothing, Design gets the grade only
 #   ./test/run.sh tape       the rail marquee: pitch, seam, direction, speed
+#   ./test/run.sh handoff    from the Canvas: a node lands in the console (mode, pictures, settings, price)
 #   ./test/run.sh shots      write previews to test/build/*.png
 #
 # Every harness is REGENERATED from the current index.html on every run. Never
@@ -416,6 +417,22 @@ if [ "$WHAT" = all ] || [ "$WHAT" = type ]; then
     [ "$f" != 0 ] && { echo "  webkit ${1}x${2}"; printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
   done
   echo "  -> $tp pass / $tf fail"; PASS=$((PASS+tp)); FAIL=$((FAIL+tf))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = handoff ]; then
+  build "$INJ/handoff.txt" "$B/ho.html"
+  line; echo "HANDOFF  (from the Canvas: the mode, the pictures, every setting, the price; owner only; links)"
+  hp=0; hf=0
+  hc(){ R="$1"; p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    [ "$p" = 0 ] && { f=$((f+1)); R="${R}FAIL  no assertions ran"; }
+    hp=$((hp+p)); hf=$((hf+f)); printf '  %-24s %3s pass / %s fail\n' "$2" "$p" "$f"
+    [ "$f" != 0 ] && printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  for c in compose lite vhs upscale video none; do hc "$(title 2026 1037 "file://$B/ho.html?case=$c" 12000)" "chromium $c"; done
+  hc "$(title 2026 1037 "file://$B/ho.html?guest=1" 6000)" "chromium guest"
+  hc "$(title 393 852 "file://$B/ho.html?case=compose" 12000)" "chromium phone"
+  hc "$(node "$ROOT/test/webkit.js" "$B/ho.html?case=compose" 2026 1037 2)" "webkit compose"
+  hc "$(node "$ROOT/test/webkit.js" "$B/ho.html?case=lite" 1440 900 2)" "webkit lite"
+  echo "  -> $hp pass / $hf fail"; PASS=$((PASS+hp)); FAIL=$((FAIL+hf))
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = tape ]; then

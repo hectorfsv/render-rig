@@ -1,0 +1,89 @@
+<script>
+/* FROM THE CANVAS (2026-09-27). A node left in sessionStorage by canvas.html lands in the console: the mode,
+   the pictures, every setting, the price. ?case=compose|lite|upscale · ?guest=1 the links stay hidden and the
+   handoff is refused · a narrow window hides the links. Nothing is sent. */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search), $=function(i){ return document.getElementById(i) };
+  function ok(c,label,got){ out.push((c?'PASS':'FAIL')+'  '+label+(c||got===undefined?'':'  got '+got)) }
+  function finish(){ document.title=S+out.join(' ')+' [done]'+S }
+  function png(w,h,c){ var cv=document.createElement('canvas'); cv.width=w; cv.height=h; var x=cv.getContext('2d'); x.fillStyle=c; x.fillRect(0,0,w,h); return cv.toDataURL('image/png') }
+  var GUEST=q.get('guest')==='1', CASE=q.get('case')||'compose', SENT=0, realFetch=window.fetch;
+  window.fetch=function(u,o){
+    if(typeof u==='string'&&/^data:/.test(u)) return realFetch(u,o);
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve(GUEST?{guest:true,user:'amy',balance:5}:{guest:false,user:'hector',balance:12}) }});
+    if(a==='generate') SENT++;
+    return Promise.reject(new Error('harness: no network'));
+  };
+  try{ sessionStorage.removeItem('rig_pw') }catch(e){}
+  var H={compose:{v:1,mode:'compose',settings:{prompt:'both on a beach',res:'4K',ar:'auto',web:true,keep_framing:true,sysp:'',seed:'4242'},images:[{url:png(64,36,'#a33'),w:2048,h:1152},{data:png(300,200,'#48c'),w:300,h:200,name:'me.png'}],end:null,at:Date.now(),from:'canvas'},
+         lite:{v:1,mode:'lite',settings:{prompt:'loop',dur:'8',style:'',dmg:'medium',eng:'turbo',vres:'768P',ar:'16:9'},images:[{url:png(64,36,'#3a6'),w:1200,h:800}],end:0,at:Date.now(),from:'canvas'},
+         vhs:{v:1,mode:'lite',settings:{prompt:'tape',dur:'8',style:'vhs',dmg:'heavy',eng:'max',vres:'768P',ar:'16:9'},images:[{url:png(64,36,'#3a6'),w:1200,h:800}],end:null,at:Date.now(),from:'canvas'},
+         upscale:{v:1,mode:'upscale',settings:{factor:'3',model:'High Fidelity V2',face:false,sharpen:'0.3',denoise:'0',fixc:'0'},images:[{url:png(64,36,'#66a'),w:2048,h:1152}],end:null,at:Date.now(),from:'canvas'},
+         video:{v:1,mode:'video',settings:{prompt:'he walks in',dur:'7',audio:true,ar:'9:16',neg:'blur'},images:[],end:null,at:Date.now(),from:'canvas'}}[CASE];
+  if(H) try{ sessionStorage.setItem('rig_handoff',JSON.stringify(H)) }catch(e){}
+  function pressed(id){ var b=$(id)&&$(id).querySelector('button[aria-pressed="true"]'); return b?b.dataset.v:null }
+  function vis(id){ var e=$(id); return !!e && !e.hidden && getComputedStyle(e).display!=='none' }
+  $('pw').value='x'; $('unlock').click();
+  setTimeout(function(){
+    if(GUEST){
+      ok($('scr-hub').classList.contains('on'),'a guest lands on the hub');
+      ok(!vis('canvas-btn')&&!vis('hub-canvas'),'…with no Canvas link anywhere');
+      ok(!$('scr-console').classList.contains('on')&&!sessionStorage.getItem('rig_handoff'),'…the handoff is refused and dropped');
+      finish(); return;
+    }
+    if(CASE==='none'){ ok($('scr-hub').classList.contains('on'),'no handoff: the owner lands on the hub'); ok(vis('hub-canvas')&&vis('canvas-btn'),'…with Open the Canvas on the hub and Canvas in the header'); finish(); return }
+    if(innerWidth<1040){
+      ok(!vis('canvas-btn')&&!vis('hub-canvas'),'on a narrow screen the Canvas links stay hidden (the board is desktop-only)');
+    } else {
+      ok(vis('hub-canvas')&&/canvas\.html$/.test($('hub-canvas').getAttribute('href')),'the owner sees Open the Canvas on the hub');
+      ok(vis('canvas-btn'),'…and a Canvas link in the header');
+    }
+    ok(!sessionStorage.getItem('rig_handoff'),'the handoff key is taken and removed');
+    ok($('scr-console').classList.contains('on'),'the console opens straight away');
+    ok(pressed('seg-type')===H.mode,'…on the right mode',pressed('seg-type'));
+    // the tray settles (a URL picture loads back), then the settings go on
+    var tries=0, t=setInterval(function(){
+      var want=H.images.length; if(($('src-count').textContent!==String(want) || $('chip').textContent!=='From the Canvas') && ++tries<60) return;
+      clearInterval(t);
+      ok($('src-count').textContent===String(want),'the pictures are in the tray ('+want+')',$('src-count').textContent);
+      ok($('chip').textContent==='From the Canvas','the chip says where it came from',$('chip').textContent);
+      ok($('prompt').value===(H.settings.prompt||''),'the prompt is in',$('prompt').value);
+      if(CASE==='compose'){
+        ok(pressed('seg-res')==='4K','Compose at 4K',pressed('seg-res'));
+        ok(pressed('seg-ar')==='auto','…ratio Auto (two pictures)',pressed('seg-ar'));
+        ok($('websearch').checked,'…web search on');
+        ok($('seed').value==='4242','…the seed',$('seed').value);
+        ok($('cost').textContent==='$0.315','…priced $0.315 (4K + web)',$('cost').textContent);
+        ok($('row-framing').hidden,'…no framing question with two pictures');
+      }
+      if(CASE==='lite'){
+        ok(pressed('seg-h3eng')==='turbo'&&pressed('seg-h3style')==='','Turbo, no style',pressed('seg-h3eng')+'/'+pressed('seg-h3style'));
+        ok($('dur').value==='8','…8 seconds',$('dur').value);
+        ok($('end-img').value==='0','…ending on the opening frame',$('end-img').value);
+        ok($('row-ar').hidden,'…the ratio row is gone (a frame)');
+        ok($('cost').textContent==='$0.32','…priced $0.32 (Turbo 768P)',$('cost').textContent);
+      }
+      if(CASE==='vhs'){
+        ok(pressed('seg-h3style')==='vhs'&&pressed('seg-h3dmg')==='heavy','VHS, heavy tape',pressed('seg-h3style')+'/'+pressed('seg-h3dmg'));
+        ok($('row-endimg').hidden,'…no end frame with a style (the console hides it, the canvas never sends one)');
+        ok($('cost').textContent==='$0.64','…priced $0.64',$('cost').textContent);
+      }
+      if(CASE==='upscale'){
+        ok($('upf').value==='3'&&$('upmodel').value==='High Fidelity V2','3× High Fidelity',$('upf').value+' '+$('upmodel').value);
+        ok(!$('face').checked,'…faces off');
+        ok($('sharp').value==='0.3','…sharpen 0.3',$('sharp').value);
+        ok($('cost').textContent==='$0.08','…priced by the picture that comes out: $0.08 (21.2 MP)',$('cost').textContent);
+      }
+      if(CASE==='video'){
+        ok($('dur').value==='7'&&$('audio').checked,'7 s with audio',$('dur').value);
+        ok(pressed('seg-ar')==='9:16','…9:16 (no frame, so the ratio shows)',pressed('seg-ar'));
+        ok($('neg').value==='blur','…the keep-out words',$('neg').value);
+        ok($('cost').textContent==='$1.176','…priced $1.176',$('cost').textContent);
+      }
+      ok(SENT===0,'nothing was sent');
+      finish();
+    },100);
+  },120);
+})();
+</script>

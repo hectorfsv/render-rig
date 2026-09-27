@@ -311,6 +311,9 @@ body.wide .cards{grid-template-columns:repeat(6,minmax(0,1fr));max-width:2340px}
 .card .from{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--ink)}
 .card .wait{font-family:var(--disp);font-size:11px;color:var(--ink-faint)}
 .hub-foot{margin-top:18px;display:flex;justify-content:center}
+/* THE CANVAS (2026-09-27): the board is Hector's and desktop-only, so its links show only to the owner on a wide screen */
+#canvas-btn,#hub-canvas{text-decoration:none}
+body:not(.wide) #canvas-btn,body:not(.wide) #hub-canvas{display:none!important}
 
 /* ---------- THE CONSOLE ---------- */
 .console{display:none;padding:14px;--chrome:calc(96px + env(safe-area-inset-top) + env(safe-area-inset-bottom))}
@@ -1264,6 +1267,7 @@ body.wide:not(.typing) .console.director.inline-set #row-sound{margin-top:calc(1
       <div class="mark"><b>Render Rig</b><i>fal.ai</i></div>
       <div class="head-r">
         <button class="gbtn" id="menu-btn" type="button" hidden>Menu</button>
+        <a class="gbtn" id="canvas-btn" href="next/canvas.html" hidden title="The board: the engines as nodes, wired together">Canvas</a>
         <button class="gbtn" id="guide-btn" type="button" hidden>Guide</button>
         <div class="chip" id="chip">Locked</div>
       </div>
@@ -1349,6 +1353,7 @@ body.wide:not(.typing) .console.director.inline-set #row-sound{margin-top:calc(1
         <div class="hub-foot" style="gap:10px">
           <button class="go ghost sm" id="hub-guide" type="button" style="max-width:280px">Read the guide first</button>
           <button class="go ghost sm" id="hub-gallery" type="button" style="max-width:280px">See what it makes</button>
+          <a class="go ghost sm" id="hub-canvas" href="next/canvas.html" style="max-width:280px" hidden>Open the Canvas</a>
         </div>
         <div class="mascot hub-strip" id="hub-strip" aria-hidden="true" hidden></div>
         </div>
@@ -2990,7 +2995,7 @@ window.RigMascot=(function(){
   }
   function lockOut(){
     pw='';clearPw();who=null;credit=null;applyGuest();
-    show('scr-login');chip('Locked');$('guide-btn').hidden=true;
+    show('scr-login');chip('Locked');$('guide-btn').hidden=true;$('canvas-btn').hidden=$('hub-canvas').hidden=true;
     document.body.classList.remove('authed');
     fail('Session expired. Enter the passphrase again.');
   }
@@ -3002,6 +3007,55 @@ window.RigMascot=(function(){
     resumeJob();
     loadCredit();
     if(window.RigMascot) RigMascot.start();
+    $('canvas-btn').hidden=$('hub-canvas').hidden=!isOwner();   // the owner's links, now that the page is in
+    takeHandoff();
+  }
+
+  /* ---------- FROM THE CANVAS (2026-09-27) ----------
+     canvas.html's "Open in the classic view" leaves a node in sessionStorage (`rig_handoff`: its mode, its
+     settings under the canvas's names, its pictures as fal URLs or an upload's shrunk bytes, an end-frame index)
+     and comes here in the same tab. The hub's own card click sets the mode; the pictures go into the tray
+     through addUrl/addFiles like any other; then every setting lands on the control it belongs to, the same
+     way a hand would set it, so every hint, price and hidden row follows. Owner only; the key is removed first. */
+  var K_HANDOFF='rig_handoff';
+  function takeHandoff(){
+    var h=null; try{ h=JSON.parse(sessionStorage.getItem(K_HANDOFF)||'null'); sessionStorage.removeItem(K_HANDOFF) }catch(e){ h=null }
+    if(!h||h.v!==1||!h.mode||!isOwner()) return false;
+    var card=document.querySelector('.cards .card[data-go="'+h.mode+'"]'); if(!card) return false;
+    card.click();
+    var s=h.settings||{};
+    function segv(id,v){ var b=$(id)&&$(id).querySelector('button[data-v="'+String(v)+'"]'); if(b&&b.getAttribute('aria-pressed')!=='true') b.click() }
+    function val(id,v){ var e=$(id); if(!e||v==null) return; e.value=String(v); e.dispatchEvent(new Event('input',{bubbles:true})); e.dispatchEvent(new Event('change',{bubbles:true})) }
+    function chk(id,on){ var e=$(id); if(e&&e.checked!==!!on) e.click() }
+    (h.images||[]).forEach(function(im){
+      if(im.url) addUrl(im.url,im.w,im.h);
+      else if(im.data){ try{ addFiles([new File([dataUrlToBlob(im.data)],im.name||'picture.jpg',{type:'image/jpeg'})]) }catch(e){} }
+    });
+    // the settings go on once the tray is settled: several rows depend on it (the ratio goes with a frame, framing asks with one source)
+    var tries=0, t=setInterval(function(){
+      if(SRC.some(function(x){ return x.loading }) && ++tries<100) return;
+      clearInterval(t); apply();
+    },100);
+    function apply(){
+      if(s.prompt!=null) val('prompt',s.prompt);
+      switch(h.mode){
+        case 'image':   segv('seg-crea',s.crea); if(s.ar) segv('seg-ar',s.ar); if(SRC.length){ chk('use-style',true); val('style-str',s.style_str) } val('seed',s.seed); break;
+        case 'compose': segv('seg-res',s.res); if(s.ar) segv('seg-ar',s.ar); if(SRC.length===1) chk('keep-framing',s.keep_framing!==false); chk('websearch',!!s.web); val('sysp',s.sysp); val('seed',s.seed); break;
+        case 'design':  val('exact-text',s.words); segv('seg-quality',s.quality); segv('seg-res',s.res); if(s.ar) segv('seg-ar',s.ar); break;
+        case 'upscale': val('upf',s.factor); val('upmodel',s.model); chk('face',s.face!==false); val('sharp',s.sharpen); val('denoise',s.denoise); val('fixc',s.fixc);
+                        if(s.model==='Redefine'){ val('up-prompt',s.up_prompt); val('up-crea',s.up_crea); val('up-tex',s.up_tex) } break;
+        case 'video':   val('dur',s.dur); chk('audio',!!s.audio); if(!SRC.length&&s.ar) segv('seg-ar',s.ar); val('neg',s.neg); break;
+        case 'lite':    val('dur',s.dur); segv('seg-h3style',s.style||''); if(s.style==='vhs') segv('seg-h3dmg',s.dmg);
+                        if(!s.style){ segv('seg-h3eng',s.eng||'max'); segv('seg-vres',s.vres) } if(!SRC.length&&s.ar) segv('seg-ar',s.ar); if(h.audio) segv('seg-sound','mine'); break;
+        case 'camera':  segv('seg-cam',s.move); val('cam-dur',s.dur); segv('seg-camres',s.res); segv('seg-camsnd',s.snd); if(s.snd==='mine') val('cam-snd',s.snd_text); break;
+        case 'talk':    segv('seg-talkres',s.res); chk('talk-tr',!!s.tr); break;
+      }
+      if(h.end!=null && !$('row-endimg').hidden) val('end-img',String(h.end));
+      syncMode(); paintCost();
+      chip('From the Canvas','ok');
+      if(h.audio) genErr('Your sound file did not come along from the Canvas: add it again here.');
+    }
+    return true;
   }
 
   /* ---------- credit ----------
@@ -3085,6 +3139,7 @@ window.RigMascot=(function(){
     var g=!!(who&&who.guest);
     document.body.classList.toggle('guest', g);
     document.body.classList.toggle('owner', !!(who && who.guest===false));   // only a confirmed owner
+    $('canvas-btn').hidden=$('hub-canvas').hidden=!(who && who.guest===false && document.body.classList.contains('authed'));
     var w=$('welcome');
     if(w){
       w.hidden=!g;
