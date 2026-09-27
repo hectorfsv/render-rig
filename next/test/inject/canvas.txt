@@ -80,15 +80,15 @@
 
   function run(){
     /* ---------- kinds ---------- */
-    eq(document.querySelectorAll('#add-list button[data-kind]').length,12,'the Add menu lists 12 kinds (3 sources, 8 engines, a note)');
+    eq(document.querySelectorAll('#add-list button[data-kind]').length,13,'the Add menu lists 13 kinds (4 sources with the Prompt card, 8 engines, a note)');
     ok(!$('run-all').disabled,'Run all is live (day 3)');
     ok(!$('empty-hint').hidden,'an empty board says how to start');
-    var N={}; ['upload','gallery','audio','image','compose','design','upscale','video','lite','camera','talk','note'].forEach(function(k){ N[k]=R.add(k).id });
-    eq(document.querySelectorAll('#world .card').length,12,'one card per kind');
+    var N={}; ['upload','gallery','audio','prompt','image','compose','design','upscale','video','lite','camera','talk','note'].forEach(function(k){ N[k]=R.add(k).id });
+    eq(document.querySelectorAll('#world .card').length,13,'one card per kind');
     ok($('empty-hint').hidden,'the hint goes once there is a card');
     (function(){ var cs=[].slice.call(document.querySelectorAll('#world .card')).map(function(c){ return c.getBoundingClientRect() }), hit=0;
       for(var i=0;i<cs.length;i++) for(var j=i+1;j<cs.length;j++){ var a=cs[i], b=cs[j]; if(a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top) hit++ }
-      eq(hit,0,'twelve cards added from the menu land without covering each other') })();
+      eq(hit,0,'thirteen cards added from the menu land without covering each other') })();
     eq(card(N.note).querySelectorAll('.port').length,0,'a note has no ports');
     eq(card(N.image).querySelector('.foot .price').textContent,'$0.06','Image shows its price on the card');
 
@@ -538,7 +538,82 @@
         var h2=R.handoff(l);
         ok(h2.images.length===2&&/^data:image\/png/.test(h2.images[0].url)&&h2.end===1&&h2.settings.eng==='turbo','a clip node hands over its opening frame (a result) and its end frame, Turbo kept',JSON.stringify([h2.images.length,h2.end,h2.settings.eng]));
       });
-    }).then(function(){ R.fast(false) });
+    }).then(function(){ step('prompt'); return promptCard() }).then(function(){ R.fast(false) });
+  }
+
+  function promptCard(){
+    /* ---------- canvas v2: the shared Prompt card ---------- */
+    var WORDS='Kratos, bald, grey beard, red war paint over the left eye';
+    R.importBoard({v:1,name:'',nodes:[
+      {id:'p1',kind:'prompt',x:0,y:0,settings:{text:WORDS}},
+      {id:'i1',kind:'image',x:320,y:0,settings:{prompt:'',ar:'16:9',crea:'low'}},
+      {id:'c1',kind:'compose',x:320,y:460,settings:{prompt:'in the arena at dusk',res:'2K',ar:'1:1'}},
+      {id:'v1',kind:'video',x:660,y:0,settings:{prompt:'',dur:'5'}},
+      {id:'k1',kind:'camera',x:660,y:460},
+      {id:'d1',kind:'design',x:1000,y:0,settings:{prompt:'a poster'}}],
+      edges:[]});
+    ok(!!document.querySelector('#add-list button[data-kind="prompt"]'),'the Add menu offers a Prompt card');
+    ok(card('p1').querySelector('.port.out.text')&&!card('p1').querySelector('.port.in'),'a Prompt card has one output, words, and no input');
+    ok(!card('p1').querySelector('[data-act="run"]')&&card('p1').querySelector('.foot .price').textContent==='free','…no Run button, and it is free');
+    eq(card('p1').querySelector('.st').textContent,'11 words','…it counts its words');
+    ok(card('i1').querySelector('.port.in.text[data-port="prompt"]')&&card('v1').querySelector('.port.in.text[data-port="prompt"]')&&card('d1').querySelector('.port.in.text[data-port="prompt"]'),'Image, Video and Design have a prompt input');
+    ok(!card('k1').querySelector('[data-port="prompt"]'),'…Camera has none (it takes no words)');
+    // wiring and refusals
+    eq(R.connect('p1:out','i1:prompt'),'','the card wires into Image\'s prompt');
+    eq(R.connect('p1:out','c1:prompt'),'','…and into Compose\'s');
+    eq(R.connect('p1:out','v1:prompt'),'','…and into Video\'s (one card feeds many)');
+    var w=R.connect('p1:out','c1:images'); ok(/takes pictures there, not words/.test(w),'words into a picture port are refused with a sentence',w);
+    w=R.connect('p1:out','k1:image'); ok(/not words/.test(w),'…Camera\'s still takes no words',w);
+    w=R.connect('i1:out','c1:prompt'); ok(/takes words there, not pictures/.test(w),'a picture into a prompt port is refused',w);
+    ok(document.querySelector('#wires path.text:not(.hit)'),'the words wire is drawn in its own colour');
+    eq(card('p1').querySelector('.det').textContent,'feeds 3 engines','the card says how many engines it feeds');
+    // the combined prompt
+    eq(R.info('i1').f.prompt,WORDS,'Image\'s prompt is the card\'s words (its own box is empty)');
+    eq(R.info('c1').f.prompt,WORDS+'\n'+'in the arena at dusk','Compose: the card\'s words, then its own on a new line');
+    eq(R.info('v1').f.prompt,WORDS,'Video reads the same words');
+    ok(/Extra words/.test(card('c1').querySelector('textarea[data-k="prompt"]').closest('.ctl').textContent),'a wired engine\'s box is renamed Extra words');
+    ok(/^Prompt/.test(card('d1').querySelector('textarea[data-k="prompt"]').closest('.ctl').querySelector('.lab').textContent),'…an unwired one keeps Prompt');
+    eq(R.info('i1').price,0.06,'words change no price');
+    eq([st('i1'),st('c1'),st('v1')],['new','new','new'],'all three are to run');
+    // never pay twice: the card's words are part of each engine's signature
+    R.setRan('i1',{sig:R.info('i1').sig,url:png(32,32,'#48c')+'#pi',w:1024,h:1024,price:0.06,at:Date.now()});
+    R.setRan('c1',{sig:R.info('c1').sig,url:png(32,32,'#4c8')+'#pc',w:1024,h:1024,price:0.15,at:Date.now()});
+    eq([st('i1'),st('c1')],['fresh','fresh'],'after a run both are fresh');
+    R.set('p1','text',WORDS+', snow falling');
+    eq([st('i1'),st('c1'),st('v1')],['changed','changed','new'],'change the card: every engine it feeds goes stale');
+    R.set('p1','text',WORDS); eq([st('i1'),st('c1')],['fresh','fresh'],'…the old words back: fresh again (content, not history)');
+    R.undo(); eq(node('p1').settings.text,WORDS+', snow falling','undo walks the card\'s words back'); R.redo();
+    // an empty card is a mistake, said once
+    R.set('p1','text','   ');
+    eq(st('i1'),'needs','an empty card wired in: the engine needs something');
+    ok(/Prompt card is empty/.test(R.info('i1').why),'…and says what',R.info('i1').why);
+    eq(card('p1').querySelector('.st').textContent,'empty','…the card says it is empty');
+    R.set('p1','text',WORDS);
+    // cut the wire: the engine's own words again
+    R.disconnect(edgeIdx('p1:out','c1:prompt'));
+    eq(R.info('c1').f.prompt,'in the arena at dusk','cut the wire: Compose sends only its own words');
+    ok(/^Prompt/.test(card('c1').querySelector('textarea[data-k="prompt"]').closest('.ctl').querySelector('.lab').textContent),'…and its box is Prompt again');
+    R.connect('p1:out','c1:prompt');
+    // typing into the card updates the engines live and keeps the caret
+    var ta=card('p1').querySelector('textarea'); ta.focus(); ta.value=WORDS+', rain'; ta.dispatchEvent(new Event('input',{bubbles:true}));
+    ok(document.activeElement===card('p1').querySelector('textarea'),'typing in the card keeps the text box (no repaint under the caret)');
+    eq(R.info('i1').f.prompt,WORDS+', rain','…and every engine reads the new words at once');
+    ta.value=WORDS; ta.dispatchEvent(new Event('input',{bubbles:true})); ta.blur();
+    // the classic view gets the whole prompt
+    var h=R.handoff('c1'); eq(h.settings.prompt,WORDS+'\n'+'in the arena at dusk','Open in the classic view carries the combined prompt');
+    // save and load keep it
+    var ex=R.exportBoard(); R.importBoard(ex);
+    ok(node('p1')&&node('p1').settings.text===WORDS&&edgeIdx('p1:out','i1:prompt')>=0,'save and load keep the card, its words and its wires');
+    // a run: the card is never sent, its words are
+    R.set('i1','crea','high');
+    eq(R.runList(['i1']).list,['i1'],'Run on Image runs Image only: the card is a source, never a job');
+    var s0=SENT; R.ask(['i1']); $('run-go').click();
+    return idle().then(function(){
+      eq(SENT-s0,1,'one submit');
+      var rq=REQ[REQ.length-1];
+      eq([rq.model,rq.prompt,rq.creativity],['krea',WORDS,'high'],'…and the rig got the card\'s words as Image\'s prompt');
+      eq(st('i1'),'fresh','…and Image is fresh');
+    });
   }
 
   function demo(){

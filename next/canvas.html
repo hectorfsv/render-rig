@@ -27,7 +27,7 @@
   --disp:'Chakra Petch','Trebuchet MS',sans-serif;
   --mono:'IBM Plex Mono','SFMono-Regular',Menlo,Consolas,monospace;
   /* port colours: one per type, the same on the port and the wire */
-  --t-image:#E8A33D; --t-video:#FF3B30; --t-audio:#3FD07A;
+  --t-image:#E8A33D; --t-video:#FF3B30; --t-audio:#3FD07A; --t-text:#7AB8FF;
 }
 *{box-sizing:border-box}
 html{color-scheme:dark}   /* native controls (the sound player, lists, ticks) drawn dark */
@@ -96,7 +96,7 @@ input[type=password]{font-family:var(--mono);letter-spacing:.3em;text-align:cent
 .wires{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
 .wires path{fill:none;stroke-width:2.2;pointer-events:stroke;cursor:pointer}
 .wires path.hit{stroke:transparent;stroke-width:14}
-.wires path.image{stroke:var(--t-image)} .wires path.video{stroke:var(--t-video)} .wires path.audio{stroke:var(--t-audio)}
+.wires path.image{stroke:var(--t-image)} .wires path.video{stroke:var(--t-video)} .wires path.audio{stroke:var(--t-audio)} .wires path.text{stroke:var(--t-text)}
 .wires path.off{stroke-dasharray:3 6;opacity:.5}
 .wires path.sel{stroke:#fff;stroke-width:3}
 .wires path.temp{stroke:var(--ink-dim);stroke-dasharray:6 5}
@@ -106,6 +106,9 @@ input[type=password]{font-family:var(--mono);letter-spacing:.3em;text-align:cent
 .card{position:absolute;width:264px;background:var(--panel);border:1px solid var(--rule);border-radius:10px;
   box-shadow:0 10px 26px rgba(0,0,0,.45);user-select:none;-webkit-user-select:none;cursor:default}
 .card.src{width:224px}
+.card.k-prompt{width:264px;border-color:rgba(122,184,255,.28)}
+.card.k-prompt .set{padding:10px 12px 0}
+.card.k-prompt textarea{min-height:110px}
 .card.note{width:240px;background:#18130D;border-color:rgba(232,163,61,.28)}
 .card.sel{z-index:2;border-color:var(--red);box-shadow:0 0 0 3px rgba(224,27,27,.18),0 10px 26px rgba(0,0,0,.45)}
 .card.frozen{border-color:rgba(142,197,224,.55)}
@@ -139,6 +142,7 @@ input[type=password]{font-family:var(--mono);letter-spacing:.3em;text-align:cent
 .port.image{background:var(--t-image);box-shadow:0 0 0 1.5px var(--t-image)}
 .port.video{background:var(--t-video);box-shadow:0 0 0 1.5px var(--t-video)}
 .port.audio{background:var(--t-audio);box-shadow:0 0 0 1.5px var(--t-audio)}
+.port.text{background:var(--t-text);box-shadow:0 0 0 1.5px var(--t-text)}
 .port.can{transform:translateY(-50%) scale(1.4)}
 /* settings: the classic view's pickers, small */
 .set{border:0;margin:0;padding:8px 12px 0;min-width:0;display:grid;gap:9px}
@@ -374,19 +378,20 @@ body.running .card .top .ic{visibility:hidden}
     upload: {name:'Upload',    eng:'your picture',        group:'sources', ins:[], out:'image'},
     gallery:{name:'Gallery',   eng:'a render of yours',   group:'sources', ins:[], out:'image'},
     audio:  {name:'Audio',     eng:'your sound',          group:'sources', ins:[], out:'audio'},
-    image:  {name:'Image',     eng:'Krea 2 Large',        group:'engines', ins:[{id:'refs',type:'image',max:RigCore.KREA_MAX_REFS,label:'style refs'}], out:'image'},
-    compose:{name:'Compose',   eng:'Nano Banana Pro',     group:'engines', ins:[{id:'images',type:'image',max:RigCore.NBP_MAX,label:'pictures'}], out:'image'},
-    design: {name:'Design',    eng:'Grok Imagine 2.0',    group:'engines', ins:[{id:'images',type:'image',max:RigCore.DESIGN_MAX_SRC,label:'sources'}], out:'image'},
+    prompt: {name:'Prompt',    eng:'words for engines',   group:'sources', ins:[], out:'text'},
+    image:  {name:'Image',     eng:'Krea 2 Large',        group:'engines', ins:[{id:'prompt',type:'text',max:1,label:'prompt'},{id:'refs',type:'image',max:RigCore.KREA_MAX_REFS,label:'style refs'}], out:'image'},
+    compose:{name:'Compose',   eng:'Nano Banana Pro',     group:'engines', ins:[{id:'prompt',type:'text',max:1,label:'prompt'},{id:'images',type:'image',max:RigCore.NBP_MAX,label:'pictures'}], out:'image'},
+    design: {name:'Design',    eng:'Grok Imagine 2.0',    group:'engines', ins:[{id:'prompt',type:'text',max:1,label:'prompt'},{id:'images',type:'image',max:RigCore.DESIGN_MAX_SRC,label:'sources'}], out:'image'},
     upscale:{name:'Upscale',   eng:'Topaz',               group:'engines', ins:[{id:'image',type:'image',max:1,req:true,label:'picture'}], out:'image'},
-    video:  {name:'Video',     eng:'Kling 3.0 Pro',       group:'engines', ins:[{id:'image',type:'image',max:1,label:'opening frame'},{id:'end',type:'image',max:1,label:'end frame'}], out:'video'},
-    lite:   {name:'Video Lite',eng:'MiniMax H3 Max',      group:'engines', ins:[{id:'image',type:'image',max:1,label:'opening frame'},{id:'end',type:'image',max:1,label:'end frame'},{id:'audio',type:'audio',max:1,label:'your sound'}], out:'video'},
+    video:  {name:'Video',     eng:'Kling 3.0 Pro',       group:'engines', ins:[{id:'prompt',type:'text',max:1,label:'prompt'},{id:'image',type:'image',max:1,label:'opening frame'},{id:'end',type:'image',max:1,label:'end frame'}], out:'video'},
+    lite:   {name:'Video Lite',eng:'MiniMax H3 Max',      group:'engines', ins:[{id:'prompt',type:'text',max:1,label:'prompt'},{id:'image',type:'image',max:1,label:'opening frame'},{id:'end',type:'image',max:1,label:'end frame'},{id:'audio',type:'audio',max:1,label:'your sound'}], out:'video'},
     camera: {name:'Camera',    eng:'H3 Camera Controls',  group:'engines', ins:[{id:'image',type:'image',max:1,req:true,label:'still'}], out:'video'},
     talk:   {name:'Talk',      eng:'H3 Lip Sync',         group:'engines', ins:[{id:'image',type:'image',max:1,req:true,label:'face'},{id:'audio',type:'audio',max:1,req:true,label:'voice'}], out:'video'},
     note:   {name:'Note',      eng:'words for you',       group:'notes',   ins:[], out:null}
   };
-  var ORDER=['upload','gallery','audio','image','compose','design','upscale','video','lite','camera','talk','note'];
+  var ORDER=['upload','gallery','audio','prompt','image','compose','design','upscale','video','lite','camera','talk','note'];
   var FROM={image:'$0.06',compose:'$0.15',design:'$0.04',upscale:'$0.08',video:'$0.336',lite:'$0.20',camera:'$0.15',talk:'$0.25'};
-  var OUTWORD={image:'picture',video:'clip',audio:'sound'};
+  var OUTWORD={image:'picture',video:'clip',audio:'sound',text:'words'};
   // What a new node starts with: the classic view's own defaults
   var DEF={
     image:  {prompt:'',ar:'16:9',crea:'low',style_str:'0.5',seed:''},
@@ -397,6 +402,7 @@ body.running .card .top .ic{visibility:hidden}
     lite:   {prompt:'',dur:'5',vres:'768P',style:'',dmg:'medium',eng:'max',ar:'16:9'},
     camera: {move:'orbit-right',dur:'5',res:'768P',snd:'silent',snd_text:''},
     talk:   {res:'768P',tr:false},
+    prompt: {text:''},
     note:   {text:''}
   };
   var ICON_FRZ='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 2v20M3.4 7l17.2 10M3.4 17L20.6 7"/><path d="M9.3 3.6L12 6.3l2.7-2.7M9.3 20.4L12 17.7l2.7 2.7"/></svg>';
@@ -504,6 +510,7 @@ body.running .card .top .ic{visibility:hidden}
     var K=KINDS[u.kind];
     if(u.kind==='upload'){ if(!u.src) return 'Upload is empty: add a picture to it.'; if(!UP[u.src.id]) return 'Add the picture to Upload again: uploads are not kept after a reload.'; return '' }
     if(u.kind==='gallery') return u.src ? '' : 'Pick a picture for the Gallery card.';
+    if(u.kind==='prompt') return String(S(u).text||'').trim() ? '' : 'The Prompt card is empty: write in it, or cut its wire.';
     if(u.kind==='audio'){ if(!u.src) return 'Audio is empty: add a sound file to it.'; if(!AUD[u.src.id]) return 'Add the sound to Audio again: sounds are not kept after a reload.'; return '' }
     var e=PL[u.id]; if(!e) return '';
     if(e.st==='running') return K.name+' is still rendering.';
@@ -516,11 +523,17 @@ body.running .card .top .ic{visibility:hidden}
     if(u.kind==='upload') return u.src ? 'up:'+u.src.id : 'none';
     if(u.kind==='audio') return u.src ? 'aud:'+u.src.id : 'none';
     if(u.kind==='gallery') return u.src ? 'gal:'+u.src.url : 'none';
+    if(u.kind==='prompt') return 'txt:'+cyrb(String(S(u).text||'').trim());
     var e=PL[u.id]; if(!e) return 'none';
     if((e.st==='fresh'||e.st==='frozen') && u.ran && u.ran.url) return 'res:'+u.ran.url;
     return 'will:'+e.sig;
   }
   function pl(k,one,many){ return k+' '+(k===1?one:many) }
+  // A PROMPT CARD wired in (canvas v2): its words first, then the engine's own box on a new line
+  function promptOf(n){
+    var s=S(n), pc=portDef(n.kind,'prompt') ? into(n.id,'prompt')[0] : null; if(!pc) return s.prompt;
+    return [String(S(pc).text||'').trim(), String(s.prompt||'').trim()].filter(Boolean).join('\n');
+  }
   function plan(n){
     var K=KINDS[n.kind], s=S(n), P={price:0,known:true,from:false,why:'',f:{},img:[],aud:null,det:''}, ins={};
     function need(m){ if(!P.why) P.why=m }
@@ -528,6 +541,7 @@ body.running .card .top .ic{visibility:hidden}
       ins[p.id].forEach(function(u){ var w=upWhy(u); if(w) need(w) }) });
     // the ports, as the console's tray: which pictures ride, in what order, and the sound
     var pics=[], aud=null, cs=copy(s), fi, fe;
+    if(ins.prompt&&ins.prompt.length) cs.prompt=promptOf(n);
     switch(n.kind){
       case 'image':   pics=ins.refs; cs.use_style=pics.length>0; break;
       case 'compose': pics=ins.images; break;
@@ -579,7 +593,8 @@ body.running .card .top .ic{visibility:hidden}
       var K=KINDS[n.kind], e={p:null,sig:'',st:''}; PL[n.id]=e;
       if(K.group==='notes'){ e.st='note'; return }
       if(K.group==='sources'){
-        e.st=!n.src ? 'empty' : ((n.kind==='upload'&&!UP[n.src.id])||(n.kind==='audio'&&!AUD[n.src.id])) ? 'readd' : 'ready';
+        e.st=n.kind==='prompt' ? (String(S(n).text||'').trim()?'ready':'empty')
+          : !n.src ? 'empty' : ((n.kind==='upload'&&!UP[n.src.id])||(n.kind==='audio'&&!AUD[n.src.id])) ? 'readd' : 'ready';
         e.p={price:0,known:true,why:e.st==='ready'?'':upWhy(n),f:{},img:[],det:''}; return;
       }
       var p=plan(n), ins={}; e.p=p;
@@ -648,19 +663,20 @@ body.running .card .top .ic{visibility:hidden}
   function checkH(k,label,val,extra){ return '<label class="chk"><input type="checkbox" data-k="'+k+'"'+(val?' checked':'')+'><span>'+label+'</span>'+(extra?'<b>'+extra+'</b>':'')+'</label>' }
   function selH(k,label,opts,val){ return '<div class="ctl"><div class="lab">'+label+'</div><select data-k="'+k+'" aria-label="'+label+'">'+opts.map(function(o){ return '<option value="'+esc(o[0])+'"'+(o[0]===val?' selected':'')+'>'+esc(o[1])+'</option>' }).join('')+'</select></div>' }
   function arList(list,has){ return has?list:list.filter(function(x){ return x[0]!=='auto' }) }
+  function promptH(s,ins,ph){ return (ins.prompt&&ins.prompt.length) ? textH('prompt','Extra words',s.prompt,'Optional: words only this engine adds, after the Prompt card\'s.',2,'after the Prompt card') : textH('prompt','Prompt',s.prompt,ph) }
   function ctlHTML(n,s){
     var ins={}; KINDS[n.kind].ins.forEach(function(p){ ins[p.id]=into(n.id,p.id) });
     var h='', m='';
     switch(n.kind){
     case 'image':
-      h+=textH('prompt','Prompt',s.prompt,'What to draw. Krea draws from words alone, and will draw anyone.');
+      h+=promptH(s,ins,'What to draw. Krea draws from words alone, and will draw anyone.');
       h+=segH('ar','Aspect ratio',AR_KREA,s.ar);
       h+=segH('crea','Creativity',[['raw','Raw'],['low','Low'],['medium','Medium'],['high','High']],s.crea);
       if(ins.refs.length) h+=rangeH('style_str','Style strength',0.1,1,0.05,s.style_str,'');
       m+=lineH('seed','Seed',s.seed,'random');
       break;
     case 'compose':
-      h+=textH('prompt','Prompt',s.prompt,'How to combine the pictures wired in, or what to make.');
+      h+=promptH(s,ins,'How to combine the pictures wired in, or what to make.');
       h+=segH('res','Resolution',[['2K','2K'],['4K','4K']],s.res,'4K costs double');
       h+=segH('ar','Aspect ratio',arList(AR_NBP,ins.images.length),(s.ar==='auto'&&!ins.images.length)?'1:1':s.ar);
       if(ins.images.length===1) h+=checkH('keep_framing','Keep the original framing',s.keep_framing);
@@ -669,7 +685,7 @@ body.running .card .top .ic{visibility:hidden}
       m+=lineH('seed','Seed',s.seed,'random');
       break;
     case 'design':
-      h+=textH('prompt','Prompt',s.prompt,'The flyer, poster or meme you want.');
+      h+=promptH(s,ins,'The flyer, poster or meme you want.');
       h+=textH('words','Words on it',s.words,'SUMMER JAM\nFriday 9pm',2,'exactly as typed');
       h+=segH('quality','Quality',[['low','Low'],['medium','Medium']],s.quality);
       h+=segH('res','Resolution',[['1K','1K'],['2K','2K']],s.res);
@@ -686,14 +702,14 @@ body.running .card .top .ic{visibility:hidden}
         m+=rangeH('up_crea','Creativity',1,6,1,s.up_crea,''); m+=rangeH('up_tex','Texture',1,5,1,s.up_tex,'') }
       break;
     case 'video':
-      h+=textH('prompt','Prompt',s.prompt,'What happens. Kling writes the audio from these words too.');
+      h+=promptH(s,ins,'What happens. Kling writes the audio from these words too.');
       h+=rangeH('dur','Duration',3,15,1,s.dur,' s');
       h+=checkH('audio','Generate audio',s.audio,'+50%');
       if(!ins.image.length) h+=segH('ar','Aspect ratio',AR_VID,s.ar);
       m+=lineH('neg','Keep out',s.neg,'blur, distort, and low quality');
       break;
     case 'lite':
-      h+=textH('prompt','Prompt',s.prompt,'What happens. Grok writes the sound cues from these words.');
+      h+=promptH(s,ins,'What happens. Grok writes the sound cues from these words.');
       h+=rangeH('dur','Duration',5,15,1,Math.max(5,+s.dur||5),' s');
       h+=segH('style','Style',STYLES,s.style);
       if(s.style==='vhs') h+=segH('dmg','Tape damage',[['light','Light'],['medium','Medium'],['heavy','Heavy']],s.dmg);
@@ -747,6 +763,12 @@ body.running .card .top .ic{visibility:hidden}
       el.innerHTML=h+'<div class="set"><textarea data-k="text" rows="5" placeholder="A note for yourself: what this branch is for, what to try next." aria-label="Note">'+esc(s.text)+'</textarea></div>';
       measurePorts(n); return;
     }
+    if(n.kind==='prompt'){
+      h+='<div class="set"><textarea data-k="text" rows="5" placeholder="Words every engine wired to this card reads first: who, where, the look. Each engine can add its own after them." aria-label="Prompt">'+esc(s.text)+'</textarea></div>';
+      h+='<div class="det"></div><div class="outrow"><span>words</span><span class="port out text" data-node="'+n.id+'" data-port="out" data-type="text"></span></div>';
+      h+='<div class="foot"><span class="price"></span><span class="st"></span></div><div class="why"></div>';
+      el.innerHTML=h; paintState(n); measurePorts(n); return;
+    }
     h+=picHTML(n);
     if(K.ins.length) h+='<div class="ports">'+K.ins.map(function(p){
       var off=portOff(n,p.id), cnt=into(n.id,p.id).length;
@@ -770,6 +792,8 @@ body.running .card .top .ic{visibility:hidden}
     if(K.group==='sources'){
       price.textContent='free';
       st.className='st '+(e.st==='ready'?'fresh':'new');
+      if(n.kind==='prompt'){ var wc=String(S(n).text||'').trim().split(/\s+/).filter(Boolean).length, feeds=G.edges.filter(function(x){ return from(x)===n.id }).length;
+        st.textContent=e.st==='ready' ? pl(wc,'word','words') : 'empty'; why.textContent=''; det.textContent=feeds ? 'feeds '+pl(feeds,'engine','engines') : 'wire it into an engine\'s prompt'; return }
       st.textContent=e.st==='ready' ? (n.kind==='audio' ? (+n.src.secs).toFixed(1)+' s' : (n.src.w&&n.src.h ? n.src.w+'×'+n.src.h : 'ready')) : e.st==='readd' ? 'add it again' : 'empty';
       why.textContent=''; det.textContent=(n.kind==='gallery'&&n.src&&n.src.engine)?n.src.engine:'';
       return;
@@ -828,7 +852,7 @@ body.running .card .top .ic{visibility:hidden}
       G.edges.forEach(function(e){ if(from(e)===x) stack.push(to(e)) }) }
     return false;
   }
-  var WORD={image:'pictures',video:'clips',audio:'sound'};
+  var WORD={image:'pictures',video:'clips',audio:'sound',text:'words'};
   function why2wire(fromP,toP){   // '' when this wire may be drawn, else the one sentence that says why not
     var f=fromP.split(':'), t=toP.split(':'), fn=node(f[0]), tn=node(t[0]);
     if(!fn||!tn) return 'That node is gone.';
@@ -871,7 +895,7 @@ body.running .card .top .ic{visibility:hidden}
   // a new card goes in the free space nearest the middle of the view, never on top of another
   var SPIRAL=null, EST={sources:250,engines:470,notes:190};
   function freeSpot(kind,w,h,skip){
-    var K=KINDS[kind]; w=w||(K.group==='sources'?224:K.group==='notes'?240:264); h=h||EST[K.group];
+    var K=KINDS[kind]; w=w||(kind==='prompt'?264:K.group==='sources'?224:K.group==='notes'?240:264); h=h||EST[K.group];
     var r=$('board').getBoundingClientRect(),
         c=toWorld(r.left+r.width/2,r.top+r.height/2), x0=Math.round(c.x-w/2), y0=Math.round(c.y-h/2), gap=28;
     var rects=G.nodes.filter(function(n){ return n.id!==skip }).map(function(n){ var el=cardEl(n.id); return {x:n.x,y:n.y,w:el?el.offsetWidth:264,h:el?el.offsetHeight:EST[KINDS[n.kind].group]} });
@@ -1500,6 +1524,7 @@ body.running .card .top .ic{visibility:hidden}
   var K_HANDOFF='rig_handoff', HANDOFF_CAP=4e6;
   function handoff(n){
     var p=plan(n), s=S(n), h={v:1,mode:n.kind,settings:s,images:[],end:null,at:Date.now(),from:'canvas'};
+    if(portDef(n.kind,'prompt')) s.prompt=promptOf(n);   // a Prompt card's words ride as the console's prompt
     p.img.forEach(function(u,i){
       if(u.kind==='upload'){ var up=u.src&&UP[u.src.id]; if(up) h.images.push({data:up.ref,w:up.w,h:up.h,name:up.name}) }
       else { var url=u.kind==='gallery'?(u.src&&u.src.url):(u.ran&&u.ran.url); var d=dimsOf(u); if(url) h.images.push({url:url,w:d?d.w:0,h:d?d.h:0}) }
