@@ -379,6 +379,9 @@
     R.set('n3','prompt','changed'); eq(node('n3').settings.prompt,'the tiger in the arena','…nor edited');
     ok($('undo').disabled&&$('run-all').disabled&&$('new-btn').disabled,'…undo, Run all and New are off');
     ok(!$('run-stop').hidden,'…and Stop is offered');
+    ok(card('n2').classList.contains('running'),'the card in flight is marked running');
+    var ring=document.getAnimations?document.getAnimations().filter(function(a){ var t=a.effect&&a.effect.getTiming&&a.effect.getTiming(); return t&&t.iterations===Infinity }).length:1;
+    ok(ring>=1,'…and a light runs around its edge (one endless animation, only now)',ring);
     return idle().then(function(){
       ok(!R.busy(),'the run finished');
       eq(SENT-s0,3,'three submits');
@@ -400,6 +403,8 @@
       eq($('total').textContent,'nothing to pay','nothing to pay');
       ok(/Delivered · fal balance \$41\.50/.test($('chip').textContent),'the balance rode the finished poll onto the chip',$('chip').textContent);
       ok(!$('undo').disabled,'undo is back');
+      var ring2=document.getAnimations?document.getAnimations().filter(function(a){ var t=a.effect&&a.effect.getTiming&&a.effect.getTiming(); return t&&t.iterations===Infinity }).length:0;
+      eq(ring2,0,'the light is gone once nothing renders');
       eq(R.state().undo,u0,'…and the run left no undo steps');
       // never pay twice
       $('run-all').click();
@@ -510,6 +515,7 @@
       if(q.get('fail')==='1'){ var ex=R.exportBoard(); ex.nodes.filter(function(n){ return n.id==='n6' })[0].err={sig:R.info('n6').sig,msg:'The model returned nothing.',at:Date.now()}; R.importBoard(ex) }
       R.fit();
       if(q.get('sheet')==='1') R.ask(['n4','n6']);
+      if(q.get('run')==='1'){ var ex3=R.exportBoard(); ex3.nodes.filter(function(n){ return n.id==='n4' })[0].job={id:'j1',t0:Date.now()-41000,sig:'x',price:0.24}; R.importBoard(ex3); R.select({node:'n4'}) }
       return tick(50);
     });
   }

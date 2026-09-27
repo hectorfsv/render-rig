@@ -172,7 +172,18 @@ details.more summary:hover{color:var(--ink-dim)}
 .card .foot .price{color:var(--ink)}
 .card .foot .st{margin-left:auto;text-align:right}
 .st.new,.st.changed{color:var(--amber)} .st.fresh{color:var(--go)} .st.needs,.st.failed{color:var(--red-hot)} .st.frozen,.st.running{color:var(--ice)}
-.card.running{border-color:rgba(142,197,224,.55)} .card.running .pic{border-style:solid;border-color:rgba(142,197,224,.35)}
+/* a rendering card: a light runs around its contour, the selection red with a white head, and only while it renders
+   (Hector 2026-09-27: "make all the edge of the node it's rendering pulse, or spin around"). The gradient is painted
+   ONCE on a big square that ROTATES (a transform: the compositor turns it, nothing repaints); a static mask on the
+   frame shows only the 3px edge. An animated gradient angle cost 11 CPU-s per 20 s in WebKit; this is the cheap way. */
+.card.running{border-color:rgba(224,27,27,.45)}
+.card .ring{position:absolute;inset:-3px;border-radius:13px;padding:3px;overflow:hidden;pointer-events:none;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.card .ring i{position:absolute;left:50%;top:50%;width:900px;height:900px;margin:-450px 0 0 -450px;will-change:transform;
+  background:conic-gradient(transparent 0 62%,rgba(224,27,27,.35) 72%,var(--red) 86%,#fff 94%,transparent 100%);
+  animation:ring 1.8s linear infinite}
+@keyframes ring{to{transform:rotate(360deg)}}
+.card.running .pic{border-style:solid;border-color:rgba(224,27,27,.25)}
 .card.failed{border-color:rgba(255,59,48,.45)}
 .card .foot button.run{padding:3px 9px;font-size:11px;letter-spacing:.04em}
 .card .foot button.run:disabled{opacity:.35}
@@ -782,6 +793,7 @@ body.running .card .top .ic{visibility:hidden}
     h+='<div class="det"></div>';
     h+='<div class="outrow"><span>'+OUTWORD[K.out]+'</span><span class="port out '+K.out+'" data-node="'+n.id+'" data-port="out" data-type="'+K.out+'"></span></div>';
     h+='<div class="foot"><span class="price"></span>'+(K.group==='engines'?'<button type="button" class="run" data-act="run" title="Run this node, and whatever it needs first">Run</button>':'')+'<span class="st"></span></div><div class="why"></div>';
+    if(n.job) h+='<div class="ring" aria-hidden="true"><i></i></div>';   // the light around a rendering card
     el.innerHTML=h;
     paintState(n);
     measurePorts(n);
