@@ -27,7 +27,7 @@ const CASES = [
   ['video', { prompt: 'he walks in', dur: '7', audio: true, ar: '9:16', neg: 'blur, text', cfg: '0.7', shot_type: 'intelligent' }, {}],
   ['video', { prompt: 'it turns', dur: '5', audio: false, end_idx: '1', shot_type: 'customize' }, { images: two }],
   ['video', { prompt: 'x', dur: '5', ar: '16:9', shot_type: 'customize', shots: [{ prompt: 'she looks up', duration: '2' }, { prompt: 'she smiles', duration: '3' }] }, {}],
-  ['video', { prompt: 'he speaks', dur: '5', audio: false, shot_type: 'customize', elements: [{ frontal: 0, refs: [], voice: 'voice-1' }] }, { images: one, hasVoice: true }],
+  ['video', { prompt: 'he speaks', dur: '5', audio: false, shot_type: 'customize', elements: [{ frontal: 0, refs: [1], voice: 'voice-1' }] }, { images: two, hasVoice: true }],
   ['lite', { prompt: 'it roars', dur: '5', vres: '768P', ar: '16:9', style: '', eng: 'max', sound: 'h3' }, {}],
   ['lite', { prompt: 'it roars', dur: '6', vres: '1080P', ar: '21:9', style: '', eng: 'turbo', sound: 'h3' }, {}],
   ['lite', { prompt: 'tape', dur: '5', vres: '768P', style: 'vhs', dmg: 'heavy', eng: 'max', sound: 'h3' }, { images: one }],

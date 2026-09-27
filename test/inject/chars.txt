@@ -1,0 +1,107 @@
+<script>
+/* CHARACTERS GET THEIR ANGLES (2026-09-27). fal's Kling 3.0 elements need 1-3 reference_image_urls ("At least
+   one image is required"); the Characters row never sent one, so a character from the page was refused. Each
+   character now picks its other angles from the tray (thumbnails, 3 at most, never its own front image), Generate
+   refuses a character with none, the request carries them as refs (tray indexes; n8n turns them into URLs), and
+   the characters follow the tray when a picture leaves. Nothing is sent: the mock records the request and refuses. */
+(function(){
+  var S=String.fromCharCode(167), out=[], $=function(i){ return document.getElementById(i) };
+  function ok(c,label,got){ out.push((c?'PASS':'FAIL')+'  '+label+(c||got===undefined?'':'  got '+got)) }
+  function finish(){ document.title=S+out.join(' ')+' [done]'+S }
+  function png(w,h,c){ var cv=document.createElement('canvas'); cv.width=w; cv.height=h; var x=cv.getContext('2d'); x.fillStyle=c; x.fillRect(0,0,w,h); return cv.toDataURL('image/png') }
+  function fileOf(u,name){ var p=u.split(','), bin=atob(p[1]), a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new File([a],name,{type:'image/png'}) }
+  function tick(ms){ return new Promise(function(r){ setTimeout(r,ms||0) }) }
+  function until(f,ms){ var t0=Date.now(); return new Promise(function(r){ (function go(){ if(f()||Date.now()-t0>ms) return r(); setTimeout(go,25) })() }) }
+  function val(id,v){ var e=$(id); e.value=String(v); e.dispatchEvent(new Event('input',{bubbles:true})); e.dispatchEvent(new Event('change',{bubbles:true})) }
+  function chk(id,on){ var e=$(id); if(e.checked!==on) e.click() }
+  var COLORS=['#48c','#a33','#3a6','#c83','#86c','#3aa'], made=0;
+  function add(n){ var dt=new DataTransfer(); for(var i=0;i<n;i++){ var k=made++; dt.items.add(fileOf(png(320+k*20,240+k*10,COLORS[k%6]),'p'+k+'.png')) }
+    var e=$('file'), want=String(+$('src-count').textContent+n); e.files=dt.files; e.dispatchEvent(new Event('change',{bubbles:true}));
+    return until(function(){ return $('src-count').textContent===want },8000) }
+  function angs(){ return [].slice.call($('elements').querySelectorAll('.ang')) }
+  function shown(){ return angs().map(function(b){ return +b.dataset.a }).join(',') }
+  function on(){ return angs().filter(function(b){ return b.getAttribute('aria-pressed')==='true' }).map(function(b){ return +b.dataset.a }).join(',') }
+  function ang(k){ return $('elements').querySelector('.ang[data-a="'+k+'"]') }
+  var GOT=null;
+  window.fetch=function(u,o){
+    if(typeof u==='string'&&/^(data|blob):/.test(u)) return Promise.reject(new Error('harness: no network'));
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve({guest:false,user:'hector',balance:12}) }});
+    if(a==='generate'){ var r={}; b.forEach(function(v,k){ r[k]=(v instanceof Blob)?{blob:v.size}:v }); GOT=r; return Promise.reject(new Error('recorded')) }
+    return Promise.reject(new Error('harness: no network'));
+  };
+  ['rig_last:hector','rig_last','rig_look','rig_hist:hector','rig_job:hector'].forEach(function(k){ try{ localStorage.removeItem(k) }catch(e){} });
+  try{ sessionStorage.removeItem('rig_pw') }catch(e){}
+  $('pw').value='x'; $('unlock').click();
+  function gen(){ GOT=null; $('gen-err').textContent=''; $('submit').disabled=false; $('submit').click(); return until(function(){ return !!GOT || $('gen-err').textContent },4000) }
+  tick(150).then(function(){
+    document.querySelector('.cards .card[data-go="video"]').click();
+    return add(1);
+  }).then(function(){
+    val('prompt','@Element1 walks in');
+    chk('use-el',true);
+    // the row lives under Advanced: behind its chip on the Mac, a closed section on the phone
+    var row=$('row-elements'); if(!row.offsetParent){ var c=document.querySelector('#chips .chip-s[data-row="adv"]'); if(c) c.click() }
+    if(!row.offsetParent) $('adv').open=true;
+    return tick(60);
+  }).then(function(){
+    ok(/1 to 3 other angles/.test($('row-elements').textContent),'the hint says a character needs 1 to 3 other angles');
+    ok(!!$('row-elements').offsetParent,'the Characters row is on screen (under Advanced)');
+    ok(!!$('elements').querySelector('.angs'),'a character has an Other angles strip');
+    ok(angs().length===0 && /Add another photo/.test($('elements').querySelector('.angs').textContent),'one picture in the tray: no angle to pick, and it says to add another photo');
+    return gen();
+  }).then(function(){
+    ok(!GOT,'Generate sends nothing for a character with no angle');
+    ok(/@Element1 needs at least one other angle/.test($('gen-err').textContent) && /add another photo/.test($('gen-err').textContent),'…and says why, with what to do',$('gen-err').textContent);
+    return add(3);
+  }).then(function(){
+    ok(shown()==='1,2,3' && on()==='','four pictures: images 2, 3 and 4 are offered, none ticked',shown()+' / '+on());
+    ok(angs().every(function(b){ var r=b.getBoundingClientRect(); return r.width>=43.5 && r.height>=43.5 }),'every angle is a 44px target');
+    var before=$('cost').textContent;
+    ang(1).click();
+    ok(on()==='1' && ang(1).getAttribute('aria-pressed')==='true','ticking image 2 marks it',on());
+    ok($('cost').textContent===before,'an angle changes no price',before+' -> '+$('cost').textContent);
+    return gen();
+  }).then(function(){
+    ok(!!GOT,'with an angle, Generate builds the request',$('gen-err').textContent);
+    var els=GOT&&JSON.parse(GOT.elements||'[]');
+    ok(els&&els.length===1&&els[0].frontal===0&&JSON.stringify(els[0].refs)==='[1]','…the character carries its angle as refs [1]',GOT&&GOT.elements);
+    ok(GOT&&GOT.image_0&&GOT.image_1&&GOT.image_2&&GOT.image_3,'…and every tray picture rides along (the angle is one of them)');
+    ang(2).click(); ang(3).click();
+    return add(1);
+  }).then(function(){
+    ok(on()==='1,2,3','three angles ticked',on());
+    ok(ang(4)&&ang(4).disabled,'a fourth angle cannot be ticked (fal takes 3)');
+    ang(4).click();
+    ok(on()==='1,2,3','…clicking it changes nothing',on());
+    var sel=$('elements').querySelector('[data-k="frontal"]'); sel.value='1'; sel.dispatchEvent(new Event('input',{bubbles:true}));
+    return tick(30);
+  }).then(function(){
+    ok(shown()==='0,2,3,4' && on()==='2,3','front image 2: it leaves the angles, image 1 is offered instead',shown()+' / '+on());
+    ok(!ang(4).disabled,'…two ticked, so the rest can be ticked again');
+    $('tray').querySelectorAll('.slot .x')[0].click();   // image 1 leaves the tray
+    return tick(30);
+  }).then(function(){
+    var sel=$('elements').querySelector('[data-k="frontal"]');
+    ok(sel.value==='0','image 1 left: the front follows its picture (now image 1)',sel.value);
+    ok(on()==='1,2' && shown()==='1,2,3','…and the angles follow theirs',shown()+' / '+on());
+    $('tray').querySelectorAll('.slot .x')[0].click();   // the front picture itself leaves
+    return tick(30);
+  }).then(function(){
+    var sel=$('elements').querySelector('[data-k="frontal"]');
+    ok(sel.value==='0' && on()==='1','the front picture left: the next picture is the front and never its own angle',sel.value+' / '+on());
+    $('add-el').click();
+    return tick(30);
+  }).then(function(){
+    ok($('elements').querySelectorAll('.angs').length===2 && /Other angles of @Element2/.test($('elements').querySelectorAll('.angs')[1].getAttribute('aria-label')),'a second character gets its own strip');
+    return gen();
+  }).then(function(){
+    ok(!GOT && /@Element2 needs at least one other angle/.test($('gen-err').textContent) && /tick one under Other angles/.test($('gen-err').textContent),'…and Generate names the one still missing an angle',$('gen-err').textContent);
+    // nothing spills: the strip stays inside the composer and the page never scrolls sideways
+    var host=$('elements').getBoundingClientRect(), spill=angs().filter(function(b){ var r=b.getBoundingClientRect(); return r.right>host.right+0.5 || r.left<host.left-0.5 }).length;
+    ok(spill===0,'every angle sits inside the character editor ('+innerWidth+'px window)',spill+' outside');
+    ok(document.scrollingElement.scrollWidth<=innerWidth,'no sideways scroll',document.scrollingElement.scrollWidth+' > '+innerWidth);
+    finish();
+  }).catch(function(e){ ok(false,'harness threw '+(e&&e.message||e)); finish() });
+})();
+</script>

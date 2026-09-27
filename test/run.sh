@@ -20,6 +20,7 @@
 #   ./test/run.sh look       the look menu: auto sends nothing, Design gets the grade only
 #   ./test/run.sh tape       the rail marquee: pitch, seam, direction, speed
 #   ./test/run.sh handoff    from the Canvas: a node lands in the console (mode, pictures, settings, price)
+#   ./test/run.sh chars      Video characters: other angles required, sent as refs, follow the tray
 #   ./test/run.sh core       request parity: every configuration's request and price vs test/fixtures/core-requests.json
 #   ./test/run.sh core-record  (re)record that fixture from the page as it is now (only when a request is MEANT to change)
 #   ./test/run.sh shots      write previews to test/build/*.png
@@ -436,6 +437,22 @@ if [ "$WHAT" = all ] || [ "$WHAT" = handoff ]; then
   hc "$(node "$ROOT/test/webkit.js" "$B/ho.html?case=compose" 2026 1037 2)" "webkit compose"
   hc "$(node "$ROOT/test/webkit.js" "$B/ho.html?case=lite" 1440 900 2)" "webkit lite"
   echo "  -> $hp pass / $hf fail"; PASS=$((PASS+hp)); FAIL=$((FAIL+hf))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = chars ]; then
+  build "$INJ/chars.txt" "$B/ch.html"
+  line; echo "CHARS  (Video characters: 1-3 other angles each, required, sent as refs, and they follow the tray)"
+  cp_=0; cf_=0
+  cc(){ R="$1"; p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    [ "$p" = 0 ] && { f=$((f+1)); R="${R}FAIL  no assertions ran"; }
+    cp_=$((cp_+p)); cf_=$((cf_+f)); printf '  %-24s %3s pass / %s fail\n' "$2" "$p" "$f"
+    [ "$f" != 0 ] && printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  cc "$(title 2026 1037 "file://$B/ch.html" 20000)" "chromium 2026x1037"
+  cc "$(title 1040 800 "file://$B/ch.html" 20000)" "chromium 1040x800"
+  cc "$(title 393 852 "file://$B/ch.html" 20000)" "chromium phone 393"
+  cc "$(node "$ROOT/test/webkit.js" "$B/ch.html" 2026 1037 2)" "webkit 2026x1037"
+  cc "$(node "$ROOT/test/webkit.js" "$B/ch.html" 440 956 2)" "webkit iphone 440"
+  echo "  -> $cp_ pass / $cf_ fail"; PASS=$((PASS+cp_)); FAIL=$((FAIL+cf_))
 fi
 
 if [ "$WHAT" = core-record ]; then

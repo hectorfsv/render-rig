@@ -255,7 +255,7 @@
   }
  },
  {
-  "name": "video with a character and a voice",
+  "name": "video with a character, its angle and a voice",
   "cost": "$0.98",
   "det": "Kling 3.0 Pro5s, from your first source, voice \u2014 $0.196/s",
   "fields": {
@@ -265,10 +265,15 @@
    "prompt": "he speaks",
    "duration": "5",
    "generate_audio": "on",
-   "elements": "[{\"frontal\":0,\"refs\":[],\"voice_id\":\"voice-1\"}]",
+   "elements": "[{\"frontal\":0,\"refs\":[1],\"voice_id\":\"voice-1\"}]",
    "image_0": {
     "blob": 5482,
     "name": "src0.jpg",
+    "type": "image/jpeg"
+   },
+   "image_1": {
+    "blob": 6516,
+    "name": "src1.jpg",
     "type": "image/jpeg"
    }
   }

@@ -12,8 +12,12 @@
  */
 const path = require('path');
 let pw;
-try { pw = require(path.join(__dirname, '../../../webkit-check/node_modules/playwright')); }
-catch (e) { console.log('FAIL  playwright not found in ../webkit-check (npm install there)'); process.exit(0); }
+// projects/webkit-check from the repo (test/ -> ../../webkit-check); from a staging copy under scratch/stage/ the
+// link scratch/webkit-check answers ../../../webkit-check. The 09-26 move to the root left only the second one.
+for (const rel of ['../../webkit-check', '../../../webkit-check']) {
+  try { pw = require(path.join(__dirname, rel, 'node_modules/playwright')); break; } catch (e) {}
+}
+if (!pw) { console.log('FAIL  playwright not found in projects/webkit-check (npm install there)'); process.exit(0); }
 
 (async () => {
   const [file, w, h, dpr] = process.argv.slice(2);

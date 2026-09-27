@@ -235,6 +235,19 @@ input[type=range]:focus-visible{outline:2px solid var(--red-hot);outline-offset:
 .shot input.sd{flex:0 0 62px;text-align:center;font-family:var(--mono)}
 .el{flex-wrap:wrap}
 .el .lab{flex:0 0 100%;margin:0 0 2px}
+/* one character = its front picture and its remove button on a line, the voice under them, then the angles */
+.el select{order:1}
+.el .xbtn{order:2;align-self:stretch}
+.el input[type=text]{order:3;flex:0 0 100%;min-width:0}
+.el .angs{order:4;flex:0 0 100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:2px}
+.el .angs .al{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);margin-right:2px}
+.el .angs .none{font-size:12px;line-height:1.4;color:var(--amber)}
+.ang{position:relative;flex:0 0 auto;width:44px;height:44px;padding:0;border:1px solid var(--rule);background:rgba(0,0,0,.34);
+  cursor:pointer;overflow:hidden;opacity:.5;transition:opacity .16s,border-color .16s}
+.ang img{width:100%;height:100%;object-fit:cover;display:block}
+.ang b{position:absolute;right:3px;bottom:1px;font-family:var(--mono);font-size:10px;font-weight:400;color:#fff;text-shadow:0 0 3px #000}
+.ang[aria-pressed=true]{opacity:1;border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red)}
+.ang:disabled{cursor:not-allowed;opacity:.22}
 .xbtn{flex:0 0 auto;width:32px;background:rgba(0,0,0,.34);border:1px solid var(--rule);
   color:var(--ink-faint);cursor:pointer;font-size:15px;line-height:1;padding:8px 0;transition:.16s}
 .xbtn:hover{border-color:var(--red);color:var(--red-hot)}
@@ -1762,7 +1775,7 @@ body.wide:not(.typing) .console.director.inline-set #row-sound{margin-top:calc(1
 
               <div id="row-elements" style="margin-top:13px">
                 <label class="check"><input type="checkbox" id="use-el"><span>Name a character from the tray</span><b class="free">free</b></label>
-                <div class="hint">Build a person or object from a front-on image plus up to 3 other angles, then call it <b>@Element1</b> in the prompt. A voice id makes it speak &mdash; <b>and moves the whole clip to $0.196/s</b>.</div>
+                <div class="hint">Build a person or object from a front-on image plus <b>1 to 3 other angles</b> of the same one (fal needs at least one), then call it <b>@Element1</b> in the prompt. A voice id makes it speak &mdash; <b>and moves the whole clip to $0.196/s</b>.</div>
                 <div id="elements" hidden></div>
                 <button class="go ghost sm" id="add-el" type="button" hidden style="margin-top:7px">Add a character</button>
               </div>
@@ -3230,6 +3243,7 @@ window.RigMascot=(function(){
         paintTray();paintCost();
       });
     }).catch(function(e){
+      shiftEls(SRC.map(function(x){return x.id}).indexOf(id));
       SRC=SRC.filter(function(x){return x.id!==id});
       paintTray();paintCost();
       genErr(e.message||'Could not load that render back as a source.');
@@ -3245,11 +3259,13 @@ window.RigMascot=(function(){
                   '<button class="x" type="button" aria-label="Remove source '+(i+1)+'">&times;</button>'+
                   (dims?'<span class="d">'+dims+'</span>':'');
       d.querySelector('.x').onclick=function(){
+        shiftEls(SRC.indexOf(s));
         SRC=SRC.filter(function(x){return x.id!==s.id});paintTray();paintCost();
       };
       t.insertBefore(d,$('add-src'));
     });
     $('src-count').textContent=SRC.length;
+    if(ELS.length) paintEls();
     paintTabs();
     $('tray-empty').style.display=SRC.length?'none':'';
     // Several rows are keyed on SRC.length - the end-frame picker, the aspect
@@ -3549,9 +3565,32 @@ window.RigMascot=(function(){
         '<select data-i="'+i+'" data-k="frontal" aria-label="Front image for element '+(i+1)+'">'+trayOpts(e.frontal)+'</select>'+
         '<input type="text" data-i="'+i+'" data-k="voice" value="'+String(e.voice||'').replace(/"/g,'&quot;')+
           '" placeholder="voice id (optional)" aria-label="Voice id for element '+(i+1)+'">'+
-        '<button class="xbtn" type="button" data-del="'+i+'" aria-label="Remove element '+(i+1)+'">&times;</button></div>';
+        '<button class="xbtn" type="button" data-del="'+i+'" aria-label="Remove element '+(i+1)+'">&times;</button>'+
+        angStrip(e,i)+'</div>';
     }).join('');
     paintCost();
+  }
+  // fal's Kling elements need 1-3 reference_image_urls ("At least one image is required"); the tray
+  // indexes ride as refs and Detect & Prepare turns them into URLs. The front image is never its own angle.
+  var MAX_ANG=3;
+  function angStrip(e,i){
+    e.refs=(e.refs||[]).filter(function(r){ return r!==e.frontal && r>=0 && r<SRC.length });
+    var full=e.refs.length>=MAX_ANG, others=SRC.map(function(s,k){ return k }).filter(function(k){ return k!==e.frontal });
+    var body=others.length ? others.map(function(k){
+      var on=e.refs.indexOf(k)>=0, src=SRC[k].ref||SRC[k].url||'';
+      return '<button class="ang" type="button" data-i="'+i+'" data-a="'+k+'" aria-pressed="'+on+'"'+(full&&!on?' disabled':'')+
+        ' aria-label="Image '+(k+1)+' as another angle of @Element'+(i+1)+'"><img alt="" src="'+src+'"><b>'+(k+1)+'</b></button>';
+    }).join('') : '<span class="none">Add another photo of them to the tray: fal needs at least one more angle.</span>';
+    return '<div class="angs" role="group" aria-label="Other angles of @Element'+(i+1)+'"><span class="al">Other angles</span>'+body+'</div>';
+  }
+  // a tray picture left: the characters keep pointing at the same pictures
+  function shiftEls(k){
+    if(k<0) return;
+    ELS.forEach(function(e){
+      if(e.frontal===k) e.frontal=0; else if(e.frontal>k) e.frontal--;
+      e.refs=(e.refs||[]).filter(function(r){ return r!==k }).map(function(r){ return r>k ? r-1 : r })
+        .filter(function(r){ return r!==e.frontal });
+    });
   }
   $('use-el').addEventListener('change',function(){
     var on=$('use-el').checked;
@@ -3563,10 +3602,17 @@ window.RigMascot=(function(){
   $('elements').addEventListener('input',function(e){
     var t=e.target; if(t.dataset.i===undefined) return;
     var el=ELS[+t.dataset.i];
-    if(t.dataset.k==='frontal') el.frontal=parseInt(t.value,10); else el.voice=t.value;
+    if(t.dataset.k==='frontal'){ el.frontal=parseInt(t.value,10); paintEls(); return }
+    el.voice=t.value;
     paintCost();
   });
   $('elements').addEventListener('click',function(e){
+    var a=e.target.closest('.ang');
+    if(a){ if(a.disabled) return;
+      var el=ELS[+a.dataset.i], k=+a.dataset.a, at=el.refs.indexOf(k);
+      if(at>=0) el.refs.splice(at,1); else if(el.refs.length<MAX_ANG) el.refs.push(k);
+      el.refs.sort(function(x,y){ return x-y });
+      paintEls(); return }
     var b=e.target.closest('[data-del]'); if(!b) return;
     ELS.splice(+b.dataset.del,1); paintEls();
   });
@@ -3817,6 +3863,12 @@ window.RigMascot=(function(){
       genErr('Describe the piece, type the words that go on it, or add a source.'); return }
     if((type==='video'||type==='lite') && !$('prompt').value.trim() && !SRC.length && !($('use-shots').checked&&SHOTS.length)){
       genErr('Write a prompt, add an opening frame, or write a shot list.'); return;
+    }
+    if(type==='video' && $('use-el').checked && ELS.length){
+      for(var ei=0;ei<ELS.length;ei++){
+        if(!(ELS[ei].refs||[]).length){
+          genErr('@Element'+(ei+1)+' needs at least one other angle of the same '+(SRC.length>1?'person or object: tick one under Other angles.':'person or object: add another photo of them to the tray, then tick it under Other angles.')+' fal refuses a character without one.'); return }
+      }
     }
     if((type==='video'||type==='lite') && $('use-shots').checked && SHOTS.length){
       var tot=SHOTS.reduce(function(a,s){return a+(parseInt(s.duration,10)||0)},0);

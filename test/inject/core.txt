@@ -44,7 +44,7 @@
       var a=$('shots').querySelector('[data-i="0"][data-k="prompt"]'), b=$('shots').querySelector('[data-i="1"][data-k="prompt"]'), d0=$('shots').querySelector('[data-i="0"][data-k="duration"]'), d1=$('shots').querySelector('[data-i="1"][data-k="duration"]');
       a.value='she looks up'; a.dispatchEvent(new Event('input',{bubbles:true})); b.value='she smiles'; b.dispatchEvent(new Event('input',{bubbles:true}));
       d0.value='2'; d0.dispatchEvent(new Event('input',{bubbles:true})); d1.value='3'; d1.dispatchEvent(new Event('input',{bubbles:true})) }},
-    {name:'video with a character and a voice',mode:'video',src:1,set:function(){ val('prompt','he speaks'); val('dur','5'); chk('use-el',true); var v=$('elements').querySelector('[data-k="voice"]'); v.value='voice-1'; v.dispatchEvent(new Event('input',{bubbles:true})) }},
+    {name:'video with a character, its angle and a voice',mode:'video',src:2,set:function(){ val('prompt','he speaks'); val('dur','5'); chk('use-el',true); $('elements').querySelector('.ang[data-a="1"]').click(); var v=$('elements').querySelector('[data-k="voice"]'); v.value='voice-1'; v.dispatchEvent(new Event('input',{bubbles:true})) }},
     {name:'video lite plain 5s 768P',mode:'lite',set:function(){ val('prompt','it roars'); val('dur','5') }},
     {name:'video lite turbo 6s 1080P 21:9',mode:'lite',set:function(){ val('prompt','it roars'); seg('seg-h3eng','turbo'); seg('seg-vres','1080P'); val('dur','6'); seg('seg-ar','21:9') }},
     {name:'video lite VHS heavy from a wide frame (the tape)',mode:'lite',src:1,set:function(){ val('prompt','tape'); seg('seg-h3style','vhs'); seg('seg-h3dmg','heavy'); val('dur','5') }},
