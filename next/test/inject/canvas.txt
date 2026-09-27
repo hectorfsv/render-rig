@@ -56,6 +56,8 @@
     return Promise.reject(new Error('harness: no network'));
   };
   ['rig_board_cur:hector','rig_boards:hector','rig_gallery2:hector'].forEach(function(k){ try{ localStorage.removeItem(k) }catch(e){} });
+  // the classic view's session strip, as it saves it (newest first, up to 40): two pictures and a clip
+  try{ localStorage.setItem('rig_hist:hector',JSON.stringify([{url:png(48,64,'#5a3'),filename:'a.jpg',gen_type:'image',w:1856,h:2304,seed:12,engine:'Nano Banana Pro'},{url:'data:video/mp4;base64,AAAA',gen_type:'video',w:1280,h:720,engine:'MiniMax H3 Max Turbo'},{url:png(64,48,'#a53'),gen_type:'image',w:2048,h:1152,seed:7,engine:'Krea 2 Large'}])) }catch(e){}
   try{ sessionStorage.removeItem('rig_pw') }catch(e){}
 
   var R, on=function(id){ return $(id).classList.contains('on') }, card=function(id){ return document.querySelector('#world .card[data-id="'+id+'"]') };
@@ -208,15 +210,23 @@
     /* ---------- the gallery picker ---------- */
     var g=R.add('gallery').id;
     return R.openGallery(g).then(function(){
-      ok(!$('gal-pick').hidden,'the gallery picker opens');
-      eq(galCalls,1,'one gallery call');
+      ok(!$('gal-pick').hidden,'the picker opens');
+      eq(document.querySelector('#gp-tabs button[aria-pressed="true"]').dataset.tab,'session','…on This session first (the classic view made things this session)');
+      eq(galCalls,0,'…without a gallery call');
+      eq([document.querySelectorAll('#gp-grid button.gp-tile').length,document.querySelectorAll('#gp-grid .gp-tile.clip').length],[2,1],'…this session: two pictures and a clip, from rig_hist:hector');
+      ok(/2 pictures this session/.test($('gp-sub').textContent),'…said so',$('gp-sub').textContent);
+      document.querySelector('#gp-grid button[data-i="0"]').click();
+      eq([node(g).src.w,node(g).src.h,node(g).src.engine],[1856,2304,'Nano Banana Pro'],'a session render lands on the card with its size and engine');
+      return R.openGallery(g,'gallery');
+    }).then(function(){
+      eq(galCalls,1,'the Gallery tab: one gallery call');
       eq([document.querySelectorAll('#gp-grid button.gp-tile').length,document.querySelectorAll('#gp-grid .gp-tile.clip').length],[2,1],'pictures can be picked, clips cannot');
       document.querySelector('#gp-grid button[data-i="0"]').click();
       ok($('gal-pick').hidden,'picking closes it');
       eq([node(g).src.w,node(g).src.h],[2048,1152],'the Gallery card takes the picture and its size');
       ok(card(g).querySelector('.pic img'),'…and shows it');
       eq(st(g),'ready','…ready');
-      return R.openGallery(g);
+      return R.openGallery(g,'gallery');
     }).then(function(){
       eq(galCalls,1,'a second open is free (the list is kept an hour, the classic view\'s copy)');
       ok(!!localStorage.getItem('rig_gallery2:hector'),'…under the classic view\'s own key');
@@ -231,7 +241,7 @@
       eq(card(u2).querySelector('.foot .price').textContent,'priced later','…the card says so');
       ok(R.totals().unknown.indexOf(u2)>=0&&/priced when/.test($('total').textContent),'…and the total says so');
       var g3=R.add('gallery').id;
-      return R.openGallery(g3).then(function(){ document.querySelector('#gp-grid button[data-i="2"]').click(); return until(function(){ return node(g3).src.w },3000) })
+      return R.openGallery(g3,'gallery').then(function(){ document.querySelector('#gp-grid button[data-i="2"]').click(); return until(function(){ return node(g3).src.w },3000) })
         .then(function(){ eq(node(g3).src.w,40,'a gallery picture with no recorded size is measured once') });
     }).then(function(){
       step('upload');
@@ -516,7 +526,7 @@
       var g=R.add('gallery').id, up=R.add('upload').id, c=R.add('compose').id;
       R.connect(g+':out',c+':images'); R.connect(up+':out',c+':images');
       R.set(c,'prompt','both on a beach'); R.set(c,'res','4K'); R.set(c,'web',true);
-      return R.openGallery(g).then(function(){ document.querySelector('#gp-grid button[data-i="0"]').click(); return R.intake(up,fileOf(png(300,200,'#48c'),'me.png')) }).then(function(){
+      return R.openGallery(g,'gallery').then(function(){ document.querySelector('#gp-grid button[data-i="0"]').click(); return R.intake(up,fileOf(png(300,200,'#48c'),'me.png')) }).then(function(){
         card(c).querySelector('[data-act="classic"]').click();
         var h=JSON.parse(sessionStorage.getItem('rig_handoff')||'null');
         ok(h&&h.mode==='compose'&&h.settings.prompt==='both on a beach'&&h.settings.res==='4K'&&h.settings.web===true,'Open in the classic view: the mode and settings are handed over');
@@ -548,6 +558,7 @@
       if(q.get('fail')==='1'){ var ex=R.exportBoard(); ex.nodes.filter(function(n){ return n.id==='n6' })[0].err={sig:R.info('n6').sig,msg:'The model returned nothing.',at:Date.now()}; R.importBoard(ex) }
       R.fit();
       if(q.get('sheet')==='1') R.ask(['n4','n6']);
+      if(q.get('pick')==='1'){ var gg=R.add('gallery').id; R.openGallery(gg,'session') }
       if(q.get('run')==='1'){ var ex3=R.exportBoard(); ex3.nodes.filter(function(n){ return n.id==='n4' })[0].job={id:'j1',t0:Date.now()-41000,sig:'x',price:0.24}; R.importBoard(ex3); R.select({node:'n4'}); R.clock() }
       return tick(50);
     });

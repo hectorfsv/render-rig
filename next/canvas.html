@@ -218,6 +218,10 @@ body.running .card .top .ic{visibility:hidden}
 .modal .mh b{font-size:14px;letter-spacing:.1em;text-transform:uppercase}
 .modal .mh span{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)}
 .modal .mh .sp{flex:1}
+.modal .mh .tabs{display:flex;gap:4px;margin-left:8px}
+.modal .mh .tabs button{padding:5px 11px;font-size:12px;border-radius:99px}
+.modal .mh .tabs button[aria-pressed="true"]{color:var(--ink);border-color:var(--red);background:rgba(224,27,27,.16)}
+.gp-tile span.sz{left:auto;right:6px}
 .gp-grid{flex:1;overflow:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-content:start}
 .gp-tile{position:relative;aspect-ratio:1;padding:0;border-radius:8px;overflow:hidden;background:var(--stage);border:1px solid var(--rule)}
 .gp-tile img{width:100%;height:100%;object-fit:cover;display:block}
@@ -320,7 +324,7 @@ body.running .card .top .ic{visibility:hidden}
     </div>
     <div class="modal" id="gal-pick" hidden>
       <div class="box" role="dialog" aria-label="Pick from your gallery">
-        <div class="mh"><b>Your gallery</b><span id="gp-sub"></span><span class="sp"></span><button id="gp-close" type="button">Close</button></div>
+        <div class="mh"><b>Your renders</b><div class="tabs" id="gp-tabs"><button type="button" data-tab="session" aria-pressed="true">This session</button><button type="button" data-tab="gallery" aria-pressed="false">Gallery</button></div><span id="gp-sub"></span><span class="sp"></span><button id="gp-close" type="button">Close</button></div>
         <div class="gp-grid" id="gp-grid"></div>
       </div>
     </div>
@@ -375,7 +379,7 @@ body.running .card .top .ic{visibility:hidden}
      refs, Grok's edit 3, Nano Banana Pro takes up to 14. */
   var KINDS={
     upload: {name:'Upload',    eng:'your picture',        group:'sources', ins:[], out:'image'},
-    gallery:{name:'Gallery',   eng:'your render',         group:'sources', ins:[], out:'image'},
+    gallery:{name:'Gallery',   eng:'a render of yours',   group:'sources', ins:[], out:'image'},
     audio:  {name:'Audio',     eng:'your sound',          group:'sources', ins:[], out:'audio'},
     image:  {name:'Image',     eng:'Krea 2 Large',        group:'engines', ins:[{id:'refs',type:'image',max:10,label:'style refs'}], out:'image'},
     compose:{name:'Compose',   eng:'Nano Banana Pro',     group:'engines', ins:[{id:'images',type:'image',max:14,label:'pictures'}], out:'image'},
@@ -1178,8 +1182,15 @@ body.running .card .top .ic{visibility:hidden}
     });
   });
 
-  /* ---------- the gallery picker: the same list and the same one-hour copy as the classic view ---------- */
-  var GAL=null, GAL_AT=0, GP=null;
+  /* ---------- the picker: this session's renders (the classic view's strip, kept in this browser) or the gallery ----------
+     Hector 2026-09-27: "give me access to add any of the generations from classic view ... just the ones made that
+     session". The classic view keeps its last 40 renders in localStorage under rig_hist:<user>; the same browser,
+     the same origin, so the canvas reads them straight, no execution spent. The gallery tab is the flagged list. */
+  var GAL=null, GAL_AT=0, GP=null, GP_TAB='session', GP_ITEMS=[];
+  function sessionItems(){
+    try{ var h=JSON.parse(localStorage.getItem('rig_hist'+((who&&who.user)?':'+who.user:''))||'[]')||[];
+      return h.filter(function(it){ return it&&it.url }).map(function(it){ return {url:it.url,gen_type:it.gen_type||'image',engine:it.engine||'',specs:{w:+it.w||0,h:+it.h||0},seed:it.seed} }) }catch(e){ return [] }
+  }
   function galKey(){ return 'rig_gallery2'+((who&&who.user)?':'+who.user:'') }
   function loadGallery(){
     if(GAL && Date.now()-GAL_AT<GAL_TTL_MS) return Promise.resolve(GAL);
@@ -1192,24 +1203,31 @@ body.running .card .top .ic{visibility:hidden}
       return GAL;
     });
   }
-  function openGallery(id){
-    GP=id; $('gal-pick').hidden=false; $('gp-sub').textContent=''; $('gp-grid').innerHTML='<div class="gp-msg">Loading your gallery…</div>';
-    return loadGallery().then(paintGP).catch(function(){ $('gp-grid').innerHTML='<div class="gp-msg">The gallery did not load. <button type="button" id="gp-retry">Try again</button></div>' });
+  function openGallery(id,tab){
+    GP=id; $('gal-pick').hidden=false; $('gp-sub').textContent='';
+    if(tab) GP_TAB=tab; else if(GP_TAB==='session'&&!sessionItems().length&&GAL) GP_TAB='gallery';
+    [].forEach.call($('gp-tabs').querySelectorAll('button'),function(b){ b.setAttribute('aria-pressed',String(b.dataset.tab===GP_TAB)) });
+    if(GP_TAB==='session'){ var items=sessionItems(); paintGP(items,'session'); return Promise.resolve(items) }
+    $('gp-grid').innerHTML='<div class="gp-msg">Loading your gallery…</div>';
+    return loadGallery().then(function(items){ paintGP(items,'gallery'); return items }).catch(function(){ $('gp-grid').innerHTML='<div class="gp-msg">The gallery did not load. <button type="button" id="gp-retry">Try again</button></div>' });
   }
+  $('gp-tabs').addEventListener('click',function(e){ var b=e.target.closest('button[data-tab]'); if(b&&GP) openGallery(GP,b.dataset.tab) });
   function closeGallery(){ $('gal-pick').hidden=true; GP=null }
-  function paintGP(items){
+  function paintGP(items,tab){
+    GP_ITEMS=items;
     var pics=items.filter(function(it){ return it.gen_type!=='video' }).length;
-    $('gp-sub').textContent=pics+(pics===1?' picture':' pictures');
-    if(!items.length){ $('gp-grid').innerHTML='<div class="gp-msg">Nothing in the gallery yet.</div>'; return }
+    $('gp-sub').textContent=pics+(pics===1?' picture':' pictures')+(tab==='session'?' this session':'');
+    if(!items.length){ $('gp-grid').innerHTML='<div class="gp-msg">'+(tab==='session'?'Nothing from this session yet: render something in the classic view and it shows up here.':'Nothing in the gallery yet.')+'</div>'; return }
     $('gp-grid').innerHTML=items.map(function(it,i){
       if(it.gen_type==='video') return '<div class="gp-tile clip" title="A clip cannot feed an engine yet">clip<br>'+esc(it.engine||'')+'</div>';
-      return '<button type="button" class="gp-tile" data-i="'+i+'" aria-label="Use this picture"><img alt="" loading="lazy" decoding="async" src="'+esc(it.url)+'"><span>'+esc(it.engine||'')+'</span></button>';
+      var sp=it.specs||{};
+      return '<button type="button" class="gp-tile" data-i="'+i+'" aria-label="Use this picture"><img alt="" loading="lazy" decoding="async" src="'+esc(it.url)+'"><span>'+esc(it.engine||'')+'</span>'+(sp.w&&sp.h?'<span class="sz">'+sp.w+'×'+sp.h+'</span>':'')+'</button>';
     }).join('');
   }
   $('gp-grid').addEventListener('click',function(e){
     if(e.target.id==='gp-retry'){ openGallery(GP); return }
-    var b=e.target.closest('button[data-i]'); if(!b||!GAL) return;
-    var it=GAL[+b.dataset.i], n=node(GP); if(!it||!n) return;
+    var b=e.target.closest('button[data-i]'); if(!b) return;
+    var it=GP_ITEMS[+b.dataset.i], n=node(GP); if(!it||!n) return;
     if(guard()) return;
     var sp=it.specs||{};
     n.src={url:it.url,w:+sp.w||0,h:+sp.h||0,engine:it.engine||''};
