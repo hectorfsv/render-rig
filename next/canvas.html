@@ -129,6 +129,15 @@ input[type=password]{font-family:var(--mono);letter-spacing:.3em;text-align:cent
 .card .pic.aud{flex-direction:column;gap:8px;padding:8px}
 .card .pic.aud b{font-family:var(--disp);font-size:12.5px;color:var(--ink);font-weight:500;word-break:break-all}
 .card .pic.aud audio{width:100%;height:30px}
+.card .takes{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:7px 12px 0}
+.card .takes>span{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-right:2px}
+.card .tk{position:relative;width:30px;height:30px;padding:0;border:1px solid var(--rule);border-radius:4px;background:var(--stage);cursor:pointer;overflow:hidden;opacity:.55;transition:opacity .16s,border-color .16s}
+.card .tk:hover{opacity:.85}
+.card .tk img{width:100%;height:100%;object-fit:cover;display:block}
+.card .tk b{position:absolute;right:2px;bottom:0;font-family:var(--mono);font-size:9px;font-weight:400;color:#fff;text-shadow:0 0 3px #000}
+.card .tk.vid b{position:static;display:block;line-height:28px;text-align:center;font-size:10px;color:var(--ink-dim);text-shadow:none}
+.card .tk[aria-pressed=true]{opacity:1;border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red)}
+.card.frozen .tk{cursor:not-allowed}
 .card .ports{padding:8px 12px 0;display:grid;gap:5px}
 .card .row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-dim);min-height:18px;position:relative}
 .card .row.off{opacity:.45}
@@ -770,6 +779,12 @@ body.running .card .top .ic{visibility:hidden}
       el.innerHTML=h; paintState(n); measurePorts(n); return;
     }
     h+=picHTML(n);
+    var tks=K.group==='engines'?takesOf(n):[];
+    if(tks.length>1) h+='<div class="takes" role="group" aria-label="Takes"><span>Takes</span>'+tks.map(function(t,i){
+      var on=!!(n.ran&&n.ran.url===t.url), when=t.at?new Date(t.at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):'';
+      var tip='Take '+(i+1)+(t.price!=null?' · $'+money(t.price):'')+(when?' · '+when:'')+(on?' · on the card now':' · click to bring it back with its settings');
+      return '<button type="button" class="tk'+(K.out==='video'?' vid':'')+'" data-act="take" data-i="'+i+'" aria-pressed="'+on+'" title="'+esc(tip)+'" aria-label="'+esc(tip)+'">'+
+        (K.out==='video'?'':'<img alt="" decoding="async" src="'+esc(t.url)+'">')+'<b>'+(i+1)+'</b></button>' }).join('')+'</div>';
     if(K.ins.length) h+='<div class="ports">'+K.ins.map(function(p){
       var off=portOff(n,p.id), cnt=into(n.id,p.id).length;
       return '<div class="row in'+(off?' off':'')+'" data-port="'+p.id+'"><span class="port in '+p.type+'" data-node="'+n.id+'" data-port="'+p.id+'" data-type="'+p.type+'"></span>'+
@@ -915,6 +930,22 @@ body.running .card .top .ic{visibility:hidden}
   }
   function setSetting(id,k,v){ var n=node(id); if(!n||n.frozen||guard()) return; n.settings[k]=v; changed({repaint:[id]}) }
   function setFrozen(id,on){ var n=node(id); if(!n||KINDS[n.kind].group!=='engines'||guard()) return; if(on) n.frozen=true; else delete n.frozen; changed({repaint:[id]}) }
+  // TAKES (canvas v2): every real run's result, with the settings that made it; newest last, 12 at most
+  var MAX_TAKES=12;
+  function takesOf(n){ return (n.takes&&n.takes.length) ? n.takes : (n.ran&&n.ran.url ? [n.ran] : []) }
+  function keepTake(n,ran){
+    var t=takesOf(n).filter(function(x){ return x.url!==ran.url }); t.push(ran);
+    while(t.length>MAX_TAKES){ var k=0; while(k<t.length-1 && n.ran && t[k].url===n.ran.url) k++; t.splice(k,1) }
+    n.takes=t;
+  }
+  function pickTake(id,i){
+    var n=node(id); if(!n||guard()) return false; var t=takesOf(n)[i]; if(!t) return false;
+    if(n.frozen){ toast('Unfreeze it to pick another take.'); return false }
+    if(n.ran&&n.ran.url===t.url) return true;
+    if(!n.takes||!n.takes.length) n.takes=takesOf(n).slice();
+    n.ran=copy(t); if(t.set) n.settings=copy(t.set);   // its result and the settings that made it: fresh again if its inputs are the same
+    changed({repaint:[id]}); return true;
+  }
   function setRan(id,ran){ var n=node(id); if(!n) return; if(ran) n.ran=ran; else delete n.ran; changed({repaint:[id],quiet:true}) }   // a result is never an undo step
 
   /* ---------- every change goes through here: price, state, wires, total, undo, autosave ---------- */
@@ -942,7 +973,10 @@ body.running .card .top .ic{visibility:hidden}
     // a paid result outlives the step that made it: whichever `ran` is newer stays on the node
     G.nodes.forEach(function(n){ had[n.id]=n });
     j.nodes.forEach(function(n){ var o=had[n.id]; if(!o) return;
-      if(o.ran && (!n.ran || (o.ran.at||0)>(n.ran.at||0))) n.ran=o.ran;
+      var knew=function(u){ return !!((n.ran&&n.ran.url===u)||(n.takes||[]).some(function(t){ return t.url===u })) };
+      if(o.ran && (!n.ran || (!knew(o.ran.url) && (o.ran.at||0)>(n.ran.at||0)))) n.ran=o.ran;   // landed after that step: it stays
+      if(o.takes&&o.takes.length){ var m={}, all=[]; (n.takes||[]).concat(o.takes).forEach(function(t){ if(t&&t.url&&!m[t.url]){ m[t.url]=1; all.push(t) } });
+        all.sort(function(a,b){ return (a.at||0)-(b.at||0) }); n.takes=all.slice(-MAX_TAKES) }
       if(o.err && !n.err) n.err=o.err; delete n.job });
     G={v:1,name:j.name||'',nodes:j.nodes,edges:j.edges}; reseq(); sel=null; paintAll(); LAST=snap(); saveCurrent();
   }
@@ -1052,6 +1086,7 @@ body.running .card .top .ic{visibility:hidden}
       if(act.dataset.act==='run'){ askRun([n.id]); return }
       if(act.dataset.act==='classic'){ sendToClassic(n); return }
       if(act.dataset.act==='view'){ openView(n); return }
+      if(act.dataset.act==='take'){ pickTake(n.id,+act.dataset.i); return }
     }
     var b=e.target.closest('button[data-k][data-v]');
     if(b) setSetting(n.id,b.dataset.k,b.dataset.v);
@@ -1227,7 +1262,8 @@ body.running .card .top .ic{visibility:hidden}
     var nodes=[], ids={};
     j.nodes.forEach(function(n){ if(!n||!KINDS[n.kind]||ids[n.id]) return; var id=String(n.id); ids[id]=true;
       var o={id:id,kind:n.kind,x:+n.x||0,y:+n.y||0,settings:(n.settings&&typeof n.settings==='object')?n.settings:copy(DEF[n.kind]||{})};
-      if(n.src&&typeof n.src==='object') o.src=n.src; if(n.ran&&typeof n.ran==='object') o.ran=n.ran; if(n.frozen&&KINDS[n.kind].group==='engines') o.frozen=true;
+      if(n.src&&typeof n.src==='object') o.src=n.src; if(n.ran&&typeof n.ran==='object') o.ran=n.ran;
+      if(Array.isArray(n.takes)) o.takes=n.takes.filter(function(t){ return t&&typeof t==='object'&&t.url }).slice(-12); if(n.frozen&&KINDS[n.kind].group==='engines') o.frozen=true;
       if(n.job&&typeof n.job==='object'&&n.job.id) o.job=n.job; if(n.err&&typeof n.err==='object') o.err=n.err;
       nodes.push(o) });
     var old=G; G={v:1,name:'',nodes:nodes,edges:[]}; var edges=[];
@@ -1485,7 +1521,7 @@ body.running .card .top .ic{visibility:hidden}
              seed:(d.seed===0||d.seed)?d.seed:(n.job.seed||null)};
     if(d.written) ran.written=d.written;
     if(typeof d.balance==='number') BAL=d.balance;   // the finished poll carries the balance; the chip shows it when the run ends
-    endJob(n); n.ran=ran; delete n.err;
+    ran.set=copy(n.settings); endJob(n); n.ran=ran; keepTake(n,ran); delete n.err;
     changed({repaint:[n.id],quiet:true}); lockBoard();
     notify(n,true,'$'+money(ran.price)+' · '+fmt(ran.secs)+(RUN&&RUN.i+1<RUN.q.length?' · next: '+KINDS[node(RUN.q[RUN.i+1]).kind].name:''));
     if(RUN){ RUN.i++; next() } else if(!busy()) chip('Delivered'+(BAL!=null?' · fal balance $'+BAL.toFixed(2):''),'ok');
@@ -1561,7 +1597,7 @@ body.running .card .top .ic{visibility:hidden}
 
   /* ---------- test hooks: the harness drives the board through these, never through fake events ---------- */
   window.RigCanvas={add:add,remove:remove,connect:connect,disconnect:disconnect,select:select,fit:fit,zoomAt:zoomAt,
-    set:setSetting,freeze:setFrozen,setRan:setRan,intake:function(id,f){ return intake(node(id),f) },undo:undo,redo:redo,
+    set:setSetting,freeze:setFrozen,setRan:setRan,pickTake:pickTake,takes:function(id){ var n=node(id); return n?takesOf(n).map(function(t){ return t.url }):[] },intake:function(id,f){ return intake(node(id),f) },undo:undo,redo:redo,
     handoff:function(id){ return handoff(node(id)) },leave:function(){ location.href='../' },clock:function(){ G.nodes.forEach(function(n){ if(n.job){ JOBS[n.id]=JOBS[n.id]||{timer:null,noRow:0}; paintClock(n) } }); ticking() },
     runList:function(ids){ var r=runList(ids); return r.why?r:{list:r.list.map(function(n){ return n.id }),total:r.total,unknown:r.unknown} },
     ask:askRun,busy:busy,jobs:function(){ return Object.keys(JOBS) },fast:function(on){ FAST=!!on },resume:resumeJobs,view:function(id){ openView(node(id)) },
