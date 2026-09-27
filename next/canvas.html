@@ -183,7 +183,22 @@ details.more summary:hover{color:var(--ink-dim)}
   background:conic-gradient(transparent 0 62%,rgba(224,27,27,.35) 72%,var(--red) 86%,#fff 94%,transparent 100%);
   animation:ring 1.8s linear infinite}
 @keyframes ring{to{transform:rotate(360deg)}}
-.card.running .pic{border-style:solid;border-color:rgba(224,27,27,.25)}
+.card.running .pic{border-style:solid;border-color:rgba(224,27,27,.25);flex-direction:column;gap:8px}
+/* progress while it renders: the console's asymptotic curve (never 100 until it lands) and the time it usually takes */
+.prog{width:64px;height:64px;position:relative}
+.prog svg{width:64px;height:64px;transform:rotate(-90deg);display:block}
+.prog circle{fill:none;stroke-width:4}
+.prog .track{stroke:rgba(255,120,110,.14)} .prog .arc{stroke:var(--red);stroke-linecap:round;stroke-dasharray:176;stroke-dashoffset:176}
+.prog b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;color:var(--ink);font-weight:500}
+.card .pic .eta{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim)}
+/* the wires feeding a rendering card light up, and a spark rides each one to the card. The spark is an HTML dot OUTSIDE
+   the SVG, moved by a transform animation whose keyframes are the wire's own curve, sampled: transforms are what the
+   compositor animates for free. Measured in WebKit: a dash along the stroke 12.8 CPU-s per 20 s, a motion-path spark
+   inside the SVG 13.1 (SVG paints as one layer, anything moving in it repaints it), this form the idle figure. */
+.wires path.live{stroke-width:3;opacity:1}
+.spark{position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 6px 1px rgba(255,255,255,.6);
+  pointer-events:none;will-change:transform;animation:1.4s linear infinite}
+body.running #total{color:var(--ink)} #total .q{color:var(--ink-faint)}
 .card.failed{border-color:rgba(255,59,48,.45)}
 .card .foot button.run{padding:3px 9px;font-size:11px;letter-spacing:.04em}
 .card .foot button.run:disabled{opacity:.35}
@@ -641,6 +656,7 @@ body.running .card .top .ic{visibility:hidden}
     t.sum=+t.sum.toFixed(3); return t;
   }
   function paintTotal(){
+    if(RUN){ paintQueue(); $('empty-hint').hidden=G.nodes.length>0; return }
     var t=totals(), n=t.run.length+t.unknown.length, h;
     if(!n) h='nothing to pay';
     else h='to pay <b>$'+money(t.sum)+'</b> · '+n+' to run'+(t.unknown.length?' · '+t.unknown.map(function(x){return KINDS[x.kind].name}).join(', ')+' priced when '+(t.unknown.length>1?'their inputs exist':'its input exists'):'');
@@ -750,7 +766,7 @@ body.running .card .top .ic{visibility:hidden}
       h+=checkH('tr','Read my words first',s.tr);
       break;
     }
-    m+='<button type="button" class="sm" disabled title="Takes this node\'s settings and pictures to the classic view. It arrives with the Canvas tab in the console.">Open in the classic view · soon</button>';
+    m+='<button type="button" class="sm" data-act="classic" title="Takes this node\'s settings and pictures to the classic view">Open in the classic view</button>';
     return h+'<details class="more"'+(OPEN[n.id]?' open':'')+'><summary>More</summary><div class="more-in">'+m+'</div></details>';
   }
   function picHTML(n){
@@ -769,7 +785,8 @@ body.running .card .top .ic{visibility:hidden}
     }
     if(n.ran && n.ran.url) return '<div class="pic has" data-act="view" title="See it big">'+(K.out==='video'
       ? '<video muted playsinline preload="metadata" src="'+esc(n.ran.url)+'#t=0.1"></video>' : '<img alt="" decoding="async" src="'+esc(n.ran.url)+'">')+'</div>';
-    return '<div class="pic">'+(n.job?'rendering…':n.frozen?'frozen with no result':'no result yet')+'</div>';
+    if(n.job) return '<div class="pic"><div class="prog"><svg viewBox="0 0 64 64"><circle class="track" cx="32" cy="32" r="28"/><circle class="arc" cx="32" cy="32" r="28"/></svg><b class="pct">0%</b></div><span class="eta"></span></div>';
+    return '<div class="pic">'+(n.frozen?'frozen with no result':'no result yet')+'</div>';
   }
   function paintCard(n){
     var K=KINDS[n.kind], el=cardEl(n.id), s=S(n);
@@ -835,14 +852,28 @@ body.running .card .top .ic{visibility:hidden}
   /* ---------- wires ---------- */
   function pt(nid,pid){ var n=node(nid), o=PORTS[nid]&&PORTS[nid][pid]; return (n&&o)?{x:n.x+o.x,y:n.y+o.y}:null }
   function bez(a,b){ var d=Math.max(40,Math.abs(b.x-a.x)*.5); return 'M'+a.x+','+a.y+' C'+(a.x+d)+','+a.y+' '+(b.x-d)+','+b.y+' '+b.x+','+b.y }
+  // a spark's keyframes: 24 points along the wire's cubic, so the compositor moves it along the curve
+  function sparkOf(a,b,i){
+    var d=Math.max(40,Math.abs(b.x-a.x)*.5), c1={x:a.x+d,y:a.y}, c2={x:b.x-d,y:b.y}, k='';
+    for(var s=0;s<=24;s++){ var t=s/24, u=1-t, x=u*u*u*a.x+3*u*u*t*c1.x+3*u*t*t*c2.x+t*t*t*b.x, y=u*u*u*a.y+3*u*u*t*c1.y+3*u*t*t*c2.y+t*t*t*b.y;
+      k+=Math.round(t*10000)/100+'%{transform:translate('+x.toFixed(1)+'px,'+y.toFixed(1)+'px)}' }
+    return {css:'@keyframes spk'+i+'{'+k+'}',html:'<div class="spark" style="animation-name:spk'+i+'"></div>'};
+  }
   function paintWires(){
-    var html='';
+    var html='', sparks=[];
     G.edges.forEach(function(e,i){
       var f=e[0].split(':'), t=e[1].split(':'), a=pt(f[0],f[1]), b=pt(t[0],t[1]); if(!a||!b) return;
-      var type=KINDS[node(f[0]).kind].out, off=portOff(node(t[0]),t[1])?' off':'', s=(sel&&sel.edge===i)?' sel':'';
-      html+='<path class="hit" data-edge="'+i+'" d="'+bez(a,b)+'"></path><path class="'+type+off+s+'" data-edge="'+i+'" d="'+bez(a,b)+'"></path>';
+      var type=KINDS[node(f[0]).kind].out, off=portOff(node(t[0]),t[1])?' off':'', s=(sel&&sel.edge===i)?' sel':'', live=node(t[0]).job?' live':'';
+      html+='<path class="hit" data-edge="'+i+'" d="'+bez(a,b)+'"></path><path class="'+type+off+s+live+'" data-edge="'+i+'" d="'+bez(a,b)+'"></path>';
+      if(live) sparks.push(sparkOf(a,b,i));
     });
     $('wires').innerHTML=html;
+    // the sparks live beside the SVG, under the cards
+    [].forEach.call($('world').querySelectorAll('.spark'),function(e){ e.parentNode.removeChild(e) });
+    var css=$('spark-css'); if(!css){ css=document.createElement('style'); css.id='spark-css'; document.head.appendChild(css) }
+    css.textContent=sparks.map(function(x){ return x.css }).join('');
+    if(sparks.length){ var tmp=document.createElement('div'); tmp.innerHTML=sparks.map(function(x){ return x.html }).join('');
+      var after=$('wires'); [].slice.call(tmp.children).forEach(function(e){ after.parentNode.insertBefore(e,after.nextSibling); after=e }) }
   }
   function reaches(a,b){          // is there a path from node a down to node b?
     var seen={}, stack=[a];
@@ -1048,6 +1079,7 @@ body.running .card .top .ic{visibility:hidden}
       if(act.dataset.act==='freeze'){ setFrozen(n.id,!n.frozen); return }
       if(act.dataset.act==='pick'){ if(!e.target.closest('audio')) pick(n); return }
       if(act.dataset.act==='run'){ askRun([n.id]); return }
+      if(act.dataset.act==='classic'){ sendToClassic(n); return }
       if(act.dataset.act==='view'){ openView(n); return }
     }
     var b=e.target.closest('button[data-k][data-v]');
@@ -1278,9 +1310,25 @@ body.running .card .top .ic{visibility:hidden}
   function firstWait(n){ return n.kind==='video' ? 280 : (n.kind==='lite'||n.kind==='camera'||n.kind==='talk') ? 25 : n.kind==='upscale' ? 20 : 15 }
   function againWait(n){ return n.kind==='video' ? 30 : KINDS[n.kind].out==='video' ? 10 : 6 }
   function waitCap(n){ return (KINDS[n.kind].out==='video' ? 45 : 30)*60*1000 }
-  function ticking(){ var on=Object.keys(JOBS).length>0; if(on&&!TICK) TICK=setInterval(function(){ Object.keys(JOBS).forEach(function(id){ var n=node(id), el=cardEl(id); if(n&&el){ var st=el.querySelector('.st'); if(st) st.textContent='rendering '+clock(n) } }) },1000);
+  function progress(n){ var s=(Date.now()-n.job.t0)/1000, e=eta(n); return Math.min(99,100*(1-Math.exp(-1.9*(s/Math.max(1,e))))) }
+  function paintClock(n){
+    var el=cardEl(n.id); if(!el||!n.job) return;
+    var st=el.querySelector('.st'); if(st) st.textContent='rendering '+clock(n);
+    var arc=el.querySelector('.prog .arc'), pct=el.querySelector('.prog .pct'), et=el.querySelector('.pic .eta'), p=progress(n), s=(Date.now()-n.job.t0)/1000, e=eta(n);
+    if(arc) arc.style.strokeDashoffset=String(176*(1-p/100));
+    if(pct) pct.textContent=Math.floor(p)+'%';
+    if(et) et.textContent=s<e ? 'about '+fmt(e-s)+' left' : 'usually '+fmt(e)+' · still going';
+  }
+  function ticking(){ var on=Object.keys(JOBS).length>0; if(on&&!TICK) TICK=setInterval(function(){ Object.keys(JOBS).forEach(function(id){ var n=node(id); if(n) paintClock(n) }); paintQueue() },1000);
     if(!on&&TICK){ clearInterval(TICK); TICK=null } }
-  function lockBoard(){ document.body.classList.toggle('running',busy()); paintUndo(); G.nodes.forEach(paintState) }
+  // the header while a run is in flight: where it is, how long, what comes next
+  function paintQueue(){
+    if(!RUN){ return }
+    var n=node(RUN.q[RUN.i]); if(!n) return;
+    var nx=[]; for(var i=RUN.i+1;i<RUN.q.length;i++){ var m=node(RUN.q[i]); if(m) nx.push(KINDS[m.kind].name) }
+    $('total').innerHTML='Rendering <b>'+(RUN.i+1)+' of '+RUN.q.length+'</b> · '+KINDS[n.kind].name+(n.job?' '+esc(fmt((Date.now()-n.job.t0)/1000)):'')+(nx.length?' <span class="q">· next '+esc(nx.slice(0,2).join(', '))+(nx.length>2?' +'+(nx.length-2):'')+'</span>':'');
+  }
+  function lockBoard(){ document.body.classList.toggle('running',busy()); paintUndo(); G.nodes.forEach(paintState); paintTotal() }   // the header follows the queue, and comes back when it ends
 
   // the nodes a run would send for these targets, upstream first; or the one sentence that says why it cannot
   function runList(targets){
@@ -1327,7 +1375,7 @@ body.running .card .top .ic{visibility:hidden}
   function closeAsk(){ $('run-ask').hidden=true; ASK=null }
   $('run-cancel').addEventListener('click',closeAsk);
   $('run-ask').addEventListener('click',function(e){ if(e.target===$('run-ask')) closeAsk() });
-  $('run-go').addEventListener('click',function(){ var ids=ASK, named=ASK_NAMED; closeAsk(); if(ids) startRun(ids,named) });
+  $('run-go').addEventListener('click',function(){ var ids=ASK, named=ASK_NAMED; closeAsk(); askNotify(); if(ids) startRun(ids,named) });
   // Run all = every engine that is not fresh; a fresh node is only ever rerun by name, from its own card
   $('run-all').addEventListener('click',function(){ evaluate();
     var ids=G.nodes.filter(function(n){ var e=PL[n.id]; return e && (e.st==='new'||e.st==='changed'||e.st==='failed') }).map(function(n){ return n.id });
@@ -1431,6 +1479,19 @@ body.running .card .top .ic{visibility:hidden}
       })
       .catch(again);
   }
+  /* Done while he is in another tab: the title flips until he comes back, and a macOS notification (asked for once,
+     on his first Run, which is a click) opens the viewer on the result. Nothing when the tab is in front. */
+  var TITLE=document.title, NOTE_ASKED=false;
+  function notify(n,okay,msg){
+    if(!document.hidden) return;
+    document.title=(okay?'✓ ':'✗ ')+KINDS[n.kind].name+(okay?' done':' failed')+' · Canvas';
+    if(!('Notification' in window)||Notification.permission!=='granted') return;
+    try{ var o=new Notification(KINDS[n.kind].name+(okay?' is done':' failed'),{body:msg,tag:'rig-'+n.id,icon:'../icon-192-v2.png'});
+      o.onclick=function(){ try{ window.focus() }catch(e){} if(okay&&node(n.id)&&node(n.id).ran) openView(node(n.id)); o.close() } }catch(e){}
+  }
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) document.title=TITLE });
+  window.addEventListener('focus',function(){ document.title=TITLE });
+  function askNotify(){ if(NOTE_ASKED||!('Notification' in window)||Notification.permission!=='default') return; NOTE_ASKED=true; try{ Notification.requestPermission() }catch(e){} }
   function landNode(n,d){
     var url=(d.urls&&d.urls[0])||'';
     if(!url){ failNode(n,'The run finished but returned nothing.'); return }
@@ -1441,13 +1502,14 @@ body.running .card .top .ic{visibility:hidden}
     if(typeof d.balance==='number') BAL=d.balance;   // the finished poll carries the balance; the chip shows it when the run ends
     endJob(n); n.ran=ran; delete n.err;
     changed({repaint:[n.id],quiet:true}); lockBoard();
+    notify(n,true,'$'+money(ran.price)+' · '+fmt(ran.secs)+(RUN&&RUN.i+1<RUN.q.length?' · next: '+KINDS[node(RUN.q[RUN.i+1]).kind].name:''));
     if(RUN){ RUN.i++; next() } else if(!busy()) chip('Delivered'+(BAL!=null?' · fal balance $'+BAL.toFixed(2):''),'ok');
   }
   function failNode(n,msg){
     endJob(n); n.err={sig:PL[n.id]?PL[n.id].sig:'',msg:msg,at:Date.now()};
     changed({repaint:[n.id],quiet:true});
     if(RUN){ RUN=null }
-    lockBoard(); chip('Failed','err'); toast(KINDS[n.kind].name+': '+msg);
+    lockBoard(); chip('Failed','err'); toast(KINDS[n.kind].name+': '+msg); notify(n,false,msg);
   }
   function endJob(n){ var j=JOBS[n.id]; if(j&&j.timer) clearTimeout(j.timer); delete JOBS[n.id]; delete n.job; ticking() }
   function lockOut(){   // the code no longer opens the rig: jobs in flight stay on the board and resume after the next unlock
@@ -1470,6 +1532,30 @@ body.running .card .top .ic{visibility:hidden}
     if(Object.keys(JOBS).length) chip('Picked '+Object.keys(JOBS).length+' run'+(Object.keys(JOBS).length>1?'s':'')+' back up','busy');
   }
 
+  /* ---------- send to classic: the node's settings and pictures, handed to the console through sessionStorage ----------
+     The console reads `rig_handoff` when it unlocks (the same tab keeps the unlock), sets the mode, the fields and the
+     sources, and removes the key. Pictures ride as fal URLs or, for an Upload, as the shrunk bytes the rig would get.
+     A sound file is not carried (too big for the store): the console says to add it again. */
+  var K_HANDOFF='rig_handoff', HANDOFF_CAP=4e6;
+  function handoff(n){
+    var p=plan(n), s=S(n), h={v:1,mode:n.kind,settings:s,images:[],end:null,at:Date.now(),from:'canvas'};
+    p.img.forEach(function(u,i){
+      if(u.kind==='upload'){ var up=u.src&&UP[u.src.id]; if(up) h.images.push({data:up.ref,w:up.w,h:up.h,name:up.name}) }
+      else { var url=u.kind==='gallery'?(u.src&&u.src.url):(u.ran&&u.ran.url); var d=dimsOf(u); if(url) h.images.push({url:url,w:d?d.w:0,h:d?d.h:0}) }
+    });
+    if(p.f.end_image_idx!=null) h.end=+p.f.end_image_idx;
+    if(p.aud) h.audio=true;
+    return h;
+  }
+  function sendToClassic(n){
+    if(busy()){ toast(LOCK_MSG); return }
+    var h=handoff(n), json=JSON.stringify(h), dropped=0;
+    while(json.length>HANDOFF_CAP){ var k=-1; h.images.forEach(function(im,i){ if(im.data) k=i }); if(k<0) break; h.images.splice(k,1); dropped++; json=JSON.stringify(h) }
+    try{ sessionStorage.setItem(K_HANDOFF,json) }catch(e){ toast('Could not hand this over: '+e.message); return }
+    if(dropped) toast(dropped+' uploaded picture'+(dropped>1?'s':'')+' too big to carry: add '+(dropped>1?'them':'it')+' again in the console.');
+    RigCanvas.leave();
+  }
+
   /* ---------- the viewer ---------- */
   function openView(n){
     var r=n.ran; if(!r||!r.url) return; var K=KINDS[n.kind], vid=K.out==='video';
@@ -1490,6 +1576,7 @@ body.running .card .top .ic{visibility:hidden}
   /* ---------- test hooks: the harness drives the board through these, never through fake events ---------- */
   window.RigCanvas={add:add,remove:remove,connect:connect,disconnect:disconnect,select:select,fit:fit,zoomAt:zoomAt,
     set:setSetting,freeze:setFrozen,setRan:setRan,intake:function(id,f){ return intake(node(id),f) },undo:undo,redo:redo,
+    handoff:function(id){ return handoff(node(id)) },leave:function(){ location.href='../' },clock:function(){ G.nodes.forEach(function(n){ if(n.job){ JOBS[n.id]=JOBS[n.id]||{timer:null,noRow:0}; paintClock(n) } }); ticking() },
     runList:function(ids){ var r=runList(ids); return r.why?r:{list:r.list.map(function(n){ return n.id }),total:r.total,unknown:r.unknown} },
     ask:askRun,busy:busy,jobs:function(){ return Object.keys(JOBS) },fast:function(on){ FAST=!!on },resume:resumeJobs,view:function(id){ openView(node(id)) },
     exportBoard:exportBoard,importBoard:importBoard,openGallery:openGallery,

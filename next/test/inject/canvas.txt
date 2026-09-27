@@ -24,6 +24,10 @@
     return new File([buf],name||'line.wav',{type:'audio/wav'}) }
 
   var GUEST=q.get('guest')==='1', galCalls=0, SENT=0, REQ=[], POLLS={}, FAILN={}, DENY=false, NOROW=false, LOCK401=false, jobSeq=100;
+  // notifications: the harness owns the API (headless browsers never grant it)
+  var NOTIFY_ASKED=0, NOTES=[]; function FakeNote(t,o){ NOTES.push({t:t,o:o}); this.close=function(){} } FakeNote.permission='default'; FakeNote.requestPermission=function(){ NOTIFY_ASKED++; FakeNote.permission='granted'; return Promise.resolve('granted') };
+  try{ Object.defineProperty(window,'Notification',{value:FakeNote,configurable:true}) }catch(e){}
+  var HIDDEN=false; try{ Object.defineProperty(document,'hidden',{get:function(){ return HIDDEN },configurable:true}) }catch(e){}
   // the mock rig: a submit answers with a job id and records every field and picture; the first poll is pending, the second done
   function record(b){ var o={}; b.forEach(function(v,k){ if(v instanceof Blob){ o[k]={size:v.size,type:v.type,name:v.name||''} } else o[k]=v }); return o }
   var GAL=[{url:png(64,36,'#a33'),specs:{w:2048,h:1152},engine:'Krea 2 Large',gen_type:'image'},
@@ -375,15 +379,20 @@
     // go
     $('run-all').click(); $('run-go').click();
     ok($('run-ask').hidden&&R.busy(),'Run: the sheet closes and the run is in flight');
+    ok(NOTIFY_ASKED===1,'the first Run asks once for notifications (a click)');
     ok(R.state().nodes.length===5&&R.add('image')===null,'…the board is locked: nothing can be added');
     R.set('n3','prompt','changed'); eq(node('n3').settings.prompt,'the tiger in the arena','…nor edited');
     ok($('undo').disabled&&$('run-all').disabled&&$('new-btn').disabled,'…undo, Run all and New are off');
     ok(!$('run-stop').hidden,'…and Stop is offered');
     ok(card('n2').classList.contains('running'),'the card in flight is marked running');
+    ok(card('n2').querySelector('.prog .arc')&&card('n2').querySelector('.pic .eta'),'…with a progress ring and the time it usually takes');
+    ok(/Rendering 1 of 3/.test($('total').textContent)&&/next Compose, Video Lite/.test($('total').textContent),'the header says where the run is and what comes next',$('total').textContent);
+    ok(!document.querySelector('#wires path.live'),'no live wire: Image has no inputs');
     var ring=document.getAnimations?document.getAnimations().filter(function(a){ var t=a.effect&&a.effect.getTiming&&a.effect.getTiming(); return t&&t.iterations===Infinity }).length:1;
     ok(ring>=1,'…and a light runs around its edge (one endless animation, only now)',ring);
     return idle().then(function(){
       ok(!R.busy(),'the run finished');
+      ok(!document.querySelector('#wires path.live')&&!document.querySelector('.prog')&&!document.querySelector('#world .spark'),'no live wire, spark or ring once it is done');
       eq(SENT-s0,3,'three submits');
       var rq=REQ.slice(-3);
       eq(rq.map(function(x){ return x.model }),['krea','nbp','h3'],'…in order: Krea, Nano Banana Pro, H3');
@@ -418,10 +427,16 @@
       eq([st('n2'),st('n3'),st('n4')],['fresh','changed','changed'],'change Compose: it and Video Lite go stale');
       R.ask(['n4']);
       eq($('ask-rows').children.length,2,'Run on Video Lite: Compose then it, not Image');
-      $('run-go').click();
+      HIDDEN=true; NOTES=[]; $('run-go').click();
+      ok(document.querySelectorAll('#wires path.live').length===2&&document.querySelectorAll('#world .spark').length===2,'the two wires into the rendering Compose light up, a spark on each',document.querySelectorAll('#world .spark').length);
       return idle();
     }).then(function(){
+      HIDDEN=false;
       eq(SENT-s0,5,'two more submits');
+      ok(/✓ Video Lite done/.test(document.title),'in another tab, the title says what finished',document.title);
+      eq(NOTES.map(function(x){ return x.t }),['Compose is done','Video Lite is done'],'…and a notification per node, with the price and the time');
+      ok(/\$0\.15/.test(NOTES[0].o.body)&&/next: Video Lite/.test(NOTES[0].o.body),'…the first says what comes next',NOTES[0].o.body);
+      window.dispatchEvent(new Event('focus')); ok(!/✓/.test(document.title),'back in front, the title is itself again');
       eq(REQ.slice(-2).map(function(x){ return x.model }),['nbp','h3'],'…Compose then H3');
       eq([st('n2'),st('n3'),st('n4')],['fresh','fresh','fresh'],'fresh again');
       // a rerun of a fresh node, asked for by name
@@ -495,6 +510,24 @@
         ok(rl.image_0&&rl.image_0.type==='image/jpeg','…its opening frame as a JPEG (the tape)');
         eq([ru.upscale_factor,ru.upscale_model,ru.face_enhancement,ru.image_0.name,ru.image_0.type],['2','Standard V2','on','wide.png','image/png'],'Upscale sent the ORIGINAL file, by name');
       });
+    }).then(function(){
+      /* ---------- send to classic ---------- */
+      var left=0; R.leave=function(){ left++ };
+      var g=R.add('gallery').id, up=R.add('upload').id, c=R.add('compose').id;
+      R.connect(g+':out',c+':images'); R.connect(up+':out',c+':images');
+      R.set(c,'prompt','both on a beach'); R.set(c,'res','4K'); R.set(c,'web',true);
+      return R.openGallery(g).then(function(){ document.querySelector('#gp-grid button[data-i="0"]').click(); return R.intake(up,fileOf(png(300,200,'#48c'),'me.png')) }).then(function(){
+        card(c).querySelector('[data-act="classic"]').click();
+        var h=JSON.parse(sessionStorage.getItem('rig_handoff')||'null');
+        ok(h&&h.mode==='compose'&&h.settings.prompt==='both on a beach'&&h.settings.res==='4K'&&h.settings.web===true,'Open in the classic view: the mode and settings are handed over');
+        ok(h&&h.images.length===2&&h.images[0].url&&h.images[1].data&&h.images[1].w===300,'…with the gallery picture as a URL and the upload as its bytes, in wire order');
+        eq(left,1,'…and the page leaves for the console');
+        sessionStorage.removeItem('rig_handoff');
+        var l=R.add('lite').id; R.connect(c+':out',l+':image'); R.connect(g+':out',l+':end'); R.set(l,'eng','turbo'); R.set(l,'prompt','loop');
+        R.setRan(c,{sig:R.info(c).sig,url:png(64,36,'#8a5')+'#res',w:2048,h:1152,price:0.3,at:Date.now()});
+        var h2=R.handoff(l);
+        ok(h2.images.length===2&&/^data:image\/png/.test(h2.images[0].url)&&h2.end===1&&h2.settings.eng==='turbo','a clip node hands over its opening frame (a result) and its end frame, Turbo kept',JSON.stringify([h2.images.length,h2.end,h2.settings.eng]));
+      });
     }).then(function(){ R.fast(false) });
   }
 
@@ -515,7 +548,7 @@
       if(q.get('fail')==='1'){ var ex=R.exportBoard(); ex.nodes.filter(function(n){ return n.id==='n6' })[0].err={sig:R.info('n6').sig,msg:'The model returned nothing.',at:Date.now()}; R.importBoard(ex) }
       R.fit();
       if(q.get('sheet')==='1') R.ask(['n4','n6']);
-      if(q.get('run')==='1'){ var ex3=R.exportBoard(); ex3.nodes.filter(function(n){ return n.id==='n4' })[0].job={id:'j1',t0:Date.now()-41000,sig:'x',price:0.24}; R.importBoard(ex3); R.select({node:'n4'}) }
+      if(q.get('run')==='1'){ var ex3=R.exportBoard(); ex3.nodes.filter(function(n){ return n.id==='n4' })[0].job={id:'j1',t0:Date.now()-41000,sig:'x',price:0.24}; R.importBoard(ex3); R.select({node:'n4'}); R.clock() }
       return tick(50);
     });
   }
