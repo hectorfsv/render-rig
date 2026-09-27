@@ -2765,8 +2765,10 @@ window.RigMascot=(function(){
   return API;
 })();
 </script>
+<script src="rig-core.js?v=20260927"></script>
 <script>
 (function(){
+  if(!window.RigCore){ var pe=document.getElementById('pw-err'); if(pe) pe.textContent='The Rig\'s core script (rig-core.js) did not load. Reload the page.'; var ub=document.getElementById('unlock'); if(ub) ub.disabled=true; return }   // never a dead page
   var $=function(id){return document.getElementById(id)};
 
   // The page is served from GitHub Pages; the API stays on n8n.
@@ -2774,12 +2776,10 @@ window.RigMascot=(function(){
   var BASE=N8N+'/webhook/kling-form';
   var DOWNLOAD=N8N+'/webhook/kling-download';
 
-  var AR_VID=[['16:9','16:9'],['9:16','9:16'],['1:1','1:1']];
-  // Krea's own 8, straight from the live schema. 2.35:1 is anamorphic cinema
-  // and nothing else in the rig can produce it.
-  var AR_KREA=[['1:1','1:1'],['4:5','4:5'],['2:3','2:3'],['9:16','9:16'],
-               ['4:3','4:3'],['3:2','3:2'],['16:9','16:9'],['2.35:1','2.35']];
-  var AR_NBP=[['auto','Auto'],['1:1','1:1'],['4:5','4:5'],['9:16','9:16'],['3:2','3:2'],['16:9','16:9']];
+  /* THE TABLES LIVE IN rig-core.js (2026-09-27): the engines, the ratios, fal's prices and the request builder
+     are one file both pages load, so a change lands once. What stays here is the console: its controls, its
+     state, and readSettings(), which hands that state to the core. Proven byte for byte: ./test/run.sh core. */
+  var AR_VID=RigCore.AR.video, AR_KREA=RigCore.AR.krea, AR_NBP=RigCore.AR.nbp;
 
   // The default mode must match whichever button ships aria-pressed=true, or
   // the console opens with the highlight on one mode and the state on another.
@@ -2788,18 +2788,9 @@ window.RigMascot=(function(){
   var crea='low', shotType='customize', subjDet='';
   var SHOTS=[], ELS=[];
   // The mode IS the model now, so there is no engine dropdown to read.
-  function modelFor(t){
-    if(t==='video') return SRC.length ? 'kling-i2v' : 'kling-t2v';
-    if(t==='lite') return 'h3';
-    if(t==='camera') return 'h3cam';
-    if(t==='talk') return 'h3talk';
-    if(t==='image') return 'krea';
-    if(t==='compose') return 'nbp';
-    if(t==='design') return 'grok';
-    return 'topaz';
-  }
-  var GEN_UPS=['Redefine','Wonder','Wonder 3','Standard MAX'];
-  function isGenUpscale(){return GEN_UPS.indexOf($('upmodel').value)>=0}
+  function modelFor(t){ return RigCore.modelFor(t, SRC.length>0) }
+  var GEN_UPS=RigCore.GEN_UPS;
+  function isGenUpscale(){return RigCore.isGenUpscale($('upmodel').value)}
   function hasVoice(){return ELS.some(function(e){return e.voice && e.voice.trim()})}
   function optVal(id,useId){return $(useId).checked ? $(id).value : null}
 
@@ -3328,10 +3319,8 @@ window.RigMascot=(function(){
   }
   // Grok's edit endpoint takes a MAXIMUM OF 3 sources. n8n slices to 3 as well,
   // so a stale page can never make fal 422 - but the tray says so up front.
-  var DESIGN_MAX_SRC=3;
-  var AR_DESIGN=[['3:4','3:4'],['auto','Auto'],['2:3','2:3'],['1:1','1:1'],['4:3','4:3'],['16:9','16:9'],['9:16','9:16']];
-  // MiniMax H3 Max text-to-video shapes; from a source it inherits the source's shape.
-  var AR_LITE=[['16:9','16:9'],['9:16','9:16'],['1:1','1:1'],['4:3','4:3'],['3:4','3:4'],['21:9','21:9']];
+  var DESIGN_MAX_SRC=RigCore.DESIGN_MAX_SRC;
+  var AR_DESIGN=RigCore.AR.design, AR_LITE=RigCore.AR.lite;
   var quality='medium';
   var MODE_HINT={
     video:'Kling 3.0 Pro. Billed per second of output.',
@@ -3591,54 +3580,36 @@ window.RigMascot=(function(){
     paintSeedHint();
   };
 
-  /* ---------- cost ---------- */
-  function topazTier(mp){
-    if(mp<=24) return 0.08;
-    if(mp<=48) return 0.16;
-    if(mp<=96) return 0.32;
-    return 1.36;
+  /* ---------- cost ----------
+     The meter is RigCore.price() on what the controls say. readSettings() is the one place the console's
+     state becomes the settings object the core (and the canvas) speak; every field the request carries
+     comes from it, so the meter and the request can never disagree about what is set. */
+  function topazTier(mp){ return RigCore.topazTier(mp) }
+  function readSettings(){
+    var s={prompt:$('prompt').value.trim()};
+    var rev=revision(); if(rev){ s.prompt_same=(s.prompt===rev.caption); s.prior_prompt=rev.written }
+    var lk=LOOK||{}; s.look={}; lookFams().forEach(function(f){ if(lk[f[0]]) s.look[f[0]]=lk[f[0]] });   // LOOK is declared further down: the first paint runs before it
+    switch(type){
+      case 'image':   s.ar=ar; s.crea=crea; s.use_style=$('use-style').checked; s.style_str=$('style-str').value; s.seed=$('seed').value.trim(); break;
+      case 'compose': s.res=res; s.ar=ar; s.keep_framing=$('keep-framing').checked; s.web=$('websearch').checked; s.sysp=$('sysp').value.trim(); s.safety=optVal('saf','use-saf'); s.seed=$('seed').value.trim(); break;
+      case 'design':  s.words=$('exact-text').value.trim(); s.quality=quality; s.res=res; s.ar=ar; s.seed=$('seed').value.trim(); break;
+      case 'upscale': s.factor=upf; s.model=$('upmodel').value; s.face=$('face').checked; s.face_strength=optVal('fstr','use-fstr'); s.subject=subjDet;
+                      s.sharpen=$('sharp').value; s.denoise=$('denoise').value; s.fixc=$('fixc').value; s.up_prompt=$('up-prompt').value.trim(); s.up_crea=$('up-crea').value; s.up_tex=$('up-tex').value; break;
+      case 'video':   s.dur=dur; s.audio=$('audio').checked; s.ar=ar; s.neg=$('neg').value.trim(); s.cfg=optVal('cfg','use-cfg'); s.shot_type=shotType;
+                      s.shots=($('use-shots').checked&&SHOTS.length)?SHOTS:[]; s.end_idx=$('end-img').value; s.elements=($('use-el').checked&&ELS.length)?ELS:[]; break;
+      case 'lite':    s.dur=dur; s.vres=vres; s.style=H3_STYLE; s.dmg=H3_DMG; s.eng=H3_TURBO?'turbo':'max'; s.ar=ar; s.sound=SOUND;
+                      s.shots=($('use-shots').checked&&SHOTS.length)?SHOTS:[]; s.end_idx=$('end-img').value; break;
+      case 'camera':  s.move=CAM_MOVE; s.dur=CAM_DUR; s.res=CAM_RES; s.snd=CAM_SND; s.snd_text=$('cam-snd').value.trim(); break;
+      case 'talk':    s.res=TALK_RES; s.tr=$('talk-tr').checked; break;
+    }
+    return s;
   }
-  // Every figure here is quoted from fal's own model pages, not estimated.
-  function cost(){
-    // THE H3 FAMILY - fal's list prices, the same table as n8n's priceOf
-    if(type==='camera') return +(Math.min(15,Math.max(3,parseInt(CAM_DUR,10)||5))*perSec(CAM_RES)).toFixed(3);
-    if(type==='talk') return +(talkSecs()*perSec(TALK_RES)).toFixed(3);
-    if(type==='lite' && H3_STYLE) return +(Math.min(15,Math.max(5,parseInt(dur,10)||5))*0.08).toFixed(3);
-    if(type==='lite' && H3_TURBO) return +(Math.min(15,Math.max(5,parseInt(dur,10)||5))*(vres==='1080P'?0.08:0.04)).toFixed(3);
-    if(type==='lite'){
-      // MiniMax H3 Max at fal's LIST rate - its page shows 50% off, unproven against a
-      // balance delta. n8n's priceOf charges exactly this (check-rig-price-parity.js).
-      return +(Math.min(15,Math.max(5,parseInt(dur,10)||5))*(vres==='1080P'?0.16:0.08)).toFixed(3);
-    }
-    if(type==='video'){
-      var per = hasVoice() ? 0.196 : ($('audio').checked ? 0.168 : 0.112);
-      return +(parseInt(dur,10)*per).toFixed(3);
-    }
-    if(type==='upscale'){
-      var s=SRC[0];
-      if(!s||!s.w||!s.h) return 0;
-      var f=parseFloat(upf);
-      return topazTier((s.w*f*s.h*f)/1e6);
-    }
-    if(type==='image'){
-      // style references are the only thing that moves Krea off $0.060
-      return ($('use-style').checked && SRC.length) ? 0.065 : 0.060;
-    }
-    if(type==='design'){
-      // Grok Imagine: $0.04 low/1k, $0.06 medium/1k, $0.06 low/2k, $0.08 medium/2k,
-      // plus $0.01 for every input image.
-      var base = (res==='1K')
-        ? (quality==='low' ? 0.04 : 0.06)
-        : (quality==='low' ? 0.06 : 0.08);
-      return +(base + 0.01*Math.min(SRC.length, DESIGN_MAX_SRC)).toFixed(3);
-    }
-    var c = res==='4K' ? 0.30 : 0.15;
-    if($('websearch').checked) c += 0.015;
-    return +c.toFixed(3);
-  }
+  function ctx(){ return {images:SRC.map(function(x){ return {w:x.w,h:x.h} }), audioSecs:AUDIO?AUDIO.secs:0, hasVoice:hasVoice()} }
+  // Every figure is fal's list price, in rig-core.js, the same table n8n's priceOf charges (check-rig-price-parity.js).
+  function cost(){ return RigCore.price(type, readSettings(), ctx()) }
   // Kling bills $0.112 a second, so real prices land on a third decimal.
   // toFixed(2) quoted $0.17 for a $0.165 run - a meter that rounds is a meter that lies.
-  function money(c){ return (Math.round(c*1000)%10) ? c.toFixed(3) : c.toFixed(2) }
+  function money(c){ return RigCore.money(c) }
   function paintCost(){
     var c=cost(), el=$('cost');
     if(credit!==null) $('credit').classList.toggle('low', credit < c);
@@ -3726,8 +3697,7 @@ window.RigMascot=(function(){
     pbI=want;
   }
   /* What each mode runs on, for the labels. The meter (paintCost) says more. */
-  var ENGINE_NAME={video:'Kling 3.0 Pro',lite:'MiniMax H3 Max',image:'Krea 2 Large',compose:'Nano Banana Pro',design:'Grok Imagine 2.0',upscale:'Topaz',
-    camera:'MiniMax H3 Max Camera',talk:'MiniMax H3 Max Lip Sync'};
+  var ENGINE_NAME=RigCore.ENGINE_NAME;
   function stage(which){
     progBg(which==='prog');
     // While a render runs, the labels describe THAT render, not the still left
@@ -3868,110 +3838,18 @@ window.RigMascot=(function(){
     // form you have already finished with.
     if(formMode()) $('composer').scrollTop=0; else shutSheet();
     var fd=new FormData();
-    // Omission is meaningful: a field left out becomes null upstream and is
-    // dropped from the fal body, so the model applies its OWN default. Never
-    // send a placeholder to mean "unset".
-    function put(k,v){ if(v!==null&&v!==undefined&&v!=='') fd.append(k,v) }
     fd.append('action','generate');
     fd.append('password',pw);
-    // Design is a JOB, not an engine. The enhancer branches on this, so a second
-    // engine later cannot silently turn a flyer back into a photograph.
-    fd.append('mode', type==='upscale'?'upscale':(type==='design'?'design':'generate'));
-    lookFields(fd);   // nothing appended for a family left on Auto
-    fd.append('model', modelFor(type));
-    var cap=$('prompt').value.trim(), rev=revision(), same=!!(rev&&cap===rev.caption), seedSent=null;
-    // A seed-locked change: the prompt Grok wrote for that render goes up with
-    // the change and Grok edits it. The same words again skip the writer, so
-    // the same seed gives the same picture.
-    if(type!=='upscale' && type!=='camera' && type!=='talk') fd.append('prompt', same?'':cap);
-    if(rev) fd.append('prior_prompt', rev.written);
-    if(!$('row-ar').hidden) put('aspect_ratio', (type==='lite' && H3_STYLE==='vhs') ? '4:3' : ar);
-
-    if(type==='upscale'){
-      fd.append('upscale_factor',upf);
-      fd.append('upscale_model',$('upmodel').value);
-      if(!$('face').checked) fd.append('face_enhancement','off'); else fd.append('face_enhancement','on');
-      put('face_strength', optVal('fstr','use-fstr'));
-      put('subject_detection', subjDet);
-      put('sharpen',  parseFloat($('sharp').value)   ? $('sharp').value   : null);
-      put('denoise',  parseFloat($('denoise').value) ? $('denoise').value : null);
-      put('fix_compression', parseFloat($('fixc').value) ? $('fixc').value : null);
-      if($('upmodel').value==='Redefine'){
-        put('up_prompt', $('up-prompt').value.trim());
-        put('up_creativity', $('up-crea').value);
-        put('up_texture', $('up-tex').value);
-      }
-      // The one place nothing is shrunk - upscaling a downscaled file is pointless.
-      var s0=SRC[0];
-      if(s0.file) fd.append('image_0',s0.file,s0.name);
-      else fd.append('image_0',dataUrlToBlob(s0.ref),'source.jpg');
-
-    }else if(type==='video'||type==='lite'){
-      fd.append('duration',dur);
-      // Video Lite (MiniMax H3 Max) generates sound every time and has no characters,
-      // keep-out words, adherence or shot structure - its resolution is its own.
-      if(type==='lite') fd.append('resolution', H3_STYLE ? '768P' : vres);
-      if(type==='lite'){
-        if(H3_STYLE){ fd.append('h3_style',H3_STYLE); if(H3_STYLE==='vhs') fd.append('h3_damage',H3_DMG) }
-        else{
-          if(H3_TURBO) fd.append('h3_turbo','on');
-          if(SOUND==='mine' && AUDIO) fd.append('audio', AUDIO.blob, AUDIO.name);
-        }
-      }
-      if(type==='video'){
-        if($('audio').checked||hasVoice()) fd.append('generate_audio','on');
-        put('cfg_scale', optVal('cfg','use-cfg'));
-        put('negative_prompt', $('neg').value.trim());
-        if(shotType!=='customize') fd.append('shot_type',shotType);
-      }
-      if($('use-shots').checked && SHOTS.length) fd.append('multi_prompt', JSON.stringify(SHOTS));
-      if($('end-img').value!=='') fd.append('end_image_idx', $('end-img').value);
-      if(type==='video' && $('use-el').checked && ELS.length){
-        fd.append('elements', JSON.stringify(ELS.map(function(e){
-          return { frontal: e.frontal, refs: e.refs, voice_id: e.voice||'' };
-        })));
-      }
-      SRC.forEach(function(s,i){ fd.append('image_'+i, dataUrlToBlob(s.ref), 'src'+i+'.jpg') });
-
-    }else if(type==='camera'||type==='talk'){
-      // straight to fal: the still (or the face) and the settings - no words, no writer
-      var s1=SRC[0]; fd.append('image_0', s1.file ? s1.file : dataUrlToBlob(s1.ref), s1.file ? s1.name : 'source.jpg');
-      if(type==='camera'){ fd.append('cam_move',CAM_MOVE); fd.append('duration',CAM_DUR); fd.append('resolution',CAM_RES);
-        if(CAM_SND==='mine') fd.append('cam_sound',$('cam-snd').value.trim()) }   // none = silent (n8n says so to H3)
-      else{ fd.append('audio', AUDIO.blob, AUDIO.name); fd.append('audio_secs', AUDIO.secs.toFixed(2)); fd.append('resolution',TALK_RES);
-            if($('talk-tr').checked) fd.append('talk_transcribe','on') }
-
-    }else{
-      if(type==='image'||type==='compose'){
-        // Every image run carries a seed. fal rolls one when the box is empty
-        // and Nano Banana never reports it back, so that picture could not be
-        // revised; rolling it here makes the seed under every render real.
-        seedSent=$('seed').value.trim()||String(Math.floor(Math.random()*1e9));
-        put('seed', seedSent);
-      }else put('seed', $('seed').value.trim());
-      if(type==='image'){
-        fd.append('creativity', crea);
-        if($('use-style').checked && SRC.length){
-          fd.append('use_style_refs','on');
-          fd.append('style_strength',$('style-str').value);
-          SRC.forEach(function(s,i){ fd.append('image_'+i, dataUrlToBlob(s.ref), 'src'+i+'.jpg') });
-        }
-      }else if(type==='design'){
-        fd.append('resolution',res);
-        fd.append('quality',quality);
-        put('exact_text', $('exact-text').value.trim());
-        // Grok's edit takes 3. Send 3, so the request matches the quoted price.
-        SRC.slice(0,DESIGN_MAX_SRC).forEach(function(s,i){ fd.append('image_'+i, dataUrlToBlob(s.ref), 'src'+i+'.jpg') });
-      }else{
-        fd.append('resolution',res);
-        // Only one source has a framing question. n8n defaults it ON when absent.
-        if(SRC.length===1) fd.append('keep_framing', $('keep-framing').checked?'on':'off');
-        put('safety_tolerance', optVal('saf','use-saf'));
-        put('system_prompt', $('sysp').value.trim());
-        if($('websearch').checked) fd.append('enable_web_search','on');
-        SRC.forEach(function(s,i){ fd.append('image_'+i, dataUrlToBlob(s.ref), 'src'+i+'.jpg') });
-      }
-    }
+    // THE FIELDS COME FROM rig-core.js: readSettings() says what the controls hold, RigCore.fields() says what the
+    // webhook gets (omission is meaningful there: a field left out lets the model apply its own default). The
+    // pictures and the sound are the console's: which ones ride, as the original or shrunk, is the core's word.
+    var s=readSettings(), rq=RigCore.fields(type,s,ctx());
+    var cap=s.prompt, seedSent=(type==='image'||type==='compose') ? (rq.f.seed||null) : null;
+    Object.keys(rq.f).forEach(function(k){ fd.append(k, String(rq.f[k])) });
+    rq.img.forEach(function(i,k){ var x=SRC[i]; if(!x) return;
+      if(rq.original) fd.append('image_'+k, x.file ? x.file : dataUrlToBlob(x.ref), x.file ? x.name : 'source.jpg');   // the one place nothing is shrunk
+      else fd.append('image_'+k, dataUrlToBlob(x.ref), 'src'+k+'.jpg') });
+    if(rq.audio && AUDIO) fd.append('audio', AUDIO.blob, AUDIO.name);
 
     var priced=cost();
     $('submit').disabled=true;
@@ -3991,7 +3869,7 @@ window.RigMascot=(function(){
     startTick();
 
     // VHS: the opening frame goes in on a 4:3 tape (tapeFrame); if that fails, the picture goes as it is
-    var ready = (type==='lite' && H3_STYLE==='vhs' && SRC.length)
+    var ready = (rq.tape && SRC.length)
       ? tapeFrame(SRC[0]).then(function(b){ if(b) fd.set('image_0', b, 'src0.jpg') }).catch(function(){})
       : Promise.resolve();
     ready.then(function(){ return fetch(BASE,{method:'POST',body:fd}) })
@@ -4962,16 +4840,11 @@ window.RigMascot=(function(){
      Talk: a face speaks his audio (the owner's only for now). One audio picker serves both. */
   var H3_STYLE='', H3_DMG='medium', H3_TURBO=false, SOUND='h3', AUDIO=null, REC=null,
       CAM_MOVE='orbit-right', CAM_DUR='5', CAM_RES='768P', TALK_RES='768P', CAM_SND='silent';
-  var H3_STYLE_NAME={'vhs':'VHS','retro-toon-70s':'Retro Toon 70s','low-poly':'Low Poly','hand-drawn':'Hand Drawn','16bit-pixel':'16-bit Pixel'};
-  var CAM_NAME={'orbit-left':'Orbit left','orbit-right':'Orbit right','orbit-360':'Full 360','crane-up':'Crane up','drop-down':'Drop down',
-    'push-in':'Push in','pull-out':'Pull out','top-down':'Top-down reveal','hero-arc':'Hero arc'};
-  function isClipT(t){ return t==='video'||t==='lite'||t==='camera'||t==='talk' }
-  function perSec(r){ return r==='480P'?0.05:r==='1080P'?0.16:r==='2K'?0.32:0.08 }
-  function talkSecs(){ return AUDIO ? Math.ceil(Math.min(14.8,Math.max(5,AUDIO.secs))) : 0 }
-  function engineLabel(t){
-    if(t==='lite'){ if(H3_STYLE) return 'MiniMax H3 Max '+H3_STYLE_NAME[H3_STYLE]; if(H3_TURBO) return 'MiniMax H3 Max Turbo' }
-    return ENGINE_NAME[t]||'';
-  }
+  var H3_STYLE_NAME=RigCore.STYLE_NAME, CAM_NAME=RigCore.CAM_NAME;
+  function isClipT(t){ return RigCore.isClip(t) }
+  function perSec(r){ return RigCore.perSec(r) }
+  function talkSecs(){ return RigCore.talkSecs(AUDIO ? AUDIO.secs : 0) }
+  function engineLabel(t){ return RigCore.engineLabel(t, {style:H3_STYLE, eng:H3_TURBO?'turbo':'max'}) }
   function needsAudio(){ return type==='talk' || (type==='lite' && !H3_STYLE && SOUND==='mine') }
   function paintAud(msg){
     var p=$('aud-play');
@@ -5129,13 +5002,7 @@ window.RigMascot=(function(){
      Auto everywhere sends nothing, and n8n's recipe is then byte-identical to
      what it was before this existed (./scripts/check-rig-look.sh asserts it).
      Costs nothing: it is prompt content, not another call. */
-  var LOOK_FAMS=[
-    ['format','Camera',  [['clean','Clean digital'],['35mm','35mm film'],['16mm','16mm film'],['dv','DV camcorder']]],
-    ['lens','Lens',      [['sharp','Clean sharp'],['anamorphic','Anamorphic'],['vintage','Warm vintage'],['halation','Halation'],['macro','Macro']]],
-    ['aperture','Depth', [['f1.4','f/1.4 - shallow'],['f4','f/4 - middling'],['f11','f/11 - deep']]],
-    ['light','Light',    [['contre','Back-lit'],['practicals','Practicals only'],['window','Window'],['silhouette','Silhouette'],['hard','One hard source']]],
-    ['palette','Grade',  [['teal','Teal & orange'],['bleach','Bleach bypass'],['sodium','Sodium night'],['steel','Cold steel'],['bw','Black & white'],['warm','Warm']]]
-  ];
+  var LOOK_FAMS=RigCore.LOOK_FAMS;
   /* PHOTOGRAPHIC JOBS ONLY. Design is a graphic, not a photograph - "shot on
      16mm" on a flyer brief is noise, and its recipe ALREADY owns the colour with
      its own beat ("PALETTE - two or three colours, plus the background"). A Grade
@@ -5143,10 +5010,9 @@ window.RigMascot=(function(){
      instruction and the two would compete, which is how this project has been
      bitten before. Hector, 2026-09-18: "why design has to do with depth, lens,
      camera, grade!?" - he was right, it was my overreach. Upscale has no writer. */
-  var LOOK_BY_MODE={image:'all',compose:'all',video:'all',lite:'all',design:[],upscale:[]};
+  var LOOK_BY_MODE=RigCore.LOOK_BY_MODE;
   var LOOK={};
-  function lookFams(){ var m=(type==='lite' && H3_STYLE) ? [] : (LOOK_BY_MODE[type]||[]);
-    return m==='all' ? LOOK_FAMS : LOOK_FAMS.filter(function(f){return m.indexOf(f[0])>-1}) }
+  function lookFams(){ return RigCore.lookFams(type, {style:H3_STYLE}) }
   function lookSave(){ try{ localStorage.setItem('rig_look',JSON.stringify(LOOK)) }catch(e){} }
   function lookLoad(){ try{ var r=JSON.parse(localStorage.getItem('rig_look')||'{}');
       LOOK_FAMS.forEach(function(f){ if(r[f[0]] && f[2].some(function(o){return o[0]===r[f[0]]})) LOOK[f[0]]=r[f[0]] });

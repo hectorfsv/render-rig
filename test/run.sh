@@ -20,6 +20,8 @@
 #   ./test/run.sh look       the look menu: auto sends nothing, Design gets the grade only
 #   ./test/run.sh tape       the rail marquee: pitch, seam, direction, speed
 #   ./test/run.sh handoff    from the Canvas: a node lands in the console (mode, pictures, settings, price)
+#   ./test/run.sh core       request parity: every configuration's request and price vs test/fixtures/core-requests.json
+#   ./test/run.sh core-record  (re)record that fixture from the page as it is now (only when a request is MEANT to change)
 #   ./test/run.sh shots      write previews to test/build/*.png
 #
 # Every harness is REGENERATED from the current index.html on every run. Never
@@ -38,6 +40,7 @@ root = pathlib.Path(__file__).parent if False else pathlib.Path('.')
 src = open('index.html').read()
 inj = open(sys.argv[1]).read()
 assert src.count('</body>') == 1, 'index.html has no single </body>'
+src = src.replace('src="rig-core.js', 'src="../../rig-core.js')   # the core sits at the root; a harness sits in test/build/
 open(sys.argv[2], 'w').write(src.replace('</body>', inj + '\n</body>'))
 PY
 }
@@ -435,6 +438,40 @@ if [ "$WHAT" = all ] || [ "$WHAT" = handoff ]; then
   echo "  -> $hp pass / $hf fail"; PASS=$((PASS+hp)); FAIL=$((FAIL+hf))
 fi
 
+if [ "$WHAT" = core-record ]; then
+  # THE REQUEST FIXTURE: every configuration's exact request and price, from the page as it is NOW, in real WebKit
+  build "$INJ/core.txt" "$B/co.html"; mkdir -p "$ROOT/test/fixtures"
+  N=$(node "$ROOT/test/webkit.js" "$B/co.html?i=count" 1440 900 | sed -n 's/.*COUNT \([0-9]*\).*/\1/p')
+  line; echo "RECORDING $N configurations -> test/fixtures/core-requests.json"
+  : > "$B/co.jsonl"
+  for i in $(seq 0 $((N-1))); do R=$(node "$ROOT/test/webkit.js" "$B/co.html?mode=record&i=$i" 1440 900)
+    case "$R" in *RECORD*) printf '%s\n' "$R" | sed 's/.*RECORD //; s/ \[done\]$//' >> "$B/co.jsonl"; echo "  $i ok";;
+      *) echo "  $i FAILED: $R"; exit 1;; esac; done
+  python3 -c "import json,sys; rows=[json.loads(l) for l in open(sys.argv[1]) if l.strip()]; json.dump(rows,open(sys.argv[2],'w'),indent=1); print('  wrote',len(rows),'configurations')" "$B/co.jsonl" "$ROOT/test/fixtures/core-requests.json"
+  exit 0
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = core ]; then
+  # THE REQUEST PARITY: the page must build, for every configuration, the same request and price the fixture holds
+  [ -f "$ROOT/test/fixtures/core-requests.json" ] || { echo "no fixture: run ./test/run.sh core-record first"; exit 2; }
+  build "$INJ/core.txt" "$B/co.html"
+  python3 - "$B/co.html" "$ROOT/test/fixtures/core-requests.json" <<'PY'
+import sys
+h=open(sys.argv[1]).read(); f=open(sys.argv[2]).read()
+open(sys.argv[1],'w').write(h.replace('</body>','<script>window.__FIX='+f+'</script>\n</body>',1) if h.count('window.__FIX=')==0 else h)
+PY
+  N=$(python3 -c "import json,sys; print(len(json.load(open(sys.argv[1]))))" "$ROOT/test/fixtures/core-requests.json")
+  line; echo "CORE  (request parity with the fixture: $N configurations, WebKit + Chromium; and the page without its core)"
+  kp=0; kf=0
+  sed 's#src="../../rig-core.js#src="../../rig-core-missing.js#' "$B/co.html" > "$B/co-nocore.html"
+  R=$(title 1440 900 "file://$B/co-nocore.html?nocore=1" 3000); case "$R" in *PASS*) kp=$((kp+1));; *) kf=$((kf+1)); echo "  nocore: $R";; esac
+  for i in $(seq 0 $((N-1))); do
+    R=$(node "$ROOT/test/webkit.js" "$B/co.html?mode=check&i=$i" 1440 900); case "$R" in *PASS*) kp=$((kp+1));; *NOTE*) ;; *) kf=$((kf+1)); echo "  webkit   $R";; esac
+    R=$(title 1440 900 "file://$B/co.html?mode=check&i=$i" 9000); case "$R" in *PASS*) kp=$((kp+1));; *NOTE*) ;; *) kf=$((kf+1)); echo "  chromium $i: $R";; esac
+  done
+  echo "  -> $kp pass / $kf fail"; PASS=$((PASS+kp)); FAIL=$((FAIL+kf))
+fi
+
 if [ "$WHAT" = all ] || [ "$WHAT" = tape ]; then
   build "$INJ/tape.txt" "$B/tp.html"; build "$INJ/speed.txt" "$B/sp.html"
   line; echo "TAPE  (rail marquee)"
@@ -446,7 +483,7 @@ if [ "$WHAT" = shots ]; then
   # Transitions OFF: an infinite CSS animation stops headless virtual time, so a
   # 0.14s transition never settles and a screenshot shows the PREVIOUS state.
   python3 - <<'PY'
-src=open('index.html').read()
+src=open('index.html').read().replace('src="rig-core.js', 'src="../../rig-core.js')
 inj=open('test/inject/pop.txt').read().replace('<script src="imgs.js"></script>',
   '<style>.sheet-tabs button,.go,.card{transition:none!important}</style><script src="build/imgs.js"></script>')
 open('test/build/p.html','w').write(src.replace('</body>', inj+'\n</body>'))

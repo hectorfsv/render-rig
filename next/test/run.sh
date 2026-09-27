@@ -423,7 +423,7 @@ fi
 if [ "$WHAT" = all ] || [ "$WHAT" = canvas ]; then
   # THE CANVAS (2026-09-26): canvas.html, not index.html. Chromium at two sizes, then real WebKit at
   # his three desktop sizes, a guest, and the desktop-only screen at a narrow window and his iPhone.
-  python3 -c "import sys; s=open('canvas.html').read(); assert s.count('</body>')==1; open(sys.argv[2],'w').write(s.replace('</body>', open(sys.argv[1]).read()+'\n</body>'))" "$INJ/canvas.txt" "$B/cv.html"
+  python3 -c "import sys; s=open('canvas.html').read().replace('src=\"../rig-core.js','src=\"../../../rig-core.js'); assert s.count('</body>')==1; open(sys.argv[2],'w').write(s.replace('</body>', open(sys.argv[1]).read()+'\n</body>'))" "$INJ/canvas.txt" "$B/cv.html"
   line; echo "CANVAS  (board, wires, settings, prices, fresh/stale, freeze, undo, notes, save/load)"
   cp=0; cf=0
   cvcount(){ R="$1"; p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')

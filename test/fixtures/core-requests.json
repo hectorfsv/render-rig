@@ -1,0 +1,424 @@
+[
+ {
+  "name": "image plain",
+  "cost": "$0.06",
+  "det": "Krea 2 Largelow, draws anyone",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "krea",
+   "prompt": "a tiger on a rock",
+   "aspect_ratio": "16:9",
+   "seed": "163781940",
+   "creativity": "low"
+  }
+ },
+ {
+  "name": "image 2 style refs, 4:5, high, seed",
+  "cost": "$0.065",
+  "det": "Krea 2 Large2 style refs, high",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "krea",
+   "prompt": "a tiger",
+   "aspect_ratio": "4:5",
+   "seed": "4242",
+   "creativity": "high",
+   "use_style_refs": "on",
+   "style_strength": "0.7",
+   "image_0": {
+    "blob": 5482,
+    "name": "src0.jpg",
+    "type": "image/jpeg"
+   },
+   "image_1": {
+    "blob": 6516,
+    "name": "src1.jpg",
+    "type": "image/jpeg"
+   }
+  }
+ },
+ {
+  "name": "image with a look",
+  "cost": "$0.06",
+  "det": "Krea 2 Largelow, draws anyone",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "look_format": "35mm",
+   "look_aperture": "f1.4",
+   "look_palette": "teal",
+   "model": "krea",
+   "prompt": "a tiger",
+   "aspect_ratio": "16:9",
+   "seed": "824605236",
+   "creativity": "low"
+  }
+ },
+ {
+  "name": "compose from words, 4K, web, system prompt",
+  "cost": "$0.315",
+  "det": "Nano Banana Pro4K, refuses likenesses \u00b7 web +$0.015",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "nbp",
+   "prompt": "a room",
+   "aspect_ratio": "16:9",
+   "seed": "929927547",
+   "resolution": "4K",
+   "system_prompt": "You are a cinematographer.",
+   "enable_web_search": "on"
+  }
+ },
+ {
+  "name": "compose 1 picture, framing off, 3:2 by hand",
+  "cost": "$0.15",
+  "det": "Nano Banana Pro1 source at 2K",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "nbp",
+   "prompt": "him on a beach",
+   "aspect_ratio": "3:2",
+   "seed": "466489812",
+   "resolution": "2K",
+   "keep_framing": "off",
+   "image_0": {
+    "blob": 5482,
+    "name": "src0.jpg",
+    "type": "image/jpeg"
+   }
+  }
+ },
+ {
+  "name": "compose 2 pictures, auto, seed, safety",
+  "cost": "$0.15",
+  "det": "Nano Banana Pro2 sources at 2K",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "nbp",
+   "prompt": "both",
+   "aspect_ratio": "auto",
+   "seed": "99",
+   "resolution": "2K",
+   "safety_tolerance": "5",
+   "image_0": {
+    "blob": 5482,
+    "name": "src0.jpg",
+    "type": "image/jpeg"
+   },
+   "image_1": {
+    "blob": 6516,
+    "name": "src1.jpg",
+    "type": "image/jpeg"
+   }
+  }
+ },
+ {
+  "name": "design words, low, 1K, 2:3",
+  "cost": "$0.04",
+  "det": "Grok Imagine 2.01K low, from words aloneCharged even if it refuses.",
+  "fields": {
+   "action": "generate",
+   "mode": "design",
+   "model": "grok",
+   "prompt": "a summer party flyer",
+   "aspect_ratio": "2:3",
+   "resolution": "1K",
+   "quality": "low",
+   "exact_text": "SUMMER JAM\nFriday 9pm"
+  }
+ },
+ {
+  "name": "design 2 sources, auto",
+  "cost": "$0.10",
+  "det": "Grok Imagine 2.02K medium, 2 sources \u00b7 +$0.02 \u00b7 no textCharged even if it refuses.",
+  "fields": {
+   "action": "generate",
+   "mode": "design",
+   "model": "grok",
+   "prompt": "poster",
+   "aspect_ratio": "auto",
+   "resolution": "2K",
+   "quality": "medium",
+   "image_0": {
+    "blob": 5482,
+    "name": "src0.jpg",
+    "type": "image/jpeg"
+   },
+   "image_1": {
+    "blob": 6516,
+    "name": "src1.jpg",
+    "type": "image/jpeg"
+   }
+  }
+ },
+ {
+  "name": "upscale 2.5x High Fidelity, faces .6, foreground, sharpen",
+  "cost": "$0.08",
+  "det": "Topaz \u2014 High Fidelity V2750\u00d7500, 0.4 MP",
+  "fields": {
+   "action": "generate",
+   "mode": "upscale",
+   "model": "topaz",
+   "upscale_factor": "2.5",
+   "upscale_model": "High Fidelity V2",
+   "face_enhancement": "on",
+   "face_strength": "0.6",
+   "subject_detection": "Foreground",
+   "sharpen": "0.2",
+   "denoise": "0.1",
+   "fix_compression": "0.3",
+   "image_0": {
+    "blob": 68576,
+    "name": "src0.png",
+    "type": "image/png"
+   }
+  }
+ },
+ {
+  "name": "upscale Redefine, faces off",
+  "cost": "from $0.08",
+  "det": "Topaz \u2014 Redefine600\u00d7400, 0.2 MP \u00b7 price not published",
+  "fields": {
+   "action": "generate",
+   "mode": "upscale",
+   "model": "topaz",
+   "upscale_factor": "2",
+   "upscale_model": "Redefine",
+   "face_enhancement": "off",
+   "up_prompt": "restore the brickwork",
+   "up_creativity": "4",
+   "up_texture": "2",
+   "image_0": {
+    "blob": 68576,
+    "name": "src0.png",
+    "type": "image/png"
+   }
+  }
+ },
+ {
+  "name": "video from words 7s audio 9:16, cfg, keep-out, model decides",
+  "cost": "$1.176",
+  "det": "Kling 3.0 Pro7s, from words alone \u2014 no source, with audio",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "kling-t2v",
+   "prompt": "he walks in",
+   "aspect_ratio": "9:16",
+   "duration": "7",
+   "generate_audio": "on",
+   "cfg_scale": "0.7",
+   "negative_prompt": "blur, text",
+   "shot_type": "intelligent"
+  }
+ },
+ {
+  "name": "video from 2 frames, ends on the second, 5s silent",
+  "cost": "$0.56",
+  "det": "Kling 3.0 Pro5s, from your first source, no audio",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "kling-i2v",
+   "prompt": "it turns",
+   "duration": "5",
+   "end_image_idx": "1",
+   "image_0": {
+    "blob": 5482,
+    "name": "src0.jpg",
+    "type": "image/jpeg"
+   },
+   "image_1": {
+    "blob": 6516,
+    "name": "src1.jpg",
+    "type": "image/jpeg"
+   }
+  }
+ },
+ {
+  "name": "video shot list 2+3",
+  "cost": "$0.56",
+  "det": "Kling 3.0 Pro5s, from words alone \u2014 no source, no audio \u00b7 2 shots",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "kling-t2v",
+   "prompt": "x",
+   "aspect_ratio": "16:9",
+   "duration": "5",
+   "multi_prompt": "[{\"prompt\":\"she looks up\",\"duration\":\"2\"},{\"prompt\":\"she smiles\",\"duration\":\"3\"}]"
+  }
+ },
+ {
+  "name": "video with a character and a voice",
+  "cost": "$0.98",
+  "det": "Kling 3.0 Pro5s, from your first source, voice \u2014 $0.196/s",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "kling-i2v",
+   "prompt": "he speaks",
+   "duration": "5",
+   "generate_audio": "on",
+   "elements": "[{\"frontal\":0,\"refs\":[],\"voice_id\":\"voice-1\"}]",
+   "image_0": {
+    "blob": 5482,
+    "name": "src0.jpg",
+    "type": "image/jpeg"
+   }
+  }
+ },
+ {
+  "name": "video lite plain 5s 768P",
+  "cost": "$0.40",
+  "det": "MiniMax H3 Max5s, from words alone \u2014 no source, 768P, sound included",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "h3",
+   "prompt": "it roars",
+   "aspect_ratio": "16:9",
+   "duration": "5",
+   "resolution": "768P"
+  }
+ },
+ {
+  "name": "video lite turbo 6s 1080P 21:9",
+  "cost": "$0.48",
+  "det": "MiniMax H3 Max Turbo6s, from words alone \u2014 no source, 1080P, sound included",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "h3",
+   "prompt": "it roars",
+   "aspect_ratio": "21:9",
+   "duration": "6",
+   "resolution": "1080P",
+   "h3_turbo": "on"
+  }
+ },
+ {
+  "name": "video lite VHS heavy from a wide frame (the tape)",
+  "cost": "$0.40",
+  "det": "MiniMax H3 Max VHS5s, from your first source, 4:3 tape, 768P, sound included",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "h3",
+   "prompt": "tape",
+   "duration": "5",
+   "resolution": "768P",
+   "h3_style": "vhs",
+   "h3_damage": "heavy",
+   "image_0": {
+    "blob": 7575,
+    "name": "src0.jpg",
+    "type": "image/jpeg"
+   }
+  }
+ },
+ {
+  "name": "video lite low poly, look ignored",
+  "cost": "$0.40",
+  "det": "MiniMax H3 Max Low Poly5s, from words alone \u2014 no source, 768P, sound included",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "h3",
+   "prompt": "blocks",
+   "aspect_ratio": "16:9",
+   "duration": "5",
+   "resolution": "768P",
+   "h3_style": "low-poly"
+  }
+ },
+ {
+  "name": "video lite my sound, ends on the frame",
+  "cost": "$0.40",
+  "det": "MiniMax H3 Max5s, from your first source, 768P, your audio",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "h3",
+   "prompt": "sing",
+   "duration": "5",
+   "resolution": "768P",
+   "audio": {
+    "blob": 99244,
+    "name": "line.wav",
+    "type": "audio/wav"
+   },
+   "end_image_idx": "0",
+   "image_0": {
+    "blob": 5482,
+    "name": "src0.jpg",
+    "type": "image/jpeg"
+   }
+  }
+ },
+ {
+  "name": "camera crane up 8s 1080P silent",
+  "cost": "$1.28",
+  "det": "MiniMax H3 CameraCrane up, 8s, 1080P",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "h3cam",
+   "image_0": {
+    "blob": 68576,
+    "name": "src0.png",
+    "type": "image/png"
+   },
+   "cam_move": "crane-up",
+   "duration": "8",
+   "resolution": "1080P"
+  }
+ },
+ {
+  "name": "camera orbit right 5s 480P, my sound words",
+  "cost": "$0.25",
+  "det": "MiniMax H3 CameraOrbit right, 5s, 480P",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "h3cam",
+   "image_0": {
+    "blob": 68576,
+    "name": "src0.png",
+    "type": "image/png"
+   },
+   "cam_move": "orbit-right",
+   "duration": "5",
+   "resolution": "480P",
+   "cam_sound": "wind through the trees"
+  }
+ },
+ {
+  "name": "talk 2K, read my words first",
+  "cost": "$2.56",
+  "det": "MiniMax H3 Lip Sync8s of your audio, 2K",
+  "fields": {
+   "action": "generate",
+   "mode": "generate",
+   "model": "h3talk",
+   "image_0": {
+    "blob": 68576,
+    "name": "src0.png",
+    "type": "image/png"
+   },
+   "audio": {
+    "blob": 116844,
+    "name": "line.wav",
+    "type": "audio/wav"
+   },
+   "audio_secs": "7.30",
+   "resolution": "2K",
+   "talk_transcribe": "on"
+  }
+ }
+]

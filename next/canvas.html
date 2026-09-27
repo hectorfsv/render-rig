@@ -342,35 +342,28 @@ body.running .card .top .ic{visibility:hidden}
 <input type="file" id="up-file" accept="image/*,.heic,.heif" hidden>
 <input type="file" id="aud-file" accept="audio/*,.m4a,.mp3,.wav,.aac" hidden>
 
+<script src="../rig-core.js?v=20260927"></script>
 <script>
 (function(){
   'use strict';
   var $=function(i){return document.getElementById(i)};
-  var N8N='https://hectorfsv.app.n8n.cloud';
-  var BASE=N8N+'/webhook/kling-form';
+  if(!window.RigCore){ $('pw-err').textContent='The Rig\'s core script (rig-core.js) did not load. Reload the page.'; $('unlock').disabled=true; return }
+  /* THE TABLES LIVE IN rig-core.js (2026-09-27): the engines, the ratios, fal's prices and the request builder are
+     one file this page and the console both load. What stays here is the board: cards, ports, wires, the run. */
+  var N8N=RigCore.N8N;
+  var BASE=RigCore.BASE;
   var K_PW='rig_pw';                       // the classic page's key: one unlock serves both views (same tab)
   var PW_TTL_MS=12*60*60*1000;
   var K_BOARDS='rig_boards', K_CUR='rig_board_cur';
   var GAL_TTL_MS=60*60*1000;               // the classic view's gallery list, kept an hour under the same key
-  var MAXEDGE=2048;                        // the classic view shrinks every source to this before sending
-  var DOWNLOAD=N8N+'/webhook/kling-download';
-  var SUBMIT_CAP=9e6;                      // the classic view's guess at what the webhook carries as base64
+  var MAXEDGE=RigCore.MAXEDGE;             // every source is shrunk to this before sending
+  var DOWNLOAD=RigCore.DOWNLOAD;
+  var SUBMIT_CAP=RigCore.SUBMIT_CAP;
   var JOB_TTL_MS=60*60*1000;               // a job older than this is not picked back up after a reload
 
-  /* ---------- the classic view's lists, copied (index.html) ---------- */
-  var AR_VID=[['16:9','16:9'],['9:16','9:16'],['1:1','1:1']];
-  var AR_KREA=[['1:1','1:1'],['4:5','4:5'],['2:3','2:3'],['9:16','9:16'],['4:3','4:3'],['3:2','3:2'],['16:9','16:9'],['2.35:1','2.35']];
-  var AR_NBP=[['auto','Auto'],['1:1','1:1'],['4:5','4:5'],['9:16','9:16'],['3:2','3:2'],['16:9','16:9']];
-  var AR_DESIGN=[['3:4','3:4'],['auto','Auto'],['2:3','2:3'],['1:1','1:1'],['4:3','4:3'],['16:9','16:9'],['9:16','9:16']];
-  var AR_LITE=[['16:9','16:9'],['9:16','9:16'],['1:1','1:1'],['4:3','4:3'],['3:4','3:4'],['21:9','21:9']];
-  var STYLES=[['','None'],['vhs','VHS'],['retro-toon-70s','70s Toon'],['low-poly','Low Poly'],['hand-drawn','Hand Drawn'],['16bit-pixel','16-bit Pixel']];
-  var STYLE_NAME={'vhs':'VHS','retro-toon-70s':'Retro Toon 70s','low-poly':'Low Poly','hand-drawn':'Hand Drawn','16bit-pixel':'16-bit Pixel'};
-  var MOVES=[['orbit-left','Orbit left'],['orbit-right','Orbit right'],['orbit-360','Full 360'],['crane-up','Crane up'],['drop-down','Drop down'],
-    ['push-in','Push in'],['pull-out','Pull out'],['top-down','Top-down reveal'],['hero-arc','Hero arc']];
-  var UPMODELS=[['Standard V2','Standard: most photos'],['High Fidelity V2','High Fidelity: fine detail'],['Low Resolution V2','Low Resolution: small or soft'],
-    ['CGI','CGI: renders, illustration'],['Text Refine','Text Refine: screenshots, type'],['Recovery V2','Recovery: damaged'],['Standard MAX','Standard MAX'],
-    ['Redefine','Redefine: its own prompt'],['Wonder 3','Wonder 3'],['Wonder','Wonder']];
-  var GEN_UPS=['Redefine','Wonder','Wonder 3','Standard MAX'];
+  /* ---------- the lists: the core's ---------- */
+  var AR_VID=RigCore.AR.video, AR_KREA=RigCore.AR.krea, AR_NBP=RigCore.AR.nbp, AR_DESIGN=RigCore.AR.design, AR_LITE=RigCore.AR.lite;
+  var STYLES=RigCore.STYLES, STYLE_NAME=RigCore.STYLE_NAME, MOVES=RigCore.MOVES, UPMODELS=RigCore.UPMODELS, GEN_UPS=RigCore.GEN_UPS;
 
   /* ---------- THE KINDS: what a node is, what it takes, what it gives ----------
      Ports are typed. `max` is how many wires an input takes (Compose stacks pictures, Upscale
@@ -381,9 +374,9 @@ body.running .card .top .ic{visibility:hidden}
     upload: {name:'Upload',    eng:'your picture',        group:'sources', ins:[], out:'image'},
     gallery:{name:'Gallery',   eng:'a render of yours',   group:'sources', ins:[], out:'image'},
     audio:  {name:'Audio',     eng:'your sound',          group:'sources', ins:[], out:'audio'},
-    image:  {name:'Image',     eng:'Krea 2 Large',        group:'engines', ins:[{id:'refs',type:'image',max:10,label:'style refs'}], out:'image'},
-    compose:{name:'Compose',   eng:'Nano Banana Pro',     group:'engines', ins:[{id:'images',type:'image',max:14,label:'pictures'}], out:'image'},
-    design: {name:'Design',    eng:'Grok Imagine 2.0',    group:'engines', ins:[{id:'images',type:'image',max:3,label:'sources'}], out:'image'},
+    image:  {name:'Image',     eng:'Krea 2 Large',        group:'engines', ins:[{id:'refs',type:'image',max:RigCore.KREA_MAX_REFS,label:'style refs'}], out:'image'},
+    compose:{name:'Compose',   eng:'Nano Banana Pro',     group:'engines', ins:[{id:'images',type:'image',max:RigCore.NBP_MAX,label:'pictures'}], out:'image'},
+    design: {name:'Design',    eng:'Grok Imagine 2.0',    group:'engines', ins:[{id:'images',type:'image',max:RigCore.DESIGN_MAX_SRC,label:'sources'}], out:'image'},
     upscale:{name:'Upscale',   eng:'Topaz',               group:'engines', ins:[{id:'image',type:'image',max:1,req:true,label:'picture'}], out:'image'},
     video:  {name:'Video',     eng:'Kling 3.0 Pro',       group:'engines', ins:[{id:'image',type:'image',max:1,label:'opening frame'},{id:'end',type:'image',max:1,label:'end frame'}], out:'video'},
     lite:   {name:'Video Lite',eng:'MiniMax H3 Max',      group:'engines', ins:[{id:'image',type:'image',max:1,label:'opening frame'},{id:'end',type:'image',max:1,label:'end frame'},{id:'audio',type:'audio',max:1,label:'your sound'}], out:'video'},
@@ -419,8 +412,7 @@ body.running .card .top .ic{visibility:hidden}
   var OPEN={};         // per node: its "More" fold is open
 
   function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] }) }
-  // Kling bills $0.112 a second, so real prices land on a third decimal: the classic meter's rule
-  function money(c){ return (Math.round(c*1000)%10) ? c.toFixed(3) : c.toFixed(2) }
+  function money(c){ return RigCore.money(c) }
   function cyrb(str){   // cyrb53: a fast 53-bit string hash, enough to tell settings apart
     var h1=0xdeadbeef, h2=0x41c6ce57;
     for(var i=0,ch;i<str.length;i++){ ch=str.charCodeAt(i); h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677) }
@@ -498,12 +490,11 @@ body.running .card .top .ic{visibility:hidden}
   }
 
   /* ---------- PRICE, WHAT GOES UP, AND WHAT IS STALE ----------
-     plan(n) is one node's request as the classic view would build it: the fields, the pictures
-     in wire order, the sound, the price (the classic meter's cost(), the same table n8n's priceOf
-     charges) and, when it cannot run, the one sentence that says why. Every figure is fal's
-     list price, as the classic view charges. */
-  function perSec(r){ return r==='480P'?0.05:r==='1080P'?0.16:r==='2K'?0.32:0.08 }
-  function topazTier(mp){ return mp<=24?0.08:mp<=48?0.16:mp<=96?0.32:1.36 }
+     plan(n) is one node's request as the console would build it. The ports say which pictures and sound ride and
+     in what order; rig-core.js says the fields, the price and what the run cannot do without (the same table the
+     console uses, so the two pages can never disagree). Every figure is fal's list price, as the console charges. */
+  function perSec(r){ return RigCore.perSec(r) }
+  function topazTier(mp){ return RigCore.topazTier(mp) }
   function dimsOf(u){
     if(u.kind==='upload'||u.kind==='gallery') return (u.src&&u.src.w&&u.src.h)?{w:u.src.w,h:u.src.h}:null;
     var e=PL[u.id]; if(e && (e.st==='fresh'||e.st==='frozen') && u.ran && u.ran.w && u.ran.h) return {w:u.ran.w,h:u.ran.h};
@@ -529,105 +520,57 @@ body.running .card .top .ic{visibility:hidden}
     if((e.st==='fresh'||e.st==='frozen') && u.ran && u.ran.url) return 'res:'+u.ran.url;
     return 'will:'+e.sig;
   }
+  function pl(k,one,many){ return k+' '+(k===1?one:many) }
   function plan(n){
     var K=KINDS[n.kind], s=S(n), P={price:0,known:true,from:false,why:'',f:{},img:[],aud:null,det:''}, ins={};
     function need(m){ if(!P.why) P.why=m }
     K.ins.forEach(function(p){ ins[p.id]=portOff(n,p.id) ? [] : into(n.id,p.id);
       ins[p.id].forEach(function(u){ var w=upWhy(u); if(w) need(w) }) });
-    var prompt=String(s.prompt||'').trim(), pl=function(k,one,many){ return k+' '+(k===1?one:many) };
+    // the ports, as the console's tray: which pictures ride, in what order, and the sound
+    var pics=[], aud=null, cs=copy(s), fi, fe;
     switch(n.kind){
-    case 'image':
-      if(!prompt) need('Krea draws from words. Write a prompt.');
-      P.f={model:'krea',mode:'generate',prompt:prompt,aspect_ratio:s.ar,creativity:s.crea};
-      if(String(s.seed||'').trim()) P.f.seed=String(s.seed).trim();
-      if(ins.refs.length){ P.f.use_style_refs='on'; P.f.style_strength=String(s.style_str); P.img=ins.refs }
-      P.price=ins.refs.length?0.065:0.06;
-      P.det=ins.refs.length ? pl(ins.refs.length,'style ref','style refs')+' · '+s.crea : s.crea+' · draws anyone';
-      break;
-    case 'compose':
-      if(!ins.images.length && !prompt) need('Write a prompt, or wire pictures to combine.');
-      P.f={model:'nbp',mode:'generate',prompt:prompt,aspect_ratio:(s.ar==='auto'&&!ins.images.length)?'1:1':s.ar,resolution:s.res};
-      if(ins.images.length===1) P.f.keep_framing=s.keep_framing?'on':'off';
-      if(String(s.seed||'').trim()) P.f.seed=String(s.seed).trim();
-      if(s.web) P.f.enable_web_search='on';
-      if(String(s.sysp||'').trim()) P.f.system_prompt=String(s.sysp).trim();
-      P.img=ins.images;
-      P.price=+((s.res==='4K'?0.30:0.15)+(s.web?0.015:0)).toFixed(3);
-      P.det=(ins.images.length ? pl(ins.images.length,'picture','pictures')+' at '+s.res : s.res+' · refuses likenesses')+(s.web?' · web +$0.015':'');
-      break;
-    case 'design':
-      var dim=ins.images.slice(0,3), words=String(s.words||'').trim();
-      if(!prompt && !words && !dim.length) need('Describe the piece, type the words that go on it, or wire a source.');
-      P.f={model:'grok',mode:'design',prompt:prompt,aspect_ratio:(s.ar==='auto'&&!dim.length)?'3:4':s.ar,resolution:s.res,quality:s.quality};
-      if(words) P.f.exact_text=words;
-      P.img=dim;
-      P.price=+(((s.res==='1K')?(s.quality==='low'?0.04:0.06):(s.quality==='low'?0.06:0.08))+0.01*dim.length).toFixed(3);
-      P.det=s.res+' '+s.quality+(dim.length?' · '+pl(dim.length,'source','sources')+' +$'+(0.01*dim.length).toFixed(2):' · from words alone')+(words?'':' · no text')+'<br>Charged even if it refuses.';
-      break;
-    case 'upscale':
-      var u=ins.image[0], f=num(s.factor,1,4,2);
-      if(!u) need('Wire a picture to enlarge.');
-      P.f={model:'topaz',mode:'upscale',upscale_factor:String(s.factor),upscale_model:s.model,face_enhancement:s.face?'on':'off'};
-      if(parseFloat(s.sharpen)) P.f.sharpen=String(s.sharpen);
-      if(parseFloat(s.denoise)) P.f.denoise=String(s.denoise);
-      if(parseFloat(s.fixc)) P.f.fix_compression=String(s.fixc);
-      if(s.model==='Redefine'){ if(String(s.up_prompt||'').trim()) P.f.up_prompt=String(s.up_prompt).trim(); P.f.up_creativity=String(s.up_crea); P.f.up_texture=String(s.up_tex) }
-      P.img=u?[u]:[]; P.from=GEN_UPS.indexOf(s.model)>=0;
-      var dd=u?dimsOf(u):null;
-      if(dd){ var mp=(dd.w*f*dd.h*f)/1e6; P.price=topazTier(mp); P.det=Math.round(dd.w*f)+'×'+Math.round(dd.h*f)+' · '+mp.toFixed(1)+' MP' }
-      else { P.known=false; P.det=u?'priced by the picture that comes out, once its source exists':'wire a picture' }
-      if(P.from) P.det+=' · price not published';
-      break;
-    case 'video':
-      var vi=ins.image[0], ve=ins.end[0], vd=Math.round(num(s.dur,3,15,5));
-      if(!prompt && !vi) need('Write a prompt, or wire an opening frame.');
-      if(ve && !vi) need('An end frame needs an opening frame.');
-      P.f={model:vi?'kling-i2v':'kling-t2v',mode:'generate',prompt:prompt,duration:String(vd)};
-      if(!vi) P.f.aspect_ratio=s.ar;
-      if(s.audio) P.f.generate_audio='on';
-      if(String(s.neg||'').trim()) P.f.negative_prompt=String(s.neg).trim();
-      if(vi){ P.img=[vi]; if(ve){ if(ve===vi) P.f.end_image_idx='0'; else { P.img.push(ve); P.f.end_image_idx='1' } } }
-      P.price=+(vd*(s.audio?0.168:0.112)).toFixed(3);
-      P.det=vd+'s · '+(vi?'from the opening frame':'from words alone')+' · '+(s.audio?'with audio':'no audio')+(ve?' · ends on a frame':'');
-      break;
-    case 'lite':
-      var li=ins.image[0], le=ins.end[0], la=ins.audio[0], ld=Math.round(num(s.dur,5,15,5)), vhs=s.style==='vhs', turbo=!s.style&&s.eng==='turbo';
-      if(!prompt && !li) need('Write a prompt, or wire an opening frame.');
-      if(le && !li) need('An end frame needs an opening frame.');
-      P.f={model:'h3',mode:'generate',prompt:prompt,duration:String(ld),resolution:s.style?'768P':s.vres};
-      if(!li) P.f.aspect_ratio=vhs?'4:3':s.ar;
-      if(s.style){ P.f.h3_style=s.style; if(vhs) P.f.h3_damage=s.dmg }
-      else if(turbo) P.f.h3_turbo='on';
-      if(li){ P.img=[li]; if(le){ if(le===li) P.f.end_image_idx='0'; else { P.img.push(le); P.f.end_image_idx='1' } } }
-      if(la) P.aud=la;
-      P.price=+(s.style ? ld*0.08 : turbo ? ld*(s.vres==='1080P'?0.08:0.04) : ld*(s.vres==='1080P'?0.16:0.08)).toFixed(3);
-      P.det=ld+'s · '+(li?'from the opening frame':'from words alone')+(vhs?' · on a 4:3 tape':'')+' · '+(s.style?'768P':s.vres)+
-        (s.style?' · '+STYLE_NAME[s.style]:turbo?' · Turbo':'')+' · '+(la?'your sound':'sound included');
-      break;
-    case 'camera':
-      var ci=ins.image[0], cd=Math.round(num(s.dur,3,15,5)), mine=s.snd==='mine';
-      if(!ci) need('Wire a still: Camera moves through it.');
-      if(mine && !String(s.snd_text||'').trim()) need('Describe the sound you want, or set Sound to Silent.');
-      P.f={model:'h3cam',mode:'generate',cam_move:s.move,duration:String(cd),resolution:s.res};
-      if(mine) P.f.cam_sound=String(s.snd_text).trim();
-      P.img=ci?[ci]:[];
-      P.price=+(cd*perSec(s.res)).toFixed(3);
-      var mv=''; MOVES.forEach(function(m){ if(m[0]===s.move) mv=m[1] });
-      P.det=mv+' · '+cd+'s · '+s.res+' · '+(mine?'your sound words':'silent');
-      break;
-    case 'talk':
-      var ti=ins.image[0], ta=ins.audio[0], secs=(ta&&ta.src)?+ta.src.secs||0:0, billed=secs?Math.ceil(Math.min(14.8,Math.max(5,secs))):0;
-      if(!ti) need('Wire a face: Talk animates it.');
-      if(!ta) need('Wire what they say: an Audio card.');
-      P.f={model:'h3talk',mode:'generate',resolution:s.res};
-      if(secs) P.f.audio_secs=secs.toFixed(2);
-      if(s.tr) P.f.talk_transcribe='on';
-      P.img=ti?[ti]:[]; if(ta) P.aud=ta;
-      if(billed){ P.price=+(billed*perSec(s.res)).toFixed(3); P.det=billed+'s billed'+(secs>14.8?' · only the first 14.8 s is used':secs<5?' · under 5 s is billed as 5':'')+' · '+s.res }
-      else { P.known=false; P.det='priced by the length of the audio · '+s.res }
-      break;
+      case 'image':   pics=ins.refs; cs.use_style=pics.length>0; break;
+      case 'compose': pics=ins.images; break;
+      case 'design':  pics=ins.images.slice(0,RigCore.DESIGN_MAX_SRC); break;
+      case 'upscale': pics=ins.image; break;
+      case 'video': case 'lite':
+        fi=ins.image[0]; fe=ins.end[0];
+        if(fi){ pics=[fi]; if(fe){ if(fe===fi) cs.end_idx='0'; else { pics.push(fe); cs.end_idx='1' } } }
+        else if(fe) need('An end frame needs an opening frame.');
+        aud=ins.audio?ins.audio[0]:null; if(n.kind==='lite') cs.sound=aud?'mine':'h3';
+        break;
+      case 'camera':  pics=ins.image; break;
+      case 'talk':    pics=ins.image; aud=ins.audio[0]||null; break;
     }
+    var x={images:pics.map(function(u){ return dimsOf(u)||{w:0,h:0} }), audioSecs:(aud&&aud.src)?+aud.src.secs||0:0, hasVoice:false, noRoll:true};
+    var w=RigCore.needs(n.kind,cs,x); if(w) need(w);
+    var r=RigCore.fields(n.kind,cs,x);
+    P.f=r.f; P.img=r.img.map(function(i){ return pics[i] }); P.aud=r.audio?aud:null;
+    P.from=n.kind==='upscale'&&RigCore.isGenUpscale(s.model);
+    if(n.kind==='upscale'&&!(x.images[0]&&x.images[0].w)) P.known=false;
+    else if(n.kind==='talk'&&!(x.audioSecs>0)) P.known=false;
+    else P.price=RigCore.price(n.kind,cs,x);
+    P.det=detOf(n,s,cs,x,pics,aud);
     return P;
+  }
+  // the card's own line under its settings: what this run is, in the console's words
+  function detOf(n,s,cs,x,pics,aud){
+    var np=pics.length, prompt=String(s.prompt||'').trim();
+    switch(n.kind){
+      case 'image':   return np ? pl(np,'style ref','style refs')+' · '+s.crea : s.crea+' · draws anyone';
+      case 'compose': return (np ? pl(np,'picture','pictures')+' at '+s.res : s.res+' · refuses likenesses')+(s.web?' · web +$0.015':'');
+      case 'design':  return s.res+' '+s.quality+(np?' · '+pl(np,'source','sources')+' +$'+(0.01*np).toFixed(2):' · from words alone')+(String(s.words||'').trim()?'':' · no text')+'<br>Charged even if it refuses.';
+      case 'upscale': var d=x.images[0], f=num(s.factor,1,4,2), t='';
+        if(d&&d.w){ var mp=(d.w*f*d.h*f)/1e6; t=Math.round(d.w*f)+'×'+Math.round(d.h*f)+' · '+mp.toFixed(1)+' MP' } else t=np?'priced by the picture that comes out, once its source exists':'wire a picture';
+        return t+(RigCore.isGenUpscale(s.model)?' · price not published':'');
+      case 'video':   var vd=Math.round(num(s.dur,3,15,5)); return vd+'s · '+(np?'from the opening frame':'from words alone')+' · '+(s.audio?'with audio':'no audio')+(cs.end_idx!=null?' · ends on a frame':'');
+      case 'lite':    var ld=Math.round(num(s.dur,5,15,5)), vhs=s.style==='vhs', turbo=!s.style&&s.eng==='turbo';
+        return ld+'s · '+(np?'from the opening frame':'from words alone')+(vhs?' · on a 4:3 tape':'')+' · '+(s.style?'768P':s.vres)+(s.style?' · '+STYLE_NAME[s.style]:turbo?' · Turbo':'')+' · '+(aud?'your sound':'sound included');
+      case 'camera':  var mv=''; MOVES.forEach(function(m){ if(m[0]===s.move) mv=m[1] }); return mv+' · '+Math.round(num(s.dur,3,15,5))+'s · '+s.res+' · '+(s.snd==='mine'?'your sound words':'silent');
+      case 'talk':    var secs=x.audioSecs, billed=RigCore.talkSecs(secs);
+        return billed ? billed+'s billed'+(secs>14.8?' · only the first 14.8 s is used':secs<5?' · under 5 s is billed as 5':'')+' · '+s.res : 'priced by the length of the audio · '+s.res;
+    }
+    return '';
   }
   // the whole board, upstream first: each node's plan, its signature and its state
   function evaluate(){

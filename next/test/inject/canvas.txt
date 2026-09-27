@@ -163,8 +163,8 @@
     eq(st(N.image),'needs','Image with no prompt needs something');
     ok(/Write a prompt/.test(R.info(N.image).why),'…and says what',R.info(N.image).why);
     ok(/Write a prompt/.test(card(N.image).querySelector('.why').textContent),'…on the card');
-    ok(/Wire a still/.test(R.info(N.camera).why),'Camera without a still says so');
-    ok(/Wire a face/.test(R.info(N.talk).why),'Talk without a face says so');
+    ok(/Add a still/.test(R.info(N.camera).why),'Camera without a still says so',R.info(N.camera).why);
+    ok(/Add a face/.test(R.info(N.talk).why),'Talk without a face says so',R.info(N.talk).why);
     ok(/Fix Image first/.test(R.info(N.compose).why),'an input that needs something blocks what it feeds (its first wire first)',R.info(N.compose).why);
     R.set(N.image,'prompt','a tiger');
     ok(/Upload is empty/.test(R.info(N.compose).why),'an empty Upload wired in blocks what it feeds',R.info(N.compose).why);

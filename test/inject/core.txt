@@ -1,0 +1,102 @@
+<script>
+/* THE REQUEST FIXTURE (2026-09-27, for rig-core.js). One configuration per page load (?i=N): the console
+   is driven through its own controls, Generate is pressed with the rig mocked, and the FormData it builds
+   is captured field by field (blobs by name and size) with the meter's price. ?mode=record prints it as
+   JSON; ?mode=check compares it with window.__FIX[N], the fixture recorded from the page BEFORE the
+   refactor, so the page after it is held to the same bytes. ?i=count prints the number of configurations.
+   Nothing is sent: the mock refuses every generate after recording it. */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search), $=function(i){ return document.getElementById(i) };
+  var MODE=q.get('mode')||'check', I=q.get('i');
+  function finish(t){ document.title=S+t+' [done]'+S }
+  function png(w,h,c){ var cv=document.createElement('canvas'); cv.width=w; cv.height=h; var x=cv.getContext('2d'); var g=x.createLinearGradient(0,0,w,h); g.addColorStop(0,c); g.addColorStop(1,'#111'); x.fillStyle=g; x.fillRect(0,0,w,h); return cv.toDataURL('image/png') }
+  function fileOf(u,name){ var p=u.split(','), bin=atob(p[1]), a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new File([a],name,{type:'image/png'}) }
+  function wav(secs,name){ var sr=8000, n=Math.round(secs*sr), buf=new ArrayBuffer(44+n*2), v=new DataView(buf);
+    function s(o,t){ for(var i=0;i<t.length;i++) v.setUint8(o+i,t.charCodeAt(i)) }
+    s(0,'RIFF'); v.setUint32(4,36+n*2,true); s(8,'WAVE'); s(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true); s(36,'data'); v.setUint32(40,n*2,true);
+    for(var i=0;i<n;i++) v.setInt16(44+i*2,Math.round(Math.sin(i/(6+secs))*6000),true);
+    return new File([buf],name||'line.wav',{type:'audio/wav'}) }
+  function tick(ms){ return new Promise(function(r){ setTimeout(r,ms||0) }) }
+  function until(f,ms){ var t0=Date.now(); return new Promise(function(r){ (function go(){ if(f()||Date.now()-t0>ms) return r(); setTimeout(go,25) })() }) }
+  // the controls, the way a hand works them
+  function seg(id,v){ var b=$(id).querySelector('button[data-v="'+v+'"]'); b.click() }
+  function val(id,v){ var e=$(id); e.value=String(v); e.dispatchEvent(new Event('input',{bubbles:true})); e.dispatchEvent(new Event('change',{bubbles:true})) }
+  function chk(id,on){ var e=$(id); if(e.checked!==on) e.click() }
+  function files(id,list){ var dt=new DataTransfer(); list.forEach(function(f){ dt.items.add(f) }); var e=$(id); e.files=dt.files; e.dispatchEvent(new Event('change',{bubbles:true})) }
+  function srcs(n){ var L=[]; for(var i=0;i<n;i++) L.push(fileOf(png(300+i*40,200+i*30,['#48c','#a33','#3a6'][i%3]),'src'+i+'.png')); files('file',L); return until(function(){ return $('src-count').textContent===String(n) },8000) }
+  function audio(secs){ files('aud-file',[wav(secs)]); return until(function(){ return /\d s/.test($('aud-read').textContent) },8000) }
+  function look(fam,v){ var e=$('look-'+fam); if(e){ e.value=v; e.dispatchEvent(new Event('change',{bubbles:true})) } }
+  var CFG=[
+    {name:'image plain',mode:'image',set:function(){ val('prompt','a tiger on a rock') }},
+    {name:'image 2 style refs, 4:5, high, seed',mode:'image',src:2,set:function(){ val('prompt','a tiger'); chk('use-style',true); val('style-str','0.7'); seg('seg-ar','4:5'); seg('seg-crea','high'); val('seed','4242') }},
+    {name:'image with a look',mode:'image',set:function(){ val('prompt','a tiger'); look('format','35mm'); look('palette','teal'); look('aperture','f1.4') }},
+    {name:'compose from words, 4K, web, system prompt',mode:'compose',set:function(){ val('prompt','a room'); seg('seg-res','4K'); chk('websearch',true); val('sysp','You are a cinematographer.') }},
+    {name:'compose 1 picture, framing off, 3:2 by hand',mode:'compose',src:1,set:function(){ val('prompt','him on a beach'); chk('keep-framing',false); seg('seg-ar','3:2') }},
+    {name:'compose 2 pictures, auto, seed, safety',mode:'compose',src:2,set:function(){ val('prompt','both'); seg('seg-ar','auto'); val('seed','99'); chk('use-saf',true); val('saf','5') }},
+    {name:'design words, low, 1K, 2:3',mode:'design',set:function(){ val('prompt','a summer party flyer'); val('exact-text','SUMMER JAM\nFriday 9pm'); seg('seg-quality','low'); seg('seg-res','1K'); seg('seg-ar','2:3') }},
+    {name:'design 2 sources, auto',mode:'design',src:2,set:function(){ val('prompt','poster'); seg('seg-ar','auto') }},
+    {name:'upscale 2.5x High Fidelity, faces .6, foreground, sharpen',mode:'upscale',src:1,set:function(){ val('upf','2.5'); val('upmodel','High Fidelity V2'); chk('face',true); chk('use-fstr',true); val('fstr','0.6'); seg('seg-subj','Foreground'); val('sharp','0.2'); val('denoise','0.1'); val('fixc','0.3') }},
+    {name:'upscale Redefine, faces off',mode:'upscale',src:1,set:function(){ val('upmodel','Redefine'); chk('face',false); val('up-prompt','restore the brickwork'); val('up-crea','4'); val('up-tex','2') }},
+    {name:'video from words 7s audio 9:16, cfg, keep-out, model decides',mode:'video',set:function(){ val('prompt','he walks in'); val('dur','7'); chk('audio',true); seg('seg-ar','9:16'); val('neg','blur, text'); chk('use-cfg',true); val('cfg','0.7'); seg('seg-shot','intelligent') }},
+    {name:'video from 2 frames, ends on the second, 5s silent',mode:'video',src:2,set:function(){ val('prompt','it turns'); val('dur','5'); chk('audio',false); val('end-img','1') }},
+    {name:'video shot list 2+3',mode:'video',set:function(){ val('prompt','x'); val('dur','5'); chk('use-shots',true); $('add-shot').click();
+      var a=$('shots').querySelector('[data-i="0"][data-k="prompt"]'), b=$('shots').querySelector('[data-i="1"][data-k="prompt"]'), d0=$('shots').querySelector('[data-i="0"][data-k="duration"]'), d1=$('shots').querySelector('[data-i="1"][data-k="duration"]');
+      a.value='she looks up'; a.dispatchEvent(new Event('input',{bubbles:true})); b.value='she smiles'; b.dispatchEvent(new Event('input',{bubbles:true}));
+      d0.value='2'; d0.dispatchEvent(new Event('input',{bubbles:true})); d1.value='3'; d1.dispatchEvent(new Event('input',{bubbles:true})) }},
+    {name:'video with a character and a voice',mode:'video',src:1,set:function(){ val('prompt','he speaks'); val('dur','5'); chk('use-el',true); var v=$('elements').querySelector('[data-k="voice"]'); v.value='voice-1'; v.dispatchEvent(new Event('input',{bubbles:true})) }},
+    {name:'video lite plain 5s 768P',mode:'lite',set:function(){ val('prompt','it roars'); val('dur','5') }},
+    {name:'video lite turbo 6s 1080P 21:9',mode:'lite',set:function(){ val('prompt','it roars'); seg('seg-h3eng','turbo'); seg('seg-vres','1080P'); val('dur','6'); seg('seg-ar','21:9') }},
+    {name:'video lite VHS heavy from a wide frame (the tape)',mode:'lite',src:1,set:function(){ val('prompt','tape'); seg('seg-h3style','vhs'); seg('seg-h3dmg','heavy'); val('dur','5') }},
+    {name:'video lite low poly, look ignored',mode:'lite',set:function(){ val('prompt','blocks'); seg('seg-h3style','low-poly'); look('format','35mm') }},
+    {name:'video lite my sound, ends on the frame',mode:'lite',src:1,aud:6.2,set:function(){ val('prompt','sing'); seg('seg-sound','mine'); val('end-img','0') }},
+    {name:'camera crane up 8s 1080P silent',mode:'camera',src:1,set:function(){ seg('seg-cam','crane-up'); val('cam-dur','8'); seg('seg-camres','1080P'); seg('seg-camsnd','silent') }},
+    {name:'camera orbit right 5s 480P, my sound words',mode:'camera',src:1,set:function(){ seg('seg-camsnd','mine'); val('cam-snd','wind through the trees'); seg('seg-camres','480P') }},
+    {name:'talk 2K, read my words first',mode:'talk',src:1,aud:7.3,set:function(){ seg('seg-talkres','2K'); chk('talk-tr',true) }}
+  ];
+  if(q.get('nocore')==='1'){   // the core script did not load: the lock screen says so and nothing pretends to work
+    setTimeout(function(){ var e=$('pw-err').textContent; finish(((/rig-core\.js/.test(e)&&$('unlock').disabled&&!window.RigCore)?'PASS  ':'FAIL  ')+'without rig-core.js the lock screen says so and Unlock is off  ('+e+')') },400); return }
+  if(I==='count'){ finish('COUNT '+CFG.length); return }
+  var c=CFG[+I]; if(!c){ finish('FAIL no such configuration '+I); return }
+  var CHROME=/HeadlessChrome/.test(navigator.userAgent);
+  if(c.aud&&CHROME){ finish('NOTE  '+c.name+': needs audio, headless Chromium cannot decode it (WebKit covers it)'); return }
+  var GOT=null;
+  window.fetch=function(u,o){
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(a==='auth') return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve({guest:false,user:'hector',balance:12}) }});
+    if(a==='generate'){ var r={}; b.forEach(function(v,k){ r[k]=(v instanceof Blob)?{blob:v.size,name:v.name||'',type:v.type}:v }); GOT=r; return Promise.reject(new Error('recorded')) }
+    return Promise.reject(new Error('harness: no network'));
+  };
+  ['rig_last:hector','rig_last','rig_look','rig_hist:hector','rig_job:hector'].forEach(function(k){ try{ localStorage.removeItem(k) }catch(e){} });
+  try{ sessionStorage.removeItem('rig_pw') }catch(e){}
+  $('pw').value='x'; $('unlock').click();
+  tick(150).then(function(){
+    document.querySelector('.cards .card[data-go="'+c.mode+'"]').click();
+    return c.src ? srcs(c.src) : null;
+  }).then(function(){ return c.aud ? audio(c.aud) : null })
+  .then(function(){ c.set(); return tick(50) })
+  .then(function(){
+    var cost=$('cost').textContent, det=$('cost-sub').textContent;
+    $('submit').click();
+    return until(function(){ return !!GOT },8000).then(function(){
+      if(!GOT){ finish('FAIL  '+c.name+': Generate built no request ('+$('gen-err').textContent+')'); return }
+      var rec={name:c.name,cost:cost,det:det,fields:GOT};
+      delete rec.fields.password;
+      if(MODE==='record'){ finish('RECORD '+JSON.stringify(rec)); return }
+      var fix=(window.__FIX||[])[+I];
+      if(!fix){ finish('FAIL  no fixture for '+I+' ('+c.name+')'); return }
+      var diffs=[];
+      if(fix.cost!==rec.cost) diffs.push('price '+fix.cost+' -> '+rec.cost);
+      var keys={}; Object.keys(fix.fields).concat(Object.keys(rec.fields)).forEach(function(k){ keys[k]=1 });
+      Object.keys(keys).forEach(function(k){
+        var a=fix.fields[k], b=rec.fields[k];
+        if(k==='seed' && !c.name.match(/seed/) ){ if((a==null)!==(b==null)) diffs.push('seed presence '+(a!=null)+' -> '+(b!=null)); return }   // a rolled seed is random
+        // blobs: WebKit recorded the fixture, so WebKit is held to the byte; Chromium's encoders differ, so it is held to the name, the type and a size within a third
+        if(typeof a==='object'&&a&&typeof b==='object'&&b){ var sz=CHROME ? false : a.blob!==b.blob; if(a.name!==b.name||a.type!==b.type||sz) diffs.push(k+' blob '+JSON.stringify(a)+' -> '+JSON.stringify(b)); return }
+        if(a!==b) diffs.push(k+' '+JSON.stringify(a)+' -> '+JSON.stringify(b));
+      });
+      finish((diffs.length?'FAIL  ':'PASS  ')+c.name+(diffs.length?': '+diffs.join(' | '):'')+'  ('+Object.keys(rec.fields).length+' fields, '+rec.cost+')');
+    });
+  }).catch(function(e){ finish('FAIL  '+c.name+': harness threw '+(e&&e.message||e)) });
+})();
+</script>
