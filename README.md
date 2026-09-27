@@ -19,6 +19,18 @@ too — n8n execution ids are sequential and would otherwise be enumerable.
 
 ---
 
+## rig-core.js — the one table of truth (2026-09-27)
+
+The engines, fal's list prices, the ratio lists, the look families and the request builder live in `rig-core.js`, loaded by both `index.html` and `next/canvas.html`. A price or a field changes there, once. Then:
+
+```
+./test/run.sh core          # the console vs test/fixtures/core-requests.json (22 requests recorded before the core existed)
+node test/check-rig-core.js # the core alone vs the same fixture, no browser
+./test/run.sh core-record   # ONLY when a request is meant to change; review the fixture's diff
+```
+
+Bump `?v=` on the `<script src="rig-core.js?v=…">` tag whenever the file changes (Pages caches by URL).
+
 ## START HERE NEXT SESSION
 
 **2026-09-18 — LAYOUT FIX (`49bc08a`, live hash `75aa882db7cc2548`, suite 3067, WebKit clean).**
