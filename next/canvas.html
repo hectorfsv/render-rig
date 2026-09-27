@@ -171,7 +171,16 @@ details.more summary:hover{color:var(--ink-dim)}
 .card .foot{display:flex;align-items:center;gap:8px;padding:6px 12px 10px;font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
 .card .foot .price{color:var(--ink)}
 .card .foot .st{margin-left:auto;text-align:right}
-.st.new,.st.changed{color:var(--amber)} .st.fresh{color:var(--go)} .st.needs{color:var(--red-hot)} .st.frozen{color:var(--ice)}
+.st.new,.st.changed{color:var(--amber)} .st.fresh{color:var(--go)} .st.needs,.st.failed{color:var(--red-hot)} .st.frozen,.st.running{color:var(--ice)}
+.card.running{border-color:rgba(142,197,224,.55)} .card.running .pic{border-style:solid;border-color:rgba(142,197,224,.35)}
+.card.failed{border-color:rgba(255,59,48,.45)}
+.card .foot button.run{padding:3px 9px;font-size:11px;letter-spacing:.04em}
+.card .foot button.run:disabled{opacity:.35}
+.card.k-image .pic.has,.card.k-compose .pic.has,.card.k-design .pic.has,.card.k-upscale .pic.has,.card.k-video .pic.has,.card.k-lite .pic.has,.card.k-camera .pic.has,.card.k-talk .pic.has{cursor:zoom-in}
+body.running .set{opacity:.6} body.running .set *{pointer-events:none}
+body.running .card .top .ic{visibility:hidden}
+#run-stop{border-color:var(--rule-hot);color:var(--ink)}
+.chip.busy::before{background:var(--ice)}
 .card .why{padding:0 12px 10px;margin-top:-4px;font-size:11.5px;line-height:1.4;color:var(--amber)}
 .card .why:empty{display:none}
 .card.note .set{padding-bottom:12px}
@@ -191,6 +200,26 @@ details.more summary:hover{color:var(--ink-dim)}
 .gp-tile.clip{display:flex;align-items:center;justify-content:center;opacity:.5;cursor:default;font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-align:center;padding:10px}
 .gp-tile.clip:hover{border-color:var(--rule)}
 .gp-msg{grid-column:1/-1;color:var(--ink-dim);font-size:13px;padding:20px 4px}
+/* ---------- the run sheet: what will be sent and what it costs, before anything is ---------- */
+.modal .box.ask{width:min(560px,100%);height:auto;max-height:min(82vh,900px)}
+.ask .rows{overflow:auto;padding:6px 14px;display:grid;gap:2px}
+.ask .rows div{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--rule);font-size:13px}
+.ask .rows div:last-child{border-bottom:0}
+.ask .rows i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint)}
+.ask .rows small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-top:2px;line-height:1.4}
+.ask .rows b{font-family:var(--mono);font-weight:500;color:var(--ink);white-space:nowrap}
+.ask .mf{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--rule)}
+.ask .mf .tot{font-family:var(--mono);font-size:13px;color:var(--ink-dim)} .ask .mf .tot b{color:var(--ink);font-size:15px}
+.ask .mf .sp{flex:1}
+.ask .note{padding:0 14px 10px;font-size:12px;color:var(--ink-dim);line-height:1.45}
+/* ---------- the viewer: a result, big ---------- */
+.modal .box.view{width:min(1400px,100%);height:min(90vh,1000px);background:var(--stage)}
+.view .vmedia{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:10px}
+.view .vmedia img,.view .vmedia video{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
+.view .vf{display:flex;align-items:center;gap:14px;padding:10px 14px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);flex-wrap:wrap}
+.view .vf .sp{flex:1}
+.view .vf a{color:var(--amber);text-decoration:none;font-family:var(--disp);font-weight:600;font-size:13px}
+.view .vf a:hover{text-decoration:underline}
 /* ---------- chrome ---------- */
 .toast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--rule-hot);
   color:var(--ink);border-radius:8px;padding:9px 14px;font-size:13px;opacity:0;transition:opacity .18s;pointer-events:none;max-width:70%;text-align:center;z-index:30}
@@ -228,7 +257,8 @@ details.more summary:hover{color:var(--ink-dim)}
     </div>
     <button class="ibtn" id="undo" type="button" disabled title="Undo (⌘Z)" aria-label="Undo"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
     <button class="ibtn" id="redo" type="button" disabled title="Redo (⇧⌘Z)" aria-label="Redo"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
-    <button id="run-all" type="button" disabled title="Running arrives next (day 3). Nothing on this board sends a render or spends money yet.">Run all</button>
+    <button id="run-all" type="button" title="Runs every engine that is not fresh, upstream first. You see the list and the total before anything is sent.">Run all</button>
+    <button id="run-stop" type="button" hidden title="Finish the node that is rendering, then stop">Stop after this</button>
     <span class="total" id="total">nothing to pay</span>
     <span class="sp"></span>
     <input type="text" id="board-name" placeholder="board name" spellcheck="false" maxlength="60">
@@ -247,6 +277,21 @@ details.more summary:hover{color:var(--ink-dim)}
     </div>
     <div class="empty-hint" id="empty-hint" hidden><b>An empty board.</b><br>+ Add puts an engine, a source or a note on it. Drop a picture or a sound file anywhere to start from your own.</div>
     <div class="toast" id="toast"></div>
+    <div class="modal" id="run-ask" hidden>
+      <div class="box ask" role="dialog" aria-label="Run these nodes">
+        <div class="mh"><b id="ask-title">Run</b><span class="sp"></span><button id="run-cancel" type="button">Cancel</button></div>
+        <div class="rows" id="ask-rows"></div>
+        <div class="note" id="ask-note"></div>
+        <div class="mf"><span class="tot" id="ask-total"></span><span class="sp"></span><button class="go" id="run-go" type="button">Run</button></div>
+      </div>
+    </div>
+    <div class="modal" id="view" hidden>
+      <div class="box view" role="dialog" aria-label="The result">
+        <div class="mh"><b id="view-title"></b><span id="view-sub"></span><span class="sp"></span><button id="view-close" type="button">Close</button></div>
+        <div class="vmedia" id="view-media"></div>
+        <div class="vf" id="view-facts"></div>
+      </div>
+    </div>
     <div class="modal" id="gal-pick" hidden>
       <div class="box" role="dialog" aria-label="Pick from your gallery">
         <div class="mh"><b>Your gallery</b><span id="gp-sub"></span><span class="sp"></span><button id="gp-close" type="button">Close</button></div>
@@ -260,7 +305,7 @@ details.more summary:hover{color:var(--ink-dim)}
     <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
     <button id="zoom-fit" type="button">Fit</button>
     <span class="sp"></span>
-    <span id="hint">Drag a card by its title · drag from a right-hand port to a left-hand one to wire · click a wire, then Delete, to cut it · two fingers pan, pinch or ⌘ + scroll zooms · ⌘Z undoes · the snowflake freezes a node: it keeps its result and never reruns</span>
+    <span id="hint">Run on a card runs it and whatever it needs first; Run all runs every node that is not fresh · drag a card by its title · drag from a right-hand port to a left-hand one to wire · click a wire, then Delete, to cut it · two fingers pan, pinch or ⌘ + scroll zooms · ⌘Z undoes · the snowflake freezes a node: it keeps its result and never reruns</span>
   </div>
 </div>
 
@@ -278,6 +323,9 @@ details.more summary:hover{color:var(--ink-dim)}
   var K_BOARDS='rig_boards', K_CUR='rig_board_cur';
   var GAL_TTL_MS=60*60*1000;               // the classic view's gallery list, kept an hour under the same key
   var MAXEDGE=2048;                        // the classic view shrinks every source to this before sending
+  var DOWNLOAD=N8N+'/webhook/kling-download';
+  var SUBMIT_CAP=9e6;                      // the classic view's guess at what the webhook carries as base64
+  var JOB_TTL_MS=60*60*1000;               // a job older than this is not picked back up after a reload
 
   /* ---------- the classic view's lists, copied (index.html) ---------- */
   var AR_VID=[['16:9','16:9'],['9:16','9:16'],['1:1','1:1']];
@@ -320,7 +368,7 @@ details.more summary:hover{color:var(--ink-dim)}
   var DEF={
     image:  {prompt:'',ar:'16:9',crea:'low',style_str:'0.5',seed:''},
     compose:{prompt:'',res:'2K',ar:'auto',keep_framing:true,web:false,sysp:'',seed:''},
-    design: {prompt:'',words:'',quality:'medium',res:'2K',ar:'3:4',seed:''},
+    design: {prompt:'',words:'',quality:'medium',res:'2K',ar:'3:4'},
     upscale:{factor:'2',model:'Standard V2',face:true,sharpen:'0',denoise:'0',fixc:'0',up_prompt:'',up_crea:'3',up_tex:'3'},
     video:  {prompt:'',dur:'5',audio:false,ar:'16:9',neg:''},
     lite:   {prompt:'',dur:'5',vres:'768P',style:'',dmg:'medium',eng:'max',ar:'16:9'},
@@ -388,7 +436,7 @@ details.more summary:hover{color:var(--ink-dim)}
   function openBoard(){
     show('scr-board'); chip('Unlocked','ok');
     if(!opened){ opened=true; loadCurrent(); resetHistory() }
-    paintAll();
+    resumeJobs(); paintAll();
     if(document.fonts&&document.fonts.ready) document.fonts.ready.then(remeasure);   // the webfont moves every port a little
   }
   function small(){ return window.innerWidth<900 || !!(window.matchMedia && matchMedia('(hover:none) and (pointer:coarse)').matches) }
@@ -437,6 +485,7 @@ details.more summary:hover{color:var(--ink-dim)}
     if(u.kind==='gallery') return u.src ? '' : 'Pick a picture for the Gallery card.';
     if(u.kind==='audio'){ if(!u.src) return 'Audio is empty: add a sound file to it.'; if(!AUD[u.src.id]) return 'Add the sound to Audio again: sounds are not kept after a reload.'; return '' }
     var e=PL[u.id]; if(!e) return '';
+    if(e.st==='running') return K.name+' is still rendering.';
     if(e.st==='frozen-empty') return K.name+' is frozen with no result to hand on.';
     if(e.st==='needs') return 'Fix '+K.name+' first.';
     return '';
@@ -460,6 +509,7 @@ details.more summary:hover{color:var(--ink-dim)}
     case 'image':
       if(!prompt) need('Krea draws from words. Write a prompt.');
       P.f={model:'krea',mode:'generate',prompt:prompt,aspect_ratio:s.ar,creativity:s.crea};
+      if(String(s.seed||'').trim()) P.f.seed=String(s.seed).trim();
       if(ins.refs.length){ P.f.use_style_refs='on'; P.f.style_strength=String(s.style_str); P.img=ins.refs }
       P.price=ins.refs.length?0.065:0.06;
       P.det=ins.refs.length ? pl(ins.refs.length,'style ref','style refs')+' · '+s.crea : s.crea+' · draws anyone';
@@ -468,6 +518,7 @@ details.more summary:hover{color:var(--ink-dim)}
       if(!ins.images.length && !prompt) need('Write a prompt, or wire pictures to combine.');
       P.f={model:'nbp',mode:'generate',prompt:prompt,aspect_ratio:(s.ar==='auto'&&!ins.images.length)?'1:1':s.ar,resolution:s.res};
       if(ins.images.length===1) P.f.keep_framing=s.keep_framing?'on':'off';
+      if(String(s.seed||'').trim()) P.f.seed=String(s.seed).trim();
       if(s.web) P.f.enable_web_search='on';
       if(String(s.sysp||'').trim()) P.f.system_prompt=String(s.sysp).trim();
       P.img=ins.images;
@@ -563,16 +614,18 @@ details.more summary:hover{color:var(--ink-dim)}
       // THE SIGNATURE: the request's fields plus what each input hands on. Same signature as
       // its last run = fresh, and a fresh node is never paid for twice.
       e.sig=cyrb(JSON.stringify([n.kind,p.f,ins]));
-      if(n.frozen) e.st=(n.ran&&n.ran.url)?'frozen':'frozen-empty';
+      if(n.job) e.st='running';
+      else if(n.frozen) e.st=(n.ran&&n.ran.url)?'frozen':'frozen-empty';
       else if(n.ran && n.ran.sig===e.sig) e.st='fresh';
       else if(p.why) e.st='needs';
+      else if(n.err && n.err.sig===e.sig) e.st='failed';   // it failed as it is now; a change clears it
       else e.st=n.ran?'changed':'new';
     });
   }
   function totals(){
     var t={sum:0,run:[],unknown:[],needs:[]};
     G.nodes.forEach(function(n){ var e=PL[n.id]; if(!e||KINDS[n.kind].group!=='engines') return;
-      if(e.st==='new'||e.st==='changed'){ if(e.p.known){ t.sum+=e.p.price; t.run.push(n) } else t.unknown.push(n) }
+      if(e.st==='new'||e.st==='changed'||e.st==='failed'){ if(e.p.known){ t.sum+=e.p.price; t.run.push(n) } else t.unknown.push(n) }
       else if(e.st==='needs'||e.st==='frozen-empty') t.needs.push(n) });
     t.sum=+t.sum.toFixed(3); return t;
   }
@@ -646,8 +699,7 @@ details.more summary:hover{color:var(--ink-dim)}
       h+=textH('words','Words on it',s.words,'SUMMER JAM\nFriday 9pm',2,'exactly as typed');
       h+=segH('quality','Quality',[['low','Low'],['medium','Medium']],s.quality);
       h+=segH('res','Resolution',[['1K','1K'],['2K','2K']],s.res);
-      h+=segH('ar','Aspect ratio',arList(AR_DESIGN,ins.images.length),(s.ar==='auto'&&!ins.images.length)?'3:4':s.ar);
-      m+=lineH('seed','Seed',s.seed,'random');
+      h+=segH('ar','Aspect ratio',arList(AR_DESIGN,ins.images.length),(s.ar==='auto'&&!ins.images.length)?'3:4':s.ar);   // Grok has no seed
       break;
     case 'upscale':
       h+=rangeH('factor','Enlarge by',1,4,0.1,s.factor,'×');
@@ -704,14 +756,14 @@ details.more summary:hover{color:var(--ink-dim)}
       if(s && AUD[s.id]) return '<div class="pic aud" data-act="pick" title="Click to replace it"><b>'+esc(s.name)+'</b><span>'+(+s.secs).toFixed(1)+' s</span><audio controls preload="none" src="'+AUD[s.id].url+'"></audio></div>';
       return '<div class="pic" data-act="pick">'+(s ? 'Add '+esc(s.name)+' again: sounds are not kept after a reload' : 'Click, or drop a sound file here (up to 15 MB)')+'</div>';
     }
-    if(n.ran && n.ran.url) return '<div class="pic has">'+(K.out==='video'
+    if(n.ran && n.ran.url) return '<div class="pic has" data-act="view" title="See it big">'+(K.out==='video'
       ? '<video muted playsinline preload="metadata" src="'+esc(n.ran.url)+'#t=0.1"></video>' : '<img alt="" decoding="async" src="'+esc(n.ran.url)+'">')+'</div>';
-    return '<div class="pic">'+(n.frozen?'frozen with no result':'no result yet')+'</div>';
+    return '<div class="pic">'+(n.job?'rendering…':n.frozen?'frozen with no result':'no result yet')+'</div>';
   }
   function paintCard(n){
     var K=KINDS[n.kind], el=cardEl(n.id), s=S(n);
     if(!el){ el=document.createElement('div'); el.dataset.id=n.id; $('world').appendChild(el) }
-    el.className='card k-'+n.kind+(K.group==='sources'?' src':'')+(K.group==='notes'?' note':'')+(n.frozen?' frozen':'')+(sel&&sel.node===n.id?' sel':'');
+    el.className='card k-'+n.kind+(K.group==='sources'?' src':'')+(K.group==='notes'?' note':'')+(n.frozen?' frozen':'')+(n.job?' running':'')+(sel&&sel.node===n.id?' sel':'');
     el.style.left=n.x+'px'; el.style.top=n.y+'px';
     var h='<div class="top"><b>'+K.name+'</b><i>'+K.eng+'</i>';
     if(K.group==='engines') h+='<button class="ic" type="button" data-act="freeze" aria-pressed="'+!!n.frozen+'" aria-label="Freeze" title="'+(n.frozen?'Frozen: it keeps its result and never reruns. Click to unfreeze.':'Freeze: keep this result and never rerun it')+'">'+ICON_FRZ+'</button>';
@@ -726,15 +778,15 @@ details.more summary:hover{color:var(--ink-dim)}
       return '<div class="row in'+(off?' off':'')+'" data-port="'+p.id+'"><span class="port in '+p.type+'" data-node="'+n.id+'" data-port="'+p.id+'" data-type="'+p.type+'"></span>'+
         '<span>'+p.label+'</span>'+(off?'<span class="req">'+off+'</span>':p.req?'<span class="req">required</span>':'')+(p.max>1?'<span class="n">'+cnt+'/'+p.max+'</span>':'')+'</div>';
     }).join('')+'</div>';
-    if(K.group==='engines') h+='<fieldset class="set"'+(n.frozen?' disabled':'')+'>'+ctlHTML(n,s)+'</fieldset>';
+    if(K.group==='engines') h+='<fieldset class="set"'+((n.frozen||n.job)?' disabled':'')+'>'+ctlHTML(n,s)+'</fieldset>';
     h+='<div class="det"></div>';
     h+='<div class="outrow"><span>'+OUTWORD[K.out]+'</span><span class="port out '+K.out+'" data-node="'+n.id+'" data-port="out" data-type="'+K.out+'"></span></div>';
-    h+='<div class="foot"><span class="price"></span><span class="st"></span></div><div class="why"></div>';
+    h+='<div class="foot"><span class="price"></span>'+(K.group==='engines'?'<button type="button" class="run" data-act="run" title="Run this node, and whatever it needs first">Run</button>':'')+'<span class="st"></span></div><div class="why"></div>';
     el.innerHTML=h;
     paintState(n);
     measurePorts(n);
   }
-  var LBL={'new':'not run','changed':'changed since its run','fresh':'fresh','needs':'needs something','frozen':'frozen','frozen-empty':'frozen, no result'};
+  var LBL={'new':'not run','changed':'changed since its run','fresh':'fresh','needs':'needs something','frozen':'frozen','frozen-empty':'frozen, no result','running':'rendering','failed':'failed'};
   function paintState(n){
     var el=cardEl(n.id), e=PL[n.id], K=KINDS[n.kind]; if(!el||!e||K.group==='notes') return;
     var price=el.querySelector('.price'), st=el.querySelector('.st'), why=el.querySelector('.why'), det=el.querySelector('.det');
@@ -746,11 +798,14 @@ details.more summary:hover{color:var(--ink-dim)}
       why.textContent=''; det.textContent=(n.kind==='gallery'&&n.src&&n.src.engine)?n.src.engine:'';
       return;
     }
-    var p=e.p;
+    var p=e.p, run=el.querySelector('button.run');
     price.textContent=p.known ? (p.from?'from $':'$')+money(p.price) : 'priced later';
-    st.className='st '+(e.st==='frozen-empty'?'frozen':e.st); st.textContent=LBL[e.st];
-    why.textContent=e.st==='needs' ? p.why : e.st==='frozen-empty' ? 'Frozen before it ever ran: unfreeze it to run it.' : '';
-    det.innerHTML=p.det||'';
+    el.classList.toggle('running',e.st==='running'); el.classList.toggle('failed',e.st==='failed');
+    st.className='st '+(e.st==='frozen-empty'?'frozen':e.st); st.textContent=e.st==='running' ? 'rendering '+clock(n) : LBL[e.st];
+    why.textContent=e.st==='needs' ? p.why : e.st==='frozen-empty' ? 'Frozen before it ever ran: unfreeze it to run it.' : e.st==='failed' ? (n.err&&n.err.msg||'') : '';
+    det.innerHTML=(p.det||'')+(n.ran&&n.ran.seed!=null&&(n.kind==='image'||n.kind==='compose')?(p.det?' · ':'')+'seed '+esc(n.ran.seed):'');
+    if(run){ run.disabled=busy()||e.st==='frozen'||e.st==='frozen-empty'; run.textContent=e.st==='fresh'?'Rerun':'Run';
+      run.title=e.st==='fresh'?'It is fresh: nothing upstream changed. Rerun draws it again for its price.':'Run this node, and whatever it needs first' }
     KINDS[n.kind].ins.forEach(function(pd){ if(pd.max<=1) return; var c=el.querySelector('.row[data-port="'+pd.id+'"] .n'); if(c) c.textContent=into(n.id,pd.id).length+'/'+pd.max });
   }
   // each port's centre inside its card, in board units: dragging a card then reads no layout
@@ -799,17 +854,21 @@ details.more summary:hover{color:var(--ink-dim)}
   }
   function connect(fromP,toP){
     var why=why2wire(fromP,toP); if(why) return why;
+    if(busy()) return LOCK_MSG;
     if(G.edges.some(function(e){ return e[0]===fromP&&e[1]===toP })) return '';
     var port=portDef(node(toP.split(':')[0]).kind,toP.split(':')[1]), have=G.edges.filter(function(e){ return e[1]===toP });
     if(port.max===1 && have.length) G.edges=G.edges.filter(function(e){ return e[1]!==toP });   // one wire in: the new one replaces it
     else if(have.length>=port.max) return KINDS[node(toP.split(':')[0]).kind].name+' takes at most '+port.max+' '+port.label+'.';
     G.edges.push([fromP,toP]); changed({repaint:[toP.split(':')[0]]}); return '';
   }
-  function disconnect(i){ var e=G.edges[i]; if(!e) return; G.edges.splice(i,1); if(sel&&sel.edge!=null) sel=null; changed({repaint:[to(e)]}) }
+  function disconnect(i){ var e=G.edges[i]; if(!e||guard()) return; G.edges.splice(i,1); if(sel&&sel.edge!=null) sel=null; changed({repaint:[to(e)]}) }
 
   /* ---------- nodes ---------- */
+  var LOCK_MSG='The board is locked while a run is in flight.';
+  function guard(){ if(busy()){ toast(LOCK_MSG); return true } return false }
   function add(kind,x,y){
     if(!KINDS[kind]) throw new Error('no such kind: '+kind);
+    if(guard()) return null;
     var id='n'+(seq++); while(node(id)) id='n'+(seq++);
     var placed=x==null; if(placed){ var sp=freeSpot(kind); x=sp.x; y=sp.y }
     var n={id:id,kind:kind,x:Math.round(x),y:Math.round(y),settings:copy(DEF[kind]||{})};
@@ -832,6 +891,7 @@ details.more summary:hover{color:var(--ink-dim)}
     return {x:x0,y:y0};
   }
   function remove(id){
+    if(guard()) return;
     var hit=[]; G.edges.forEach(function(e){ if(from(e)===id) hit.push(to(e)) });
     G.nodes=G.nodes.filter(function(n){ return n.id!==id });
     G.edges=G.edges.filter(function(e){ return from(e)!==id && to(e)!==id });
@@ -839,9 +899,9 @@ details.more summary:hover{color:var(--ink-dim)}
     if(sel&&sel.node===id) sel=null; if(sel&&sel.edge!=null) sel=null;
     changed({repaint:hit});
   }
-  function setSetting(id,k,v){ var n=node(id); if(!n||n.frozen) return; n.settings[k]=v; changed({repaint:[id]}) }
-  function setFrozen(id,on){ var n=node(id); if(!n||KINDS[n.kind].group!=='engines') return; if(on) n.frozen=true; else delete n.frozen; changed({repaint:[id]}) }
-  function setRan(id,ran){ var n=node(id); if(!n) return; if(ran) n.ran=ran; else delete n.ran; changed({repaint:[id]}) }   // day 3 writes this after a run
+  function setSetting(id,k,v){ var n=node(id); if(!n||n.frozen||guard()) return; n.settings[k]=v; changed({repaint:[id]}) }
+  function setFrozen(id,on){ var n=node(id); if(!n||KINDS[n.kind].group!=='engines'||guard()) return; if(on) n.frozen=true; else delete n.frozen; changed({repaint:[id]}) }
+  function setRan(id,ran){ var n=node(id); if(!n) return; if(ran) n.ran=ran; else delete n.ran; changed({repaint:[id],quiet:true}) }   // a result is never an undo step
 
   /* ---------- every change goes through here: price, state, wires, total, undo, autosave ---------- */
   var typeT=null;
@@ -852,19 +912,29 @@ details.more summary:hover{color:var(--ink-dim)}
     G.nodes.forEach(paintState);
     paintWires(); paintTotal();
     clearTimeout(typeT);
-    if(o.typing) typeT=setTimeout(commit,700); else commit();
+    if(o.quiet) commitQuiet(); else if(o.typing) typeT=setTimeout(commit,700); else commit();
   }
 
   /* ---------- undo / redo: whole-board snapshots, never the view, never the bytes ---------- */
   var UNDO=[], REDO=[], LAST='';
   function snap(){ return JSON.stringify({name:G.name,nodes:G.nodes,edges:G.edges}) }
   function commit(){ typeT=null; var s=snap(); if(s!==LAST){ UNDO.push(LAST); if(UNDO.length>100) UNDO.shift(); REDO=[]; LAST=s; paintUndo() } saveCurrent() }
+  // a run's own changes (a job starting, a result landing) are not steps: ⌘Z never "un-spends"
+  function commitQuiet(){ typeT=null; LAST=snap(); saveCurrent() }
   function flushTyping(){ if(typeT){ clearTimeout(typeT); commit() } }
   function resetHistory(){ UNDO=[]; REDO=[]; LAST=snap(); paintUndo() }
-  function restore(s){ var j=JSON.parse(s); G={v:1,name:j.name||'',nodes:j.nodes,edges:j.edges}; reseq(); sel=null; paintAll(); saveCurrent() }
-  function undo(){ flushTyping(); if(!UNDO.length) return false; REDO.push(LAST); LAST=UNDO.pop(); restore(LAST); return true }
-  function redo(){ if(!REDO.length) return false; UNDO.push(LAST); LAST=REDO.pop(); restore(LAST); return true }
-  function paintUndo(){ $('undo').disabled=!UNDO.length; $('redo').disabled=!REDO.length }
+  function restore(s){
+    var j=JSON.parse(s), had={};
+    // a paid result outlives the step that made it: whichever `ran` is newer stays on the node
+    G.nodes.forEach(function(n){ had[n.id]=n });
+    j.nodes.forEach(function(n){ var o=had[n.id]; if(!o) return;
+      if(o.ran && (!n.ran || (o.ran.at||0)>(n.ran.at||0))) n.ran=o.ran;
+      if(o.err && !n.err) n.err=o.err; delete n.job });
+    G={v:1,name:j.name||'',nodes:j.nodes,edges:j.edges}; reseq(); sel=null; paintAll(); LAST=snap(); saveCurrent();
+  }
+  function undo(){ if(guard()) return false; flushTyping(); if(!UNDO.length) return false; REDO.push(LAST); LAST=UNDO.pop(); restore(LAST); return true }
+  function redo(){ if(guard()) return false; if(!REDO.length) return false; UNDO.push(LAST); LAST=REDO.pop(); restore(LAST); return true }
+  function paintUndo(){ $('undo').disabled=!UNDO.length||busy(); $('redo').disabled=!REDO.length||busy(); $('run-all').disabled=busy(); $('new-btn').disabled=busy(); $('load-btn').disabled=busy(); $('run-stop').hidden=!RUN }
   $('undo').addEventListener('click',undo);
   $('redo').addEventListener('click',redo);
   function reseq(){ seq=1; G.nodes.forEach(function(n){ var m=/^n(\d+)$/.exec(n.id); if(m) seq=Math.max(seq,+m[1]+1) }) }
@@ -874,6 +944,8 @@ details.more summary:hover{color:var(--ink-dim)}
   document.addEventListener('keydown',function(e){
     if(!$('scr-board').classList.contains('on')) return;
     if(!$('gal-pick').hidden){ if(e.key==='Escape') closeGallery(); return }
+    if(!$('run-ask').hidden){ if(e.key==='Escape') closeAsk(); return }   // Enter never runs: money is a click
+    if(!$('view').hidden){ if(e.key==='Escape') closeView(); return }
     var t=e.target, tag=(t&&t.tagName||'').toLowerCase(),
         typing=tag==='textarea'||tag==='select'||(tag==='input'&&t.type!=='checkbox'&&t.type!=='range');
     var mod=e.metaKey||e.ctrlKey;
@@ -963,6 +1035,8 @@ details.more summary:hover{color:var(--ink-dim)}
       if(act.dataset.act==='del'){ remove(n.id); return }
       if(act.dataset.act==='freeze'){ setFrozen(n.id,!n.frozen); return }
       if(act.dataset.act==='pick'){ if(!e.target.closest('audio')) pick(n); return }
+      if(act.dataset.act==='run'){ askRun([n.id]); return }
+      if(act.dataset.act==='view'){ openView(n); return }
     }
     var b=e.target.closest('button[data-k][data-v]');
     if(b) setSetting(n.id,b.dataset.k,b.dataset.v);
@@ -1021,6 +1095,7 @@ details.more summary:hover{color:var(--ink-dim)}
   // A picture's identity is its content: the same file added again after a reload is the same
   // input, so nothing downstream goes stale and nothing is paid for twice.
   function intake(n,file){
+    if(busy()) return Promise.reject(new Error(LOCK_MSG));
     if(n.kind==='upload') return readImage(file).then(function(im){
       var ref=shrink(im), id=cyrb(ref);
       UP[id]={file:file,ref:ref,w:im.naturalWidth,h:im.naturalHeight,name:file.name||'picture'};
@@ -1047,6 +1122,7 @@ details.more summary:hover{color:var(--ink-dim)}
   $('board').addEventListener('dragleave',function(e){ if(!e.relatedTarget||!$('board').contains(e.relatedTarget)) $('board').classList.remove('drop') });
   $('board').addEventListener('drop',function(e){
     if(!hasFiles(e)) return; e.preventDefault(); $('board').classList.remove('drop');
+    if(guard()) return;
     var files=[].slice.call(e.dataTransfer.files), w=toWorld(e.clientX,e.clientY), card=e.target.closest&&e.target.closest('.card'), onto=card&&node(card.dataset.id);
     files.forEach(function(f,i){
       var img=/^image\//.test(f.type)||/\.(heic|heif)$/i.test(f.name), aud=/^audio\//.test(f.type)||/\.(m4a|mp3|wav|aac)$/i.test(f.name), n=null;
@@ -1090,6 +1166,7 @@ details.more summary:hover{color:var(--ink-dim)}
     if(e.target.id==='gp-retry'){ openGallery(GP); return }
     var b=e.target.closest('button[data-i]'); if(!b||!GAL) return;
     var it=GAL[+b.dataset.i], n=node(GP); if(!it||!n) return;
+    if(guard()) return;
     var sp=it.specs||{};
     n.src={url:it.url,w:+sp.w||0,h:+sp.h||0,engine:it.engine||''};
     closeGallery(); changed({repaint:[n.id]});
@@ -1122,6 +1199,7 @@ details.more summary:hover{color:var(--ink-dim)}
     j.nodes.forEach(function(n){ if(!n||!KINDS[n.kind]||ids[n.id]) return; var id=String(n.id); ids[id]=true;
       var o={id:id,kind:n.kind,x:+n.x||0,y:+n.y||0,settings:(n.settings&&typeof n.settings==='object')?n.settings:copy(DEF[n.kind]||{})};
       if(n.src&&typeof n.src==='object') o.src=n.src; if(n.ran&&typeof n.ran==='object') o.ran=n.ran; if(n.frozen&&KINDS[n.kind].group==='engines') o.frozen=true;
+      if(n.job&&typeof n.job==='object'&&n.job.id) o.job=n.job; if(n.err&&typeof n.err==='object') o.err=n.err;
       nodes.push(o) });
     var old=G; G={v:1,name:'',nodes:nodes,edges:[]}; var edges=[];
     j.edges.forEach(function(e){ if(!Array.isArray(e)||e.length!==2) return; var f=String(e[0]), t=String(e[1]);
@@ -1163,14 +1241,245 @@ details.more summary:hover{color:var(--ink-dim)}
     if(d){ var nm=d.dataset.drop; if(!confirm('Delete the saved board "'+nm+'"? The board on screen stays.')) return;
       var all=boards(); delete all[nm]; try{ localStorage.setItem(userKey(K_BOARDS),JSON.stringify(all)) }catch(err){} paintLoad(); return }
     var b=e.target.closest('button[data-name]'); if(!b) return; closeMenus();
-    try{ flushTyping(); importBoard(boards()[b.dataset.name]); commit(); chip('Loaded "'+b.dataset.name+'"','ok') }catch(err){ toast(err.message) }
+    if(guard()) return;
+    try{ flushTyping(); importBoard(boards()[b.dataset.name]); commit(); chip('Loaded "'+b.dataset.name+'"','ok'); resumeJobs() }catch(err){ toast(err.message) }
   });
   // New is one undo step: ⌘Z brings the old board back
-  $('new-btn').addEventListener('click',function(){ flushTyping(); G={v:1,name:'',nodes:[],edges:[]}; sel=null; seq=1; pan={x:80,y:60}; zoom=1; paintAll(); commit(); chip('New board') });
+  $('new-btn').addEventListener('click',function(){ if(guard()) return; flushTyping(); G={v:1,name:'',nodes:[],edges:[]}; sel=null; seq=1; pan={x:80,y:60}; zoom=1; paintAll(); commit(); chip('New board') });
+
+  /* ---------- RUNNING (day 3, 2026-09-27) ----------
+     One node at a time, upstream first, through the classic view's own webhook: the same
+     FormData, the same poll, the same give-up rules. Before anything is sent, the list and the
+     total go on screen and his click is the yes. The first failure stops the run and says why;
+     what it fed stays as it was. A job in flight is saved with the board, so a closed tab picks
+     it back up. While a run is in flight the board is read-only (pan, zoom and look, no edits),
+     so what was quoted is what is sent. */
+  var RUN=null;     // {q:[ids], i, stop}: the queue in flight
+  var JOBS={};      // per running node: {timer, noRow}
+  var FAST=false;   // the harness shortens every wait 100x
+  var TICK=null, BAL=null;
+  function busy(){ return !!RUN || Object.keys(JOBS).length>0 }
+  function ms(sec){ return FAST ? sec*10 : sec*1000 }
+  function fmt(s){ s=Math.max(0,Math.floor(s)); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2) }
+  function clock(n){ return n.job ? fmt((Date.now()-n.job.t0)/1000)+(Date.now()-n.job.t0>eta(n)*1000?' · longer than usual':'') : '' }
+  function eta(n){ var s=S(n); return n.kind==='video' ? Math.round(num(s.dur,3,15,5))*44 : (n.kind==='lite'||n.kind==='camera'||n.kind==='talk'||n.kind==='upscale') ? 40 : 85 }
+  function firstWait(n){ return n.kind==='video' ? 280 : (n.kind==='lite'||n.kind==='camera'||n.kind==='talk') ? 25 : n.kind==='upscale' ? 20 : 15 }
+  function againWait(n){ return n.kind==='video' ? 30 : KINDS[n.kind].out==='video' ? 10 : 6 }
+  function waitCap(n){ return (KINDS[n.kind].out==='video' ? 45 : 30)*60*1000 }
+  function ticking(){ var on=Object.keys(JOBS).length>0; if(on&&!TICK) TICK=setInterval(function(){ Object.keys(JOBS).forEach(function(id){ var n=node(id), el=cardEl(id); if(n&&el){ var st=el.querySelector('.st'); if(st) st.textContent='rendering '+clock(n) } }) },1000);
+    if(!on&&TICK){ clearInterval(TICK); TICK=null } }
+  function lockBoard(){ document.body.classList.toggle('running',busy()); paintUndo(); G.nodes.forEach(paintState) }
+
+  // the nodes a run would send for these targets, upstream first; or the one sentence that says why it cannot
+  function runList(targets){
+    evaluate();
+    var seen={}, list=[], bad='';
+    function need(u){   // an input: stale engines join the run; sources and frozen ones must simply be ready
+      var e=PL[u.id]; if(!e) return;
+      if(KINDS[u.kind].group!=='engines'){ if(e.st!=='ready') bad=bad||upWhy(u); return }
+      if(e.st==='fresh'||e.st==='frozen') return;
+      if(e.st==='frozen-empty'||e.st==='running'){ bad=bad||upWhy(u); return }
+      want(u);
+    }
+    function want(n){ if(seen[n.id]) return; seen[n.id]=true;
+      KINDS[n.kind].ins.forEach(function(pd){ if(!portOff(n,pd.id)) into(n.id,pd.id).forEach(need) });
+      list.push(n) }
+    targets.forEach(function(id){ var n=node(id); if(!n||KINDS[n.kind].group!=='engines') return;
+      var e=PL[n.id]; if(e.st==='frozen'||e.st==='frozen-empty'){ bad=bad||KINDS[n.kind].name+' is frozen. Unfreeze it to run it.'; return }
+      if(e.st==='running'){ bad=bad||KINDS[n.kind].name+' is already rendering.'; return }
+      want(n) });
+    if(bad) return {why:bad};
+    var ord=order().map(function(n){ return n.id }); list.sort(function(a,b){ return ord.indexOf(a.id)-ord.indexOf(b.id) });
+    for(var i=0;i<list.length;i++){ var e=PL[list[i].id]; if(e.st==='needs') return {why:KINDS[list[i].kind].name+': '+e.p.why} }
+    var total=0, unknown=0; list.forEach(function(n){ var p=PL[n.id].p; if(p.known) total+=p.price; else unknown++ });
+    return {list:list,total:+total.toFixed(3),unknown:unknown};
+  }
+  var ASK=null, ASK_NAMED={};
+  function askRun(targets){
+    if(busy()){ toast(LOCK_MSG); return }
+    if(!pw){ show('scr-login'); fail('Unlock the board to run it.'); return }
+    flushTyping();
+    var r=runList(targets);
+    if(r.why){ toast(r.why); return }
+    if(!r.list.length){ toast(targets.length>1 ? 'Nothing to pay: every node on the board is fresh, frozen or empty.' : 'Nothing to run here.'); return }
+    ASK=r.list.map(function(n){ return n.id }); ASK_NAMED={}; targets.forEach(function(id){ ASK_NAMED[id]=true });
+    var n=r.list.length;
+    $('ask-title').textContent=n===1 ? 'Run '+KINDS[r.list[0].kind].name : 'Run '+n+' nodes';
+    $('ask-rows').innerHTML=r.list.map(function(x,i){ var p=PL[x.id].p, st=PL[x.id].st;
+      return '<div><i>'+(i+1)+'</i><span>'+KINDS[x.kind].name+' <i>'+KINDS[x.kind].eng+(st==='fresh'?' · again':'')+'</i><small>'+(p.det||'')+'</small></span><b>'+(p.known?(p.from?'from ':'')+'$'+money(p.price):'priced when its input exists')+'</b></div>' }).join('');
+    $('ask-total').innerHTML='to pay <b>$'+money(r.total)+'</b>'+(r.unknown?' + '+r.unknown+' priced on the way':'');
+    $('ask-note').textContent=(n>1 ? 'One at a time, upstream first. If one fails the rest is not sent. ' : '')+'Every node is a normal Rig job: it lands in the jobs table and the session, and the fal balance moves.';
+    $('run-go').textContent=n===1 ? 'Run for $'+money(r.total) : 'Run '+n+' for $'+money(r.total)+(r.unknown?'+':'');
+    $('run-ask').hidden=false; $('run-go').focus();
+  }
+  function closeAsk(){ $('run-ask').hidden=true; ASK=null }
+  $('run-cancel').addEventListener('click',closeAsk);
+  $('run-ask').addEventListener('click',function(e){ if(e.target===$('run-ask')) closeAsk() });
+  $('run-go').addEventListener('click',function(){ var ids=ASK, named=ASK_NAMED; closeAsk(); if(ids) startRun(ids,named) });
+  // Run all = every engine that is not fresh; a fresh node is only ever rerun by name, from its own card
+  $('run-all').addEventListener('click',function(){ evaluate();
+    var ids=G.nodes.filter(function(n){ var e=PL[n.id]; return e && (e.st==='new'||e.st==='changed'||e.st==='failed') }).map(function(n){ return n.id });
+    if(!ids.length){ toast(busy()?LOCK_MSG:'Nothing to pay: every node on the board is fresh, frozen or empty.'); return }
+    askRun(ids) });
+  $('run-stop').addEventListener('click',function(){ if(RUN){ RUN.stop=true; $('run-stop').textContent='Stopping after this one'; $('run-stop').disabled=true } });
+  function startRun(ids,named){
+    RUN={q:ids,i:0,stop:false,named:named||{}}; $('run-stop').textContent='Stop after this'; $('run-stop').disabled=false;
+    lockBoard(); next();
+  }
+  function next(){
+    if(!RUN) return;
+    if(RUN.i>=RUN.q.length||RUN.stop){ var stopped=RUN.stop&&RUN.i<RUN.q.length; RUN=null; lockBoard();
+      chip((stopped?'Stopped':'Delivered')+(BAL!=null?' · fal balance $'+BAL.toFixed(2):''),stopped?'':'ok'); if(stopped) toast('Stopped. The rest was not sent.'); return }
+    var n=node(RUN.q[RUN.i]); if(!n){ RUN.i++; return next() }
+    evaluate(); var e=PL[n.id];
+    // fresh by the time its turn comes (an upstream rerun landed the same result): not paid for, unless asked for by name
+    if((e.st==='fresh'&&!RUN.named[n.id])||e.st==='frozen'){ RUN.i++; return next() }
+    if(e.st==='needs'){ failNode(n,e.p.why); return }
+    chip('Rendering '+(RUN.i+1)+' of '+RUN.q.length,'busy');
+    submitNode(n);
+  }
+  function dataUrlToBlob(u){
+    var p=u.split(','),mime=(p[0].match(/:(.*?);/)||[])[1]||'image/jpeg', bin=atob(p[1]), k=bin.length, arr=new Uint8Array(k);
+    while(k--) arr[k]=bin.charCodeAt(k);
+    return new Blob([arr],{type:mime});
+  }
+  function blobToImage(b){ return new Promise(function(res,rej){ var u=URL.createObjectURL(b), im=new Image();
+    im.onload=function(){ URL.revokeObjectURL(u); res(im) }; im.onerror=function(){ URL.revokeObjectURL(u); rej(new Error('That picture could not be read.')) }; im.src=u }) }
+  // what a source card or a result hands over: the original for Upscale, else shrunk the way the classic view sends it
+  function blobFor(u,original){
+    if(u.kind==='upload'){ var up=u.src&&UP[u.src.id]; if(!up) return Promise.reject(new Error('Add the picture to Upload again.'));
+      return Promise.resolve(original ? {blob:up.file,name:up.name} : {blob:dataUrlToBlob(up.ref),name:'src.jpg'}) }
+    var url=u.kind==='gallery' ? (u.src&&u.src.url) : (u.ran&&u.ran.url);
+    if(!url) return Promise.reject(new Error(KINDS[u.kind].name+' has nothing to hand on.'));
+    return fetch(url).then(function(r){ if(!r.ok) throw new Error('Could not load '+KINDS[u.kind].name+'\'s picture back ('+r.status+').'); return r.blob() })
+      .then(function(b){ if(original) return {blob:b,name:'source.jpg'}; return blobToImage(b).then(function(im){ return {blob:dataUrlToBlob(shrink(im)),name:'src.jpg'} }) });
+  }
+  // A VHS TAPE IS 4:3 (the classic view's tapeFrame): a wider or taller opening frame goes in whole, on black
+  function tapeFrame(b){
+    return blobToImage(b).then(function(im){
+      var w=im.naturalWidth,h=im.naturalHeight,a=w/h; if(Math.abs(a-4/3)<0.02) return b;
+      var cw=a>4/3?w:Math.round(h*4/3), ch=a>4/3?Math.round(w*3/4):h, c=document.createElement('canvas'); c.width=cw; c.height=ch;
+      var x=c.getContext('2d'); x.fillStyle='#000'; x.fillRect(0,0,cw,ch); x.drawImage(im,Math.round((cw-w)/2),Math.round((ch-h)/2),w,h);
+      return dataUrlToBlob(c.toDataURL('image/jpeg',0.9));
+    }).catch(function(){ return b });
+  }
+  // the request as the classic view builds it: plan(n) is the fields, the pictures ride as image_0..N in wire order
+  function buildForm(n){
+    var p=plan(n), fd=new FormData(), k, seed=null;
+    if(p.why) return Promise.reject(new Error(p.why));
+    fd.append('action','generate'); fd.append('password',pw);
+    for(k in p.f) if(p.f[k]!==null&&p.f[k]!==undefined&&p.f[k]!=='') fd.append(k,String(p.f[k]));
+    // every image run carries a seed (fal rolls one and Nano Banana never reports it): rolled here so the render is revisable
+    if((n.kind==='image'||n.kind==='compose') && !p.f.seed){ seed=String(Math.floor(Math.random()*1e9)); fd.append('seed',seed) }
+    var original=n.kind==='upscale';
+    return Promise.all(p.img.map(function(u){ return blobFor(u,original) })).then(function(bl){
+      var vhs=n.kind==='lite'&&S(n).style==='vhs';
+      return (vhs&&bl[0] ? tapeFrame(bl[0].blob).then(function(b){ bl[0]={blob:b,name:bl[0].name} }) : Promise.resolve()).then(function(){
+        if(!original){ var bytes=bl.reduce(function(a,x){ return a+Math.ceil(x.blob.size*4/3) },0);
+          if(bytes>SUBMIT_CAP) throw new Error('Those '+bl.length+' pictures are too large to send together ('+(bytes/1e6).toFixed(1)+' MB). Cut one wire and try again.') }
+        bl.forEach(function(x,i){ fd.append('image_'+i,x.blob,original?x.name:'src'+i+'.jpg') });
+        if(p.aud){ var a=p.aud.src&&AUD[p.aud.src.id]; if(!a) throw new Error('Add the sound to Audio again.'); fd.append('audio',a.blob,a.name) }
+        return {fd:fd,seed:seed};
+      });
+    });
+  }
+  function submitNode(n){
+    n.job={id:null,t0:Date.now(),sig:PL[n.id].sig,price:PL[n.id].p.price,seed:null};
+    delete n.err; changed({repaint:[n.id],quiet:true}); lockBoard();
+    buildForm(n).then(function(b){
+      if(!n.job) throw new Error('stopped');
+      n.job.seed=b.seed;
+      return fetch(BASE,{method:'POST',body:b.fd});
+    }).then(function(r){
+      if(r.status===401){ lockOut(); return null }
+      if(!r.ok) throw new Error('The rig did not answer properly (HTTP '+r.status+').');
+      return r.json();
+    }).then(function(d){
+      if(!d||!n.job) return;
+      if(d.status==='denied'){ failNode(n,d.message||'The rig refused that run.'); return }
+      if(!d.jobId) throw new Error('The rig gave no job id.');
+      n.job.id=d.jobId; JOBS[n.id]={timer:null,noRow:0};
+      changed({repaint:[n.id],quiet:true}); lockBoard(); ticking();
+      JOBS[n.id].timer=setTimeout(function(){ pollNode(n) },ms(firstWait(n)));
+    }).catch(function(e){ if(n.job) failNode(n,'Could not submit that run. '+((e&&e.message)||'')) });
+  }
+  function pollNode(n){
+    var j=JOBS[n.id]; if(!j||!n.job) return;
+    var again=function(){ if(!JOBS[n.id]||!n.job) return;
+      if(Date.now()-n.job.t0>waitCap(n)) return failNode(n,'No result after '+Math.round(waitCap(n)/60000)+' minutes, so this page stopped asking. If it finishes later the render is kept under job id '+n.job.id+': tell Hector and it can be pulled out.');
+      j.timer=setTimeout(function(){ pollNode(n) },ms(againWait(n))) };
+    fetch(BASE+'?jobId='+encodeURIComponent(n.job.id)+'&p='+encodeURIComponent(pw))
+      .then(function(r){ if(r.status===401){ lockOut(); return null } return r.json() })
+      .then(function(d){
+        if(!d||!n.job) return;
+        if(d.status==='done'){ landNode(n,d); return }
+        if(d.status==='error'){ failNode(n,d.message||'The model returned nothing.'); return }
+        if(d.row===false){ if(++j.noRow>=5) return failNode(n,'This run never registered on the server, so it was stopped: the submit most likely failed before reaching fal, which costs nothing. Try again. If your credit went down anyway, tell Hector the job id '+n.job.id+'.') } else j.noRow=0;
+        again();
+      })
+      .catch(again);
+  }
+  function landNode(n,d){
+    var url=(d.urls&&d.urls[0])||'';
+    if(!url){ failNode(n,'The run finished but returned nothing.'); return }
+    var ran={sig:n.job.sig,url:url,w:+d.width||0,h:+d.height||0,price:n.job.price,job:n.job.id,at:Date.now(),
+             gen_type:d.gen_type||(KINDS[n.kind].out==='video'?'video':'image'),secs:Math.round((Date.now()-n.job.t0)/1000),
+             seed:(d.seed===0||d.seed)?d.seed:(n.job.seed||null)};
+    if(d.written) ran.written=d.written;
+    if(typeof d.balance==='number') BAL=d.balance;   // the finished poll carries the balance; the chip shows it when the run ends
+    endJob(n); n.ran=ran; delete n.err;
+    changed({repaint:[n.id],quiet:true}); lockBoard();
+    if(RUN){ RUN.i++; next() } else if(!busy()) chip('Delivered'+(BAL!=null?' · fal balance $'+BAL.toFixed(2):''),'ok');
+  }
+  function failNode(n,msg){
+    endJob(n); n.err={sig:PL[n.id]?PL[n.id].sig:'',msg:msg,at:Date.now()};
+    changed({repaint:[n.id],quiet:true});
+    if(RUN){ RUN=null }
+    lockBoard(); chip('Failed','err'); toast(KINDS[n.kind].name+': '+msg);
+  }
+  function endJob(n){ var j=JOBS[n.id]; if(j&&j.timer) clearTimeout(j.timer); delete JOBS[n.id]; delete n.job; ticking() }
+  function lockOut(){   // the code no longer opens the rig: jobs in flight stay on the board and resume after the next unlock
+    Object.keys(JOBS).forEach(function(id){ var j=JOBS[id]; if(j.timer) clearTimeout(j.timer); delete JOBS[id] }); ticking();
+    G.nodes.forEach(function(n){ if(n.job&&!n.job.id){ delete n.job; n.err={sig:PL[n.id]?PL[n.id].sig:'',msg:'The rig locked while this was being sent, so it was not sent. Unlock and run it again.',at:Date.now()} } });
+    RUN=null; pw=''; try{ sessionStorage.removeItem(K_PW) }catch(e){}
+    evaluate();
+    lockBoard(); show('scr-login'); chip('Locked'); fail('Session expired. Enter the passphrase again.');
+  }
+  // after a reload (or an unlock): every job the board still carries is polled again, once its age allows
+  function resumeJobs(){
+    G.nodes.forEach(function(n){
+      if(!n.job) return;
+      if(!n.job.id){ delete n.job; n.err={sig:'',msg:'The page closed while this was being sent. Run it again.',at:Date.now()}; return }
+      if(Date.now()-n.job.t0>JOB_TTL_MS){ var id=n.job.id; delete n.job; n.err={sig:'',msg:'This run was left for over an hour, so it is not picked back up. Its render, if any, is kept under job id '+id+'.',at:Date.now()}; return }
+      if(JOBS[n.id]) return;
+      JOBS[n.id]={timer:setTimeout(function(){ pollNode(n) },ms(1)),noRow:0};
+    });
+    evaluate(); lockBoard(); ticking();
+    if(Object.keys(JOBS).length) chip('Picked '+Object.keys(JOBS).length+' run'+(Object.keys(JOBS).length>1?'s':'')+' back up','busy');
+  }
+
+  /* ---------- the viewer ---------- */
+  function openView(n){
+    var r=n.ran; if(!r||!r.url) return; var K=KINDS[n.kind], vid=K.out==='video';
+    $('view-title').textContent=K.name; $('view-sub').textContent=K.eng;
+    $('view-media').innerHTML=vid ? '<video src="'+esc(r.url)+'" controls autoplay playsinline loop></video>' : '<img alt="" src="'+esc(r.url)+'">';
+    var facts=[]; if(r.w&&r.h) facts.push(r.w+'×'+r.h); if(r.price!=null) facts.push('$'+money(r.price)); if(r.seed!=null&&(n.kind==='image'||n.kind==='compose')) facts.push('seed '+r.seed);
+    if(r.secs) facts.push(fmt(r.secs)+' to render'); if(r.job) facts.push('job '+r.job);
+    var name='rig-'+String(r.job||'render');
+    $('view-facts').innerHTML='<span>'+facts.map(esc).join(' · ')+'</span><span class="sp"></span>'+
+      (vid ? '<a href="'+esc(r.url)+'" target="_blank" rel="noopener" title="The file itself, straight from fal (the download proxy cannot carry a big clip)">Open the clip</a>'
+           : '<a href="'+esc(DOWNLOAD+'?u='+encodeURIComponent(r.url)+'&n='+encodeURIComponent(name))+'">Download</a> <a href="'+esc(r.url)+'" target="_blank" rel="noopener">Open</a>');
+    $('view').hidden=false;
+  }
+  function closeView(){ $('view').hidden=true; $('view-media').innerHTML='' }
+  $('view-close').addEventListener('click',closeView);
+  $('view').addEventListener('click',function(e){ if(e.target===$('view')) closeView() });
 
   /* ---------- test hooks: the harness drives the board through these, never through fake events ---------- */
   window.RigCanvas={add:add,remove:remove,connect:connect,disconnect:disconnect,select:select,fit:fit,zoomAt:zoomAt,
     set:setSetting,freeze:setFrozen,setRan:setRan,intake:function(id,f){ return intake(node(id),f) },undo:undo,redo:redo,
+    runList:function(ids){ var r=runList(ids); return r.why?r:{list:r.list.map(function(n){ return n.id }),total:r.total,unknown:r.unknown} },
+    ask:askRun,busy:busy,jobs:function(){ return Object.keys(JOBS) },fast:function(on){ FAST=!!on },resume:resumeJobs,view:function(id){ openView(node(id)) },
     exportBoard:exportBoard,importBoard:importBoard,openGallery:openGallery,
     order:function(){ return order().map(function(n){ return n.id }) },
     info:function(id){ var e=PL[id]; if(!e) return null; var p=e.p||{};

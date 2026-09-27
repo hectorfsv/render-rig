@@ -23,15 +23,32 @@
     for(var i=0;i<n;i++) v.setInt16(44+i*2,Math.round(Math.sin(i/(6+secs))*6000),true);
     return new File([buf],name||'line.wav',{type:'audio/wav'}) }
 
-  var GUEST=q.get('guest')==='1', galCalls=0, SENT=0;
+  var GUEST=q.get('guest')==='1', galCalls=0, SENT=0, REQ=[], POLLS={}, FAILN={}, DENY=false, NOROW=false, LOCK401=false, jobSeq=100;
+  // the mock rig: a submit answers with a job id and records every field and picture; the first poll is pending, the second done
+  function record(b){ var o={}; b.forEach(function(v,k){ if(v instanceof Blob){ o[k]={size:v.size,type:v.type,name:v.name||''} } else o[k]=v }); return o }
   var GAL=[{url:png(64,36,'#a33'),specs:{w:2048,h:1152},engine:'Krea 2 Large',gen_type:'image'},
            {url:'data:video/mp4;base64,AAAA',specs:{w:1280,h:720},engine:'Kling 3.0 Pro',gen_type:'video'},
            {url:png(40,30,'#3a6'),specs:{},engine:'Nano Banana Pro',gen_type:'image'}];
+  var realFetch=window.fetch;
   window.fetch=function(u,o){
+    if(typeof u==='string'&&/^(data:|blob:)/.test(u)) return realFetch(u,o);   // a result fetched back is not the rig
     var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
     if(a==='auth') return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve(GUEST?{guest:true,user:'amy'}:{guest:false,user:'hector'}) }});
     if(a==='gallery'){ galCalls++; return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve({items:GAL}) }}) }
-    if(a==='generate') SENT++;
+    if(a==='generate'){ SENT++; var rec=record(b), id='j'+(jobSeq++); rec._job=id; REQ.push(rec);
+      if(LOCK401) return Promise.resolve({ok:false,status:401,json:function(){ return Promise.resolve({}) }});
+      if(DENY) return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve({status:'denied',message:'That run is more than the credit left on this code.'}) }});
+      return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve({jobId:id}) }}) }
+    var m=/jobId=([^&]+)/.exec(String(u));
+    if(m){ var jid=decodeURIComponent(m[1]), rec2=REQ.filter(function(r){ return r._job===jid })[0]; POLLS[jid]=(POLLS[jid]||0)+1;
+      if(LOCK401) return Promise.resolve({ok:false,status:401,json:function(){ return Promise.resolve({}) }});
+      if(NOROW) return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve({row:false}) }});
+      if(POLLS[jid]===1) return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve({status:'pending'}) }});
+      if(rec2&&FAILN[rec2.model]) return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve({status:'error',message:'The model returned nothing.'}) }});
+      var vid=/^(kling|h3)/.test(rec2?rec2.model:''), d=vid
+        ? {status:'done',urls:['data:video/mp4;base64,AAAAHGZ0eXBpc29t#'+jid],width:1280,height:720,gen_type:'video',balance:41.5}
+        : {status:'done',urls:[png(96,64,rec2&&rec2.model==='krea'?'#c84':'#48c')+'#'+jid],width:2048,height:1152,gen_type:'image',seed:rec2&&rec2.model==='krea'?777:undefined,balance:41.5};   // every run its own URL, as fal does
+      return Promise.resolve({ok:true,status:200,json:function(){ return Promise.resolve(d) }}) }
     return Promise.reject(new Error('harness: no network'));
   };
   ['rig_board_cur:hector','rig_boards:hector','rig_gallery2:hector'].forEach(function(k){ try{ localStorage.removeItem(k) }catch(e){} });
@@ -51,14 +68,14 @@
     R=window.RigCanvas;
     return q.get('demo')==='1' ? demo() : run();
   }).catch(function(e){ ok(false,'harness threw: '+(e&&e.message||e)) }).then(function(){
-    if(q.get('demo')!=='1'){ ok(!errs.length,'no page errors',errs.join(' | ')); ok(SENT===0,'nothing was sent to generate',SENT) }
+    if(q.get('demo')!=='1'){ ok(!errs.length,'no page errors',errs.join(' | ')) }
     finish();
   });
 
   function run(){
     /* ---------- kinds ---------- */
     eq(document.querySelectorAll('#add-list button[data-kind]').length,12,'the Add menu lists 12 kinds (3 sources, 8 engines, a note)');
-    ok($('run-all').disabled,'Run all stays off until day 3');
+    ok(!$('run-all').disabled,'Run all is live (day 3)');
     ok(!$('empty-hint').hidden,'an empty board says how to start');
     var N={}; ['upload','gallery','audio','image','compose','design','upscale','video','lite','camera','talk','note'].forEach(function(k){ N[k]=R.add(k).id });
     eq(document.querySelectorAll('#world .card').length,12,'one card per kind');
@@ -239,7 +256,8 @@
         }).then(function(){ eq(price(tk),0.4,'Talk on 3 s: billed as 5 s, $0.40') })
           .catch(function(e){ ok(false,'audio could not be decoded here: '+e.message) });
       });
-    }).then(function(){ step('staleness'); staleness(); step('undo'); undoAndNotes(); step('saving'); return saving() });
+    }).then(function(){ step('staleness'); staleness(); step('undo'); undoAndNotes(); step('saving'); return saving() })
+      .then(function(){ step('running'); return running() });
   }
 
   function staleness(){
@@ -330,6 +348,151 @@
     return tick(0);
   }
 
+  function idle(){ return until(function(){ return !R.busy() },12000) }
+  function running(){
+    ok(SENT===0,'nothing was sent to generate before the run lane',SENT);
+    R.fast(true);
+    /* ---------- the run engine (day 3): what is sent, in what order, and never twice ---------- */
+    R.importBoard({v:1,name:'',nodes:[
+      {id:'n1',kind:'gallery',x:0,y:0,src:{url:png(64,36,'#a33'),w:2048,h:1152}},
+      {id:'n2',kind:'image',x:0,y:400,settings:{prompt:'a tiger',ar:'16:9',crea:'low'}},
+      {id:'n3',kind:'compose',x:320,y:0,settings:{prompt:'the tiger in the arena',res:'2K',ar:'auto'}},
+      {id:'n4',kind:'lite',x:660,y:0,settings:{prompt:'it roars',dur:'5',eng:'turbo'}},
+      {id:'n5',kind:'note',x:660,y:600,settings:{text:'x'}}],
+      edges:[['n1:out','n3:images'],['n2:out','n3:images'],['n3:out','n4:image']]});
+    var s0=SENT, u0=R.state().undo;
+    ok(!$('run-all').disabled,'Run all is live');
+    // the sheet before anything is sent
+    $('run-all').click();
+    ok(!$('run-ask').hidden,'Run all opens the sheet');
+    eq($('ask-rows').children.length,3,'…listing the 3 stale engines');
+    ok(/\$0\.41/.test($('ask-total').textContent),'…with the total $0.06 + $0.15 + $0.20 = $0.41',$('ask-total').textContent);
+    ok(/Run 3 for \$0\.41/.test($('run-go').textContent),'…on the button',$('run-go').textContent);
+    $('run-cancel').click();
+    ok($('run-ask').hidden&&SENT===s0,'Cancel sends nothing');
+    var r=R.runList(['n4']); eq(r.list,['n2','n3','n4'],'Run on Video Lite alone would run Image, then Compose, then it (upstream first)');
+    eq(R.runList(['n2']).list,['n2'],'Run on Image alone runs just Image');
+    // go
+    $('run-all').click(); $('run-go').click();
+    ok($('run-ask').hidden&&R.busy(),'Run: the sheet closes and the run is in flight');
+    ok(R.state().nodes.length===5&&R.add('image')===null,'…the board is locked: nothing can be added');
+    R.set('n3','prompt','changed'); eq(node('n3').settings.prompt,'the tiger in the arena','…nor edited');
+    ok($('undo').disabled&&$('run-all').disabled&&$('new-btn').disabled,'…undo, Run all and New are off');
+    ok(!$('run-stop').hidden,'…and Stop is offered');
+    return idle().then(function(){
+      ok(!R.busy(),'the run finished');
+      eq(SENT-s0,3,'three submits');
+      var rq=REQ.slice(-3);
+      eq(rq.map(function(x){ return x.model }),['krea','nbp','h3'],'…in order: Krea, Nano Banana Pro, H3');
+      eq([rq[0].action,rq[0].password,rq[0].prompt,rq[0].aspect_ratio,rq[0].creativity,rq[0].mode],['generate','x','a tiger','16:9','low','generate'],'Image sent the classic fields');
+      ok(/^\d+$/.test(rq[0].seed||''),'…and a rolled seed',rq[0].seed);
+      eq([rq[1].model,rq[1].resolution,rq[1].aspect_ratio,rq[1].keep_framing],['nbp','2K','auto',undefined],'Compose sent its fields (two pictures: no framing question)');
+      ok(rq[1].image_0&&rq[1].image_1&&!rq[1].image_2,'…and exactly two pictures');
+      eq([rq[1].image_0.name,rq[1].image_1.name],['src0.jpg','src1.jpg'],'…as image_0 (the gallery) and image_1 (Image\'s RESULT, fetched back)');
+      eq([rq[2].model,rq[2].duration,rq[2].resolution,rq[2].h3_turbo,rq[2].aspect_ratio],['h3','5','768P','on',undefined],'Video Lite sent Turbo, no ratio (it inherits the frame)');
+      ok(rq[2].image_0&&rq[2].image_0.size>0,'…with Compose\'s result as its opening frame');
+      eq([st('n2'),st('n3'),st('n4')],['fresh','fresh','fresh'],'all three are fresh');
+      eq(node('n2').ran.seed,777,'Krea reported its seed back and it is kept');
+      eq(node('n3').ran.seed,rq[1].seed,'Nano Banana never reports one: the rolled seed is the truth');
+      ok(card('n3').querySelector('.pic img')&&card('n4').querySelector('.pic video'),'results are on the cards');
+      ok(/seed \d+/.test(card('n3').querySelector('.det').textContent),'…the seed under Compose');
+      eq(node('n4').ran.job,rq[2]._job,'the job id is on the node');
+      eq($('total').textContent,'nothing to pay','nothing to pay');
+      ok(/Delivered · fal balance \$41\.50/.test($('chip').textContent),'the balance rode the finished poll onto the chip',$('chip').textContent);
+      ok(!$('undo').disabled,'undo is back');
+      eq(R.state().undo,u0,'…and the run left no undo steps');
+      // never pay twice
+      $('run-all').click();
+      ok($('run-ask').hidden&&SENT-s0===3&&/Nothing to pay/.test($('toast').textContent),'Run all again: nothing to pay, nothing sent',$('toast').textContent);
+      // the viewer
+      R.view('n3'); ok(!$('view').hidden&&$('view-media').querySelector('img'),'a result opens big');
+      ok(/kling-download/.test($('view-facts').querySelector('a').href),'…a picture downloads through the proxy'); $('view-close').click();
+      R.view('n4'); ok(/^data:video/.test($('view-facts').querySelector('a').href),'…a clip links to the file itself'); $('view-close').click();
+      // one change, one node
+      R.set('n3','prompt','the tiger sleeps');
+      eq([st('n2'),st('n3'),st('n4')],['fresh','changed','changed'],'change Compose: it and Video Lite go stale');
+      R.ask(['n4']);
+      eq($('ask-rows').children.length,2,'Run on Video Lite: Compose then it, not Image');
+      $('run-go').click();
+      return idle();
+    }).then(function(){
+      eq(SENT-s0,5,'two more submits');
+      eq(REQ.slice(-2).map(function(x){ return x.model }),['nbp','h3'],'…Compose then H3');
+      eq([st('n2'),st('n3'),st('n4')],['fresh','fresh','fresh'],'fresh again');
+      // a rerun of a fresh node, asked for by name
+      R.ask(['n2']); ok(/again/.test($('ask-rows').textContent),'Rerun on a fresh node says "again"'); $('run-cancel').click();
+      // a failure stops the chain
+      R.set('n2','prompt','a lion'); FAILN.nbp=true;
+      $('run-all').click(); eq($('ask-rows').children.length,3,'Image changed: three to run'); $('run-go').click();
+      return idle();
+    }).then(function(){
+      delete FAILN.nbp;
+      eq(SENT-s0,7,'Image and Compose were sent, Video Lite was NOT (stop on the first failure)');
+      eq([st('n2'),st('n3'),st('n4')],['fresh','failed','changed'],'Image fresh, Compose failed, Video Lite untouched');
+      ok(/returned nothing/.test(card('n3').querySelector('.why').textContent),'…the card says why',card('n3').querySelector('.why').textContent);
+      ok(/Failed/.test($('chip').textContent),'…the chip says Failed');
+      ok(!R.busy()&&!$('undo').disabled,'…and the board is unlocked');
+      ok(R.totals().run.indexOf('n3')>=0,'a failed node counts as to run');
+      R.set('n3','res','4K'); eq(st('n3'),'changed','a change clears the failure');
+      R.set('n3','res','2K'); eq(st('n3'),'failed','…and the same settings bring it back');
+      // denied on submit
+      DENY=true; R.ask(['n3']); $('run-go').click();
+      return idle();
+    }).then(function(){
+      DENY=false;
+      ok(st('n3')==='failed'&&/credit left/.test(node('n3').err.msg),'a denied submit fails the node with the rig\'s message');
+      // a run that never registers
+      NOROW=true; R.ask(['n3']); $('run-go').click();
+      return until(function(){ return st('n3')==='failed'&&/never registered/.test(node('n3').err.msg) },6000);
+    }).then(function(){
+      NOROW=false;
+      ok(/never registered/.test(node('n3').err.msg),'five row:false polls: "never registered", polling stopped',node('n3').err.msg);
+      eq(POLLS[REQ[REQ.length-1]._job],5,'…exactly five polls');
+      // a Stop after this
+      R.set('n4','dur','6'); FAILN.x=1;
+      $('run-all').click(); eq($('ask-rows').children.length,2,'Compose and Video Lite to run'); $('run-go').click();
+      $('run-stop').click();
+      return idle();
+    }).then(function(){
+      delete FAILN.x;
+      eq(REQ[REQ.length-1].model,'nbp','Stop after this: Compose finished, Video Lite was not sent');
+      eq([st('n3'),st('n4')],['fresh','changed'],'…Compose fresh, Video Lite still stale');
+      ok(/Stopped/.test($('chip').textContent),'…the chip says Stopped');
+      // resume after a reload: a job in flight is on the board
+      var ex=R.exportBoard(); var live=ex.nodes.filter(function(n){ return n.id==='n4' })[0];
+      live.job={id:'j999',t0:Date.now(),sig:R.info('n4').sig,price:0.24,seed:null}; REQ.push({_job:'j999',model:'h3'});
+      R.importBoard(ex); R.resume();
+      ok(R.busy()&&st('n4')==='running','a saved job is picked back up');
+      return idle();
+    }).then(function(){
+      eq(st('n4'),'fresh','…and lands');
+      eq(node('n4').ran.job,'j999','…under its job id');
+      // an old job is not
+      var ex2=R.exportBoard(); ex2.nodes.filter(function(n){ return n.id==='n2' })[0].job={id:'j1',t0:Date.now()-2*3600*1000,sig:'zz',price:0.06};
+      R.importBoard(ex2); R.resume();
+      ok(!R.busy()&&/over an hour/.test(node('n2').err.msg),'a job over an hour old is not polled: the card says where its render would be');
+      // a 401 mid-run: back to the lock, the job stays on the board
+      R.set('n2','prompt','a wolf'); LOCK401=true; R.ask(['n2']); $('run-go').click();
+      return until(function(){ return on('scr-login') },4000);
+    }).then(function(){
+      LOCK401=false;
+      ok(on('scr-login'),'a 401 sends the page to the lock screen');
+      // VHS: the opening frame goes in on a 4:3 tape; Upscale sends the original file
+      $('pw').value='x'; $('unlock').click();
+      return tick(80);
+    }).then(function(){
+      ok(on('scr-board'),'unlocked again');
+      var up=R.add('upload').id, l=R.add('lite').id, u=R.add('upscale').id;
+      R.connect(up+':out',l+':image'); R.connect(up+':out',u+':image'); R.set(l,'style','vhs'); R.set(l,'prompt','tape');
+      return R.intake(up,fileOf(png(1200,500,'#3b5'),'wide.png')).then(function(){ R.ask([l,u]); $('run-go').click(); return idle() }).then(function(){
+        var rl=REQ.filter(function(x){ return x.model==='h3' }).pop(), ru=REQ.filter(function(x){ return x.model==='topaz' }).pop();
+        ok(rl.h3_style==='vhs'&&rl.aspect_ratio===undefined&&rl.resolution==='768P','VHS from a frame: 768P, no ratio sent (the tape sets it, like the console)',JSON.stringify([rl.h3_style,rl.aspect_ratio,rl.resolution]));
+        ok(rl.image_0&&rl.image_0.type==='image/jpeg','…its opening frame as a JPEG (the tape)');
+        eq([ru.upscale_factor,ru.upscale_model,ru.face_enhancement,ru.image_0.name,ru.image_0.type],['2','Standard V2','on','wide.png','image/png'],'Upscale sent the ORIGINAL file, by name');
+      });
+    }).then(function(){ R.fast(false) });
+  }
+
   function demo(){
     R.importBoard({v:1,name:'kratos-vhs',nodes:[
       {id:'n1',kind:'gallery',x:40,y:40,src:{url:png(640,360,'#b6382e'),w:2048,h:1152,engine:'Krea 2 Large'}},
@@ -343,8 +506,11 @@
     return R.intake('n2',fileOf(png(1200,800,'#3b5f8a'),'arena.png')).then(function(){
       return R.intake('n5',wav(6.2,'roar.wav')).catch(function(){});
     }).then(function(){
-      R.setRan('n3',{sig:R.info('n3').sig,url:png(640,360,'#8a5a2e'),w:2048,h:1152,price:0.15,job:1});
-      R.fit(); return tick(50);
+      R.setRan('n3',{sig:R.info('n3').sig,url:png(640,360,'#8a5a2e'),w:2048,h:1152,price:0.15,job:6712,seed:48213377,at:Date.now()});
+      if(q.get('fail')==='1'){ var ex=R.exportBoard(); ex.nodes.filter(function(n){ return n.id==='n6' })[0].err={sig:R.info('n6').sig,msg:'The model returned nothing.',at:Date.now()}; R.importBoard(ex) }
+      R.fit();
+      if(q.get('sheet')==='1') R.ask(['n4','n6']);
+      return tick(50);
     });
   }
 })();
