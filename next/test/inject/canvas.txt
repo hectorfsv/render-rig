@@ -604,6 +604,21 @@
     // save and load keep it
     var ex=R.exportBoard(); R.importBoard(ex);
     ok(node('p1')&&node('p1').settings.text===WORDS&&edgeIdx('p1:out','i1:prompt')>=0,'save and load keep the card, its words and its wires');
+    // focus: a selected or hovered card lights its own wires, the rest step back
+    var W=$('wires'), hot=function(){ return W.querySelectorAll('path.hot').length }, all=function(){ return W.querySelectorAll('path:not(.hit)').length };
+    var op=function(sel){ var e=W.querySelector(sel); return e?+getComputedStyle(e).opacity:-1 };
+    R.select({node:'p1'}); ok(W.classList.contains('focus')&&hot()===3,'select the Prompt card: its 3 wires light',hot()+'/'+all());
+    ok(op('path.hot')===1,'…drawn at full strength (what the eye sees, not just a class)',op('path.hot'));
+    R.connect('i1:out','c1:images'); R.select({node:'p1'});
+    ok(op('path:not(.hit):not(.hot)')<0.3,'…and a wire it does not touch steps back',op('path:not(.hit):not(.hot)'));
+    R.disconnect(edgeIdx('i1:out','c1:images'));
+    R.select({node:'k1'}); ok(!W.classList.contains('focus')&&hot()===0,'a card with no wires dims nothing');
+    card('c1').dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));
+    ok(W.classList.contains('focus')&&hot()===1&&W.querySelector('path.hot').dataset.t==='c1','hover Compose: only its wire lights',hot());
+    card('c1').dispatchEvent(new MouseEvent('mouseout',{bubbles:true,relatedTarget:$('board')}));
+    ok(!W.classList.contains('focus'),'…the pointer leaves: back to the selection (none lit)');
+    R.select(null);
+    ok(!document.getAnimations||document.getAnimations().filter(function(x){ var t=x.effect&&x.effect.getTiming&&x.effect.getTiming(); return t&&t.iterations===Infinity }).length===0,'…and focus runs no animation');
     // a run: the card is never sent, its words are
     R.set('i1','crea','high');
     eq(R.runList(['i1']).list,['i1'],'Run on Image runs Image only: the card is a source, never a job');

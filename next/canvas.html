@@ -99,6 +99,9 @@ input[type=password]{font-family:var(--mono);letter-spacing:.3em;text-align:cent
 .wires path.image{stroke:var(--t-image)} .wires path.video{stroke:var(--t-video)} .wires path.audio{stroke:var(--t-audio)} .wires path.text{stroke:var(--t-text)}
 .wires path.off{stroke-dasharray:3 6;opacity:.5}
 .wires path.sel{stroke:#fff;stroke-width:3}
+/* a selected or hovered card: its own wires stay bright, the rest step back (no animation: nothing to repaint at rest) */
+.wires.focus path:not(.hit):not(.temp){opacity:.16}
+.wires.focus path.hot:not(.hit):not(.temp){opacity:1;stroke-width:2.8}
 .wires path.temp{stroke:var(--ink-dim);stroke-dasharray:6 5}
 .empty-hint{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);text-align:center;color:var(--ink-faint);font-size:14px;line-height:1.6;pointer-events:none;max-width:420px}
 .empty-hint b{color:var(--ink-dim)}
@@ -850,16 +853,24 @@ body.running .card .top .ic{visibility:hidden}
     G.edges.forEach(function(e,i){
       var f=e[0].split(':'), t=e[1].split(':'), a=pt(f[0],f[1]), b=pt(t[0],t[1]); if(!a||!b) return;
       var type=KINDS[node(f[0]).kind].out, off=portOff(node(t[0]),t[1])?' off':'', s=(sel&&sel.edge===i)?' sel':'', live=node(t[0]).job?' live':'';
-      html+='<path class="hit" data-edge="'+i+'" d="'+bez(a,b)+'"></path><path class="'+type+off+s+live+'" data-edge="'+i+'" d="'+bez(a,b)+'"></path>';
+      html+='<path class="hit" data-edge="'+i+'" d="'+bez(a,b)+'"></path><path class="'+type+off+s+live+'" data-edge="'+i+'" data-f="'+f[0]+'" data-t="'+t[0]+'" d="'+bez(a,b)+'"></path>';
       if(live) sparks.push(sparkOf(a,b,i));
     });
-    $('wires').innerHTML=html;
+    $('wires').innerHTML=html; focusWires();
     // the sparks live beside the SVG, under the cards
     [].forEach.call($('world').querySelectorAll('.spark'),function(e){ e.parentNode.removeChild(e) });
     var css=$('spark-css'); if(!css){ css=document.createElement('style'); css.id='spark-css'; document.head.appendChild(css) }
     css.textContent=sparks.map(function(x){ return x.css }).join('');
     if(sparks.length){ var tmp=document.createElement('div'); tmp.innerHTML=sparks.map(function(x){ return x.html }).join('');
       var after=$('wires'); [].slice.call(tmp.children).forEach(function(e){ after.parentNode.insertBefore(e,after.nextSibling); after=e }) }
+  }
+  // FOCUS (canvas v2): the card under the pointer, else the selected one, lights its own wires and dims the others,
+  // so a wire that only passes behind a card never reads as plugged into it. Only when that card has a wire.
+  var HOVER=null;
+  function focusWires(){
+    var id=HOVER||(sel&&sel.node)||null, svg=$('wires'), paths=svg.querySelectorAll('path:not(.hit)'), any=false;
+    [].forEach.call(paths,function(p){ var on=!!id&&(p.dataset.f===id||p.dataset.t===id); p.classList.toggle('hot',on); if(on) any=true });
+    svg.classList.toggle('focus',any);
   }
   function reaches(a,b){          // is there a path from node a down to node b?
     var seen={}, stack=[a];
@@ -1076,6 +1087,8 @@ body.running .card .top .ic{visibility:hidden}
 
   /* ---------- the controls on the cards ---------- */
   var world=$('world');
+  world.addEventListener('mouseover',function(e){ var c=e.target.closest('.card'), id=c?c.dataset.id:null; if(id!==HOVER){ HOVER=id; focusWires() } });
+  world.addEventListener('mouseout',function(e){ var to=e.relatedTarget, c=to&&to.closest&&to.closest('.card'); if(!c&&HOVER){ HOVER=null; focusWires() } });
   world.addEventListener('click',function(e){
     var card=e.target.closest('.card'); if(!card) return; var n=node(card.dataset.id); if(!n) return;
     var act=e.target.closest('[data-act]');
