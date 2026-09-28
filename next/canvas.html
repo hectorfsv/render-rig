@@ -139,6 +139,10 @@ input[type=password]{font-family:var(--mono);letter-spacing:.3em;text-align:cent
 .card .tk img{width:100%;height:100%;object-fit:cover;display:block}
 .card .tk b{position:absolute;right:2px;bottom:0;font-family:var(--mono);font-size:9px;font-weight:400;color:#fff;text-shadow:0 0 3px #000}
 .card .tk.vid b{position:static;display:block;line-height:28px;text-align:center;font-size:10px;color:var(--ink-dim);text-shadow:none}
+.card .foot .vars{font-family:var(--mono);font-size:11px;padding:3px 7px;min-width:32px;border:1px solid var(--rule);border-radius:4px;background:transparent;color:var(--ink-dim);cursor:pointer}
+.card .foot .vars:hover{border-color:var(--rule-hot);color:var(--ink)}
+.card .foot .vars.on{border-color:var(--amber);color:var(--amber)}
+.card .foot .vars:disabled{cursor:not-allowed;opacity:.4}
 .card .tk[aria-pressed=true]{opacity:1;border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red)}
 .card.frozen .tk{cursor:not-allowed}
 .card .ports{padding:8px 12px 0;display:grid;gap:5px}
@@ -403,6 +407,7 @@ body.running .card .top .ic{visibility:hidden}
   };
   var ORDER=['upload','gallery','audio','prompt','image','compose','design','upscale','video','lite','camera','talk','note'];
   var FROM={image:'$0.06',compose:'$0.15',design:'$0.04',upscale:'$0.08',video:'$0.336',lite:'$0.20',camera:'$0.15',talk:'$0.25'};
+  var VARY={image:1,compose:1,design:1,video:1,lite:1,camera:1}, MAX_VARS=4;   // the kinds whose runs differ run to run
   var OUTWORD={image:'picture',video:'clip',audio:'sound',text:'words'};
   // What a new node starts with: the classic view's own defaults
   var DEF={
@@ -494,6 +499,7 @@ body.running .card .top .ic{visibility:hidden}
   function to(e){ return e[1].split(':')[0] }
   function into(nid,pid){ var r=[]; G.edges.forEach(function(e){ if(e[1]===nid+':'+pid){ var u=node(from(e)); if(u) r.push(u) } }); return r }
   function portDef(kind,pid){ var r=null; KINDS[kind].ins.forEach(function(p){ if(p.id===pid) r=p }); return r }
+  function nVars(n){ return VARY[n.kind] ? Math.max(1,Math.min(MAX_VARS,parseInt((n.settings||{}).vars,10)||1)) : 1 }
   function S(n){ var d=DEF[n.kind]||{}, s={}, k; for(k in d) s[k]=d[k]; for(k in (n.settings||{})) s[k]=n.settings[k]; return s }
   // an input the current settings do not use: its wire stays, dimmed, and is not sent
   function portOff(n,pid){ return (n.kind==='lite' && (pid==='end'||pid==='audio') && S(n).style) ? 'not with a style' : '' }
@@ -577,6 +583,9 @@ body.running .card .top .ic{visibility:hidden}
     else if(n.kind==='talk'&&!(x.audioSecs>0)) P.known=false;
     else P.price=RigCore.price(n.kind,cs,x);
     P.det=detOf(n,s,cs,x,pics,aud);
+    var nv=nVars(n); P.n=nv; P.unit=P.price;
+    if(nv>1){ if(P.known) P.price=+(P.price*nv).toFixed(3); P.det+=(P.det?' · ':'')+nv+' takes in one run';
+      if((n.kind==='image'||n.kind==='compose') && String(s.seed||'').trim()) need('A set seed makes every take the same picture: clear the seed, or go back to one take.') }
     return P;
   }
   // the card's own line under its settings: what this run is, in the console's words
@@ -796,7 +805,8 @@ body.running .card .top .ic{visibility:hidden}
     if(K.group==='engines') h+='<fieldset class="set"'+((n.frozen||n.job)?' disabled':'')+'>'+ctlHTML(n,s)+'</fieldset>';
     h+='<div class="det"></div>';
     h+='<div class="outrow"><span>'+OUTWORD[K.out]+'</span><span class="port out '+K.out+'" data-node="'+n.id+'" data-port="out" data-type="'+K.out+'"></span></div>';
-    h+='<div class="foot"><span class="price"></span>'+(K.group==='engines'?'<button type="button" class="run" data-act="run" title="Run this node, and whatever it needs first">Run</button>':'')+'<span class="st"></span></div><div class="why"></div>';
+    var nv=nVars(n);
+    h+='<div class="foot"><span class="price"></span>'+(VARY[n.kind]?'<button type="button" class="vars'+(nv>1?' on':'')+'" data-act="vars" aria-label="'+nv+' take'+(nv>1?'s':'')+' per run" title="'+nv+' take'+(nv>1?'s':'')+' per run: click for '+(nv<MAX_VARS?nv+1:1)+'. Each take is a full run at the price shown."'+((n.frozen||n.job)?' disabled':'')+'>×'+nv+'</button>':'')+(K.group==='engines'?'<button type="button" class="run" data-act="run" title="Run this node, and whatever it needs first">Run</button>':'')+'<span class="st"></span></div><div class="why"></div>';
     if(n.job) h+='<div class="ring" aria-hidden="true"><i></i></div>';   // the light around a rendering card
     el.innerHTML=h;
     paintState(n);
@@ -819,7 +829,7 @@ body.running .card .top .ic{visibility:hidden}
     var p=e.p, run=el.querySelector('button.run');
     price.textContent=p.known ? (p.from?'from $':'$')+money(p.price) : 'priced later';
     el.classList.toggle('running',e.st==='running'); el.classList.toggle('failed',e.st==='failed');
-    st.className='st '+(e.st==='frozen-empty'?'frozen':e.st); st.textContent=e.st==='running' ? 'rendering '+clock(n) : LBL[e.st];
+    st.className='st '+(e.st==='frozen-empty'?'frozen':e.st); st.textContent=e.st==='running' ? runWord(n) : LBL[e.st];
     why.textContent=e.st==='needs' ? p.why : e.st==='frozen-empty' ? 'Frozen before it ever ran: unfreeze it to run it.' : e.st==='failed' ? (n.err&&n.err.msg||'') : '';
     det.innerHTML=(p.det||'')+(n.ran&&n.ran.seed!=null&&(n.kind==='image'||n.kind==='compose')?(p.det?' · ':'')+'seed '+esc(n.ran.seed):'');
     if(run){ run.disabled=busy()||e.st==='frozen'||e.st==='frozen-empty'; run.textContent=e.st==='fresh'?'Rerun':'Run';
@@ -1100,6 +1110,7 @@ body.running .card .top .ic{visibility:hidden}
       if(act.dataset.act==='classic'){ sendToClassic(n); return }
       if(act.dataset.act==='view'){ openView(n); return }
       if(act.dataset.act==='take'){ pickTake(n.id,+act.dataset.i); return }
+      if(act.dataset.act==='vars'){ if(!act.disabled) setSetting(n.id,'vars',String(nVars(n)<MAX_VARS?nVars(n)+1:1)); return }
     }
     var b=e.target.closest('button[data-k][data-v]');
     if(b) setSetting(n.id,b.dataset.k,b.dataset.v);
@@ -1339,6 +1350,7 @@ body.running .card .top .ic{visibility:hidden}
   function busy(){ return !!RUN || Object.keys(JOBS).length>0 }
   function ms(sec){ return FAST ? sec*10 : sec*1000 }
   function fmt(s){ s=Math.max(0,Math.floor(s)); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2) }
+  function runWord(n){ return 'rendering '+clock(n)+(n.job&&n.job.vn>1?' · take '+((n.job.vi||0)+1)+' of '+n.job.vn:'') }
   function clock(n){ return n.job ? fmt((Date.now()-n.job.t0)/1000)+(Date.now()-n.job.t0>eta(n)*1000?' · longer than usual':'') : '' }
   function eta(n){ var s=S(n); return n.kind==='video' ? Math.round(num(s.dur,3,15,5))*44 : (n.kind==='lite'||n.kind==='camera'||n.kind==='talk'||n.kind==='upscale') ? 40 : 85 }
   function firstWait(n){ return n.kind==='video' ? 280 : (n.kind==='lite'||n.kind==='camera'||n.kind==='talk') ? 25 : n.kind==='upscale' ? 20 : 15 }
@@ -1347,7 +1359,7 @@ body.running .card .top .ic{visibility:hidden}
   function progress(n){ var s=(Date.now()-n.job.t0)/1000, e=eta(n); return Math.min(99,100*(1-Math.exp(-1.9*(s/Math.max(1,e))))) }
   function paintClock(n){
     var el=cardEl(n.id); if(!el||!n.job) return;
-    var st=el.querySelector('.st'); if(st) st.textContent='rendering '+clock(n);
+    var st=el.querySelector('.st'); if(st) st.textContent=runWord(n);
     var arc=el.querySelector('.prog .arc'), pct=el.querySelector('.prog .pct'), et=el.querySelector('.pic .eta'), p=progress(n), s=(Date.now()-n.job.t0)/1000, e=eta(n);
     if(arc) arc.style.strokeDashoffset=String(176*(1-p/100));
     if(pct) pct.textContent=Math.floor(p)+'%';
@@ -1360,7 +1372,7 @@ body.running .card .top .ic{visibility:hidden}
     if(!RUN){ return }
     var n=node(RUN.q[RUN.i]); if(!n) return;
     var nx=[]; for(var i=RUN.i+1;i<RUN.q.length;i++){ var m=node(RUN.q[i]); if(m) nx.push(KINDS[m.kind].name) }
-    $('total').innerHTML='Rendering <b>'+(RUN.i+1)+' of '+RUN.q.length+'</b> · '+KINDS[n.kind].name+(n.job?' '+esc(fmt((Date.now()-n.job.t0)/1000)):'')+(nx.length?' <span class="q">· next '+esc(nx.slice(0,2).join(', '))+(nx.length>2?' +'+(nx.length-2):'')+'</span>':'');
+    $('total').innerHTML='Rendering <b>'+(RUN.i+1)+' of '+RUN.q.length+'</b> · '+KINDS[n.kind].name+(n.job&&n.job.vn>1?' take '+((n.job.vi||0)+1)+' of '+n.job.vn:'')+(n.job?' '+esc(fmt((Date.now()-n.job.t0)/1000)):'')+(nx.length?' <span class="q">· next '+esc(nx.slice(0,2).join(', '))+(nx.length>2?' +'+(nx.length-2):'')+'</span>':'');
   }
   function lockBoard(){ document.body.classList.toggle('running',busy()); paintUndo(); G.nodes.forEach(paintState); paintTotal() }   // the header follows the queue, and comes back when it ends
 
@@ -1400,9 +1412,10 @@ body.running .card .top .ic{visibility:hidden}
     var n=r.list.length;
     $('ask-title').textContent=n===1 ? 'Run '+KINDS[r.list[0].kind].name : 'Run '+n+' nodes';
     $('ask-rows').innerHTML=r.list.map(function(x,i){ var p=PL[x.id].p, st=PL[x.id].st;
-      return '<div><i>'+(i+1)+'</i><span>'+KINDS[x.kind].name+' <i>'+KINDS[x.kind].eng+(st==='fresh'?' · again':'')+'</i><small>'+(p.det||'')+'</small></span><b>'+(p.known?(p.from?'from ':'')+'$'+money(p.price):'priced when its input exists')+'</b></div>' }).join('');
+      return '<div><i>'+(i+1)+'</i><span>'+KINDS[x.kind].name+(p.n>1?' × '+p.n:'')+' <i>'+KINDS[x.kind].eng+(st==='fresh'?' · again':'')+'</i><small>'+(p.det||'')+'</small></span><b>'+(p.known?(p.from?'from ':'')+'$'+money(p.price):'priced when its input exists')+'</b></div>' }).join('');
     $('ask-total').innerHTML='to pay <b>$'+money(r.total)+'</b>'+(r.unknown?' + '+r.unknown+' priced on the way':'');
-    $('ask-note').textContent=(n>1 ? 'One at a time, upstream first. If one fails the rest is not sent. ' : '')+'Every node is a normal Rig job: it lands in the jobs table and the session, and the fal balance moves.';
+    var takesN=r.list.reduce(function(a,x){ return a+(PL[x.id].p.n||1) },0);
+    $('ask-note').textContent=(n>1||takesN>n ? 'One at a time, upstream first'+(takesN>n?', each take in turn':'')+'. If one fails the rest is not sent. ' : '')+'Every node is a normal Rig job: it lands in the jobs table and the session, and the fal balance moves.';
     $('run-go').textContent=n===1 ? 'Run for $'+money(r.total) : 'Run '+n+' for $'+money(r.total)+(r.unknown?'+':'');
     $('run-ask').hidden=false; $('run-go').focus();
   }
@@ -1477,8 +1490,9 @@ body.running .card .top .ic{visibility:hidden}
       });
     });
   }
-  function submitNode(n){
-    n.job={id:null,t0:Date.now(),sig:PL[n.id].sig,price:PL[n.id].p.price,seed:null};
+  function submitNode(n,vi){
+    var pp=PL[n.id].p; vi=vi||0;
+    n.job={id:null,t0:Date.now(),sig:PL[n.id].sig,price:pp.unit!=null?pp.unit:pp.price,seed:null,vi:vi,vn:pp.n||1};   // price = one take's
     delete n.err; changed({repaint:[n.id],quiet:true}); lockBoard();
     buildForm(n).then(function(b){
       if(!n.job) throw new Error('stopped');
@@ -1534,8 +1548,12 @@ body.running .card .top .ic{visibility:hidden}
              seed:(d.seed===0||d.seed)?d.seed:(n.job.seed||null)};
     if(d.written) ran.written=d.written;
     if(typeof d.balance==='number') BAL=d.balance;   // the finished poll carries the balance; the chip shows it when the run ends
-    ran.set=copy(n.settings); endJob(n); n.ran=ran; keepTake(n,ran); delete n.err;
+    var vi=n.job.vi||0, vn=n.job.vn||1;
+    ran.set=copy(n.settings); endJob(n);
+    if(vi===0||!n.ran||n.ran.sig!==ran.sig) n.ran=ran;   // a run's first take goes on the card; the other takes join the strip
+    keepTake(n,ran); delete n.err;
     changed({repaint:[n.id],quiet:true}); lockBoard();
+    if(vi+1<vn){ if(RUN&&!RUN.stop){ submitNode(n,vi+1); return } if(!RUN) toast(KINDS[n.kind].name+': '+(vn-vi-1)+' more take'+(vn-vi-1>1?'s were':' was')+' not sent (the page was reloaded mid-run).') }
     notify(n,true,'$'+money(ran.price)+' · '+fmt(ran.secs)+(RUN&&RUN.i+1<RUN.q.length?' · next: '+KINDS[node(RUN.q[RUN.i+1]).kind].name:''));
     if(RUN){ RUN.i++; next() } else if(!busy()) chip('Delivered'+(BAL!=null?' · fal balance $'+BAL.toFixed(2):''),'ok');
   }
