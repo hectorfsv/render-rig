@@ -1337,13 +1337,15 @@ body.running .card .top .ic{visibility:hidden}
   $('new-btn').addEventListener('click',function(){ if(guard()) return; flushTyping(); G={v:1,name:'',nodes:[],edges:[]}; sel=null; seq=1; pan={x:80,y:60}; zoom=1; paintAll(); commit(); chip('New board') });
 
   /* ---------- RUNNING (day 3, 2026-09-27) ----------
-     One node at a time, upstream first, through the classic view's own webhook: the same
-     FormData, the same poll, the same give-up rules. Before anything is sent, the list and the
-     total go on screen and his click is the yes. The first failure stops the run and says why;
-     what it fed stays as it was. A job in flight is saved with the board, so a closed tab picks
+     Upstream first, through the classic view's own webhook: the same FormData, the same poll, the
+     same give-up rules. Cards that do not need each other render at the same time (PAR at most, since
+     v2); a card waits for anything in the run upstream of it, and its own takes go one after another.
+     Before anything is sent, the list and the total go on screen and his click is the yes. A failure
+     sends nothing new and says why (what is already rendering still lands); what it fed stays as it was. A job in flight is saved with the board, so a closed tab picks
      it back up. While a run is in flight the board is read-only (pan, zoom and look, no edits),
      so what was quoted is what is sent. */
-  var RUN=null;     // {q:[ids], i, stop}: the queue in flight
+  var RUN=null;     // {q:[ids], done:{id:1}, live:{id:1}, stop, halt, named}: the run in flight
+  var PAR=3;        // at most this many cards render at once (n8n Cloud runs a handful of executions together)
   var JOBS={};      // per running node: {timer, noRow}
   var FAST=false;   // the harness shortens every wait 100x
   var TICK=null, BAL=null;
@@ -1370,9 +1372,10 @@ body.running .card .top .ic{visibility:hidden}
   // the header while a run is in flight: where it is, how long, what comes next
   function paintQueue(){
     if(!RUN){ return }
-    var n=node(RUN.q[RUN.i]); if(!n) return;
-    var nx=[]; for(var i=RUN.i+1;i<RUN.q.length;i++){ var m=node(RUN.q[i]); if(m) nx.push(KINDS[m.kind].name) }
-    $('total').innerHTML='Rendering <b>'+(RUN.i+1)+' of '+RUN.q.length+'</b> · '+KINDS[n.kind].name+(n.job&&n.job.vn>1?' take '+((n.job.vi||0)+1)+' of '+n.job.vn:'')+(n.job?' '+esc(fmt((Date.now()-n.job.t0)/1000)):'')+(nx.length?' <span class="q">· next '+esc(nx.slice(0,2).join(', '))+(nx.length>2?' +'+(nx.length-2):'')+'</span>':'');
+    var live=Object.keys(RUN.live).map(node).filter(Boolean); if(!live.length) return;
+    var done=RUN.q.filter(function(id){ return RUN.done[id] }).length, nx=waiting();
+    var parts=live.map(function(n){ return KINDS[n.kind].name+(n.job&&n.job.vn>1?' take '+((n.job.vi||0)+1)+' of '+n.job.vn:'')+(n.job?' '+fmt((Date.now()-n.job.t0)/1000):'') });
+    $('total').innerHTML='Rendering <b>'+(live.length>1 ? live.length+' at once' : (done+1)+' of '+RUN.q.length)+'</b> · '+esc(parts.join(', '))+(nx.length?' <span class="q">· next '+esc(nx.slice(0,2).join(', '))+(nx.length>2?' +'+(nx.length-2):'')+'</span>':'');
   }
   function lockBoard(){ document.body.classList.toggle('running',busy()); paintUndo(); G.nodes.forEach(paintState); paintTotal() }   // the header follows the queue, and comes back when it ends
 
@@ -1415,7 +1418,7 @@ body.running .card .top .ic{visibility:hidden}
       return '<div><i>'+(i+1)+'</i><span>'+KINDS[x.kind].name+(p.n>1?' × '+p.n:'')+' <i>'+KINDS[x.kind].eng+(st==='fresh'?' · again':'')+'</i><small>'+(p.det||'')+'</small></span><b>'+(p.known?(p.from?'from ':'')+'$'+money(p.price):'priced when its input exists')+'</b></div>' }).join('');
     $('ask-total').innerHTML='to pay <b>$'+money(r.total)+'</b>'+(r.unknown?' + '+r.unknown+' priced on the way':'');
     var takesN=r.list.reduce(function(a,x){ return a+(PL[x.id].p.n||1) },0);
-    $('ask-note').textContent=(n>1||takesN>n ? 'One at a time, upstream first'+(takesN>n?', each take in turn':'')+'. If one fails the rest is not sent. ' : '')+'Every node is a normal Rig job: it lands in the jobs table and the session, and the fal balance moves.';
+    $('ask-note').textContent=(n>1||takesN>n ? 'Upstream first; cards that do not need each other render at the same time, '+PAR+' at most'+(takesN>n?', and each card\'s takes go in turn':'')+'. If one fails, nothing new is sent. ' : '')+'Every node is a normal Rig job: it lands in the jobs table and the session, and the fal balance moves.';
     $('run-go').textContent=n===1 ? 'Run for $'+money(r.total) : 'Run '+n+' for $'+money(r.total)+(r.unknown?'+':'');
     $('run-ask').hidden=false; $('run-go').focus();
   }
@@ -1428,22 +1431,38 @@ body.running .card .top .ic{visibility:hidden}
     var ids=G.nodes.filter(function(n){ var e=PL[n.id]; return e && (e.st==='new'||e.st==='changed'||e.st==='failed') }).map(function(n){ return n.id });
     if(!ids.length){ toast(busy()?LOCK_MSG:'Nothing to pay: every node on the board is fresh, frozen or empty.'); return }
     askRun(ids) });
-  $('run-stop').addEventListener('click',function(){ if(RUN){ RUN.stop=true; $('run-stop').textContent='Stopping after this one'; $('run-stop').disabled=true } });
+  $('run-stop').addEventListener('click',function(){ if(RUN){ RUN.stop=true; $('run-stop').textContent=Object.keys(RUN.live).length>1?'Stopping after the ones in flight':'Stopping after this one'; $('run-stop').disabled=true } });
   function startRun(ids,named){
-    RUN={q:ids,i:0,stop:false,named:named||{}}; $('run-stop').textContent='Stop after this'; $('run-stop').disabled=false;
-    lockBoard(); next();
+    RUN={q:ids,done:{},live:{},stop:false,halt:'',named:named||{}}; $('run-stop').textContent='Stop after this'; $('run-stop').disabled=false;
+    lockBoard(); pump();
   }
-  function next(){
+  // the cards of the run not started yet, in run order (the header's "next")
+  function waiting(){ return RUN ? RUN.q.filter(function(id){ return !RUN.done[id]&&!RUN.live[id] }).map(function(id){ var m=node(id); return m?KINDS[m.kind].name:'' }).filter(Boolean) : [] }
+  // PARALLEL (canvas v2): start every card whose upstream in the run is done, PAR at most at once
+  function pump(){
     if(!RUN) return;
-    if(RUN.i>=RUN.q.length||RUN.stop){ var stopped=RUN.stop&&RUN.i<RUN.q.length; RUN=null; lockBoard();
-      chip((stopped?'Stopped':'Delivered')+(BAL!=null?' · fal balance $'+BAL.toFixed(2):''),stopped?'':'ok'); if(stopped) toast('Stopped. The rest was not sent.'); return }
-    var n=node(RUN.q[RUN.i]); if(!n){ RUN.i++; return next() }
-    evaluate(); var e=PL[n.id];
-    // fresh by the time its turn comes (an upstream rerun landed the same result): not paid for, unless asked for by name
-    if((e.st==='fresh'&&!RUN.named[n.id])||e.st==='frozen'){ RUN.i++; return next() }
-    if(e.st==='needs'){ failNode(n,e.p.why); return }
-    chip('Rendering '+(RUN.i+1)+' of '+RUN.q.length,'busy');
-    submitNode(n);
+    if(!RUN.stop&&!RUN.halt){
+      for(var i=0;i<RUN.q.length&&Object.keys(RUN.live).length<PAR;i++){
+        var id=RUN.q[i]; if(RUN.done[id]||RUN.live[id]) continue;
+        var n=node(id); if(!n){ RUN.done[id]=true; continue }
+        if(RUN.q.some(function(o){ return o!==id&&!RUN.done[o]&&reaches(o,id) })) continue;   // something it needs is still to come
+        evaluate(); var e=PL[id];
+        // fresh by the time its turn comes (an upstream rerun landed the same result): not paid for, unless asked for by name
+        if((e.st==='fresh'&&!RUN.named[id])||e.st==='frozen'){ RUN.done[id]=true; i=-1; continue }   // look again: what it feeds may be ready
+        if(e.st==='needs'){ RUN.done[id]=true; failNode(n,e.p.why); return }
+        RUN.live[id]=true; submitNode(n);
+      }
+    }
+    var live=Object.keys(RUN.live).length, left=RUN.q.filter(function(x){ return !RUN.done[x] }).length;
+    if(!live&&(!left||RUN.stop||RUN.halt)){ finishRun(); return }
+    if(live) chip('Rendering'+(live>1?' '+live+' at once':''),'busy');
+    lockBoard();
+  }
+  function finishRun(){
+    var r=RUN, left=r.q.filter(function(x){ return !r.done[x] }).length; RUN=null; lockBoard();
+    if(r.halt==='fail'){ chip('Failed','err'); return }
+    var stopped=r.stop&&left>0;
+    chip((stopped?'Stopped':'Delivered')+(BAL!=null?' · fal balance $'+BAL.toFixed(2):''),stopped?'':'ok'); if(stopped) toast('Stopped. The rest was not sent.');
   }
   function dataUrlToBlob(u){
     var p=u.split(','),mime=(p[0].match(/:(.*?);/)||[])[1]||'image/jpeg', bin=atob(p[1]), k=bin.length, arr=new Uint8Array(k);
@@ -1553,15 +1572,17 @@ body.running .card .top .ic{visibility:hidden}
     if(vi===0||!n.ran||n.ran.sig!==ran.sig) n.ran=ran;   // a run's first take goes on the card; the other takes join the strip
     keepTake(n,ran); delete n.err;
     changed({repaint:[n.id],quiet:true}); lockBoard();
-    if(vi+1<vn){ if(RUN&&!RUN.stop){ submitNode(n,vi+1); return } if(!RUN) toast(KINDS[n.kind].name+': '+(vn-vi-1)+' more take'+(vn-vi-1>1?'s were':' was')+' not sent (the page was reloaded mid-run).') }
-    notify(n,true,'$'+money(ran.price)+' · '+fmt(ran.secs)+(RUN&&RUN.i+1<RUN.q.length?' · next: '+KINDS[node(RUN.q[RUN.i+1]).kind].name:''));
-    if(RUN){ RUN.i++; next() } else if(!busy()) chip('Delivered'+(BAL!=null?' · fal balance $'+BAL.toFixed(2):''),'ok');
+    if(vi+1<vn){ if(RUN&&!RUN.stop&&!RUN.halt){ submitNode(n,vi+1); return } if(!RUN) toast(KINDS[n.kind].name+': '+(vn-vi-1)+' more take'+(vn-vi-1>1?'s were':' was')+' not sent (the page was reloaded mid-run).') }
+    var nx=waiting();
+    notify(n,true,'$'+money(ran.price)+' · '+fmt(ran.secs)+(nx.length&&RUN&&!RUN.stop&&!RUN.halt?' · next: '+nx[0]:''));
+    if(RUN){ RUN.done[n.id]=true; delete RUN.live[n.id]; pump() } else if(!busy()) chip('Delivered'+(BAL!=null?' · fal balance $'+BAL.toFixed(2):''),'ok');
   }
   function failNode(n,msg){
     endJob(n); n.err={sig:PL[n.id]?PL[n.id].sig:'',msg:msg,at:Date.now()};
     changed({repaint:[n.id],quiet:true});
-    if(RUN){ RUN=null }
+    if(RUN){ RUN.halt='fail'; RUN.done[n.id]=true; delete RUN.live[n.id] }   // nothing new is sent; what is rendering still lands
     lockBoard(); chip('Failed','err'); toast(KINDS[n.kind].name+': '+msg); notify(n,false,msg);
+    if(RUN) pump();
   }
   function endJob(n){ var j=JOBS[n.id]; if(j&&j.timer) clearTimeout(j.timer); delete JOBS[n.id]; delete n.job; ticking() }
   function lockOut(){   // the code no longer opens the rig: jobs in flight stay on the board and resume after the next unlock

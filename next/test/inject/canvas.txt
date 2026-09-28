@@ -538,7 +538,7 @@
         var h2=R.handoff(l);
         ok(h2.images.length===2&&/^data:image\/png/.test(h2.images[0].url)&&h2.end===1&&h2.settings.eng==='turbo','a clip node hands over its opening frame (a result) and its end frame, Turbo kept',JSON.stringify([h2.images.length,h2.end,h2.settings.eng]));
       });
-    }).then(function(){ step('prompt'); return promptCard() }).then(function(){ step('takes'); return takesTests() }).then(function(){ step('variations'); return varsTests() }).then(function(){ R.fast(false) });
+    }).then(function(){ step('prompt'); return promptCard() }).then(function(){ step('takes'); return takesTests() }).then(function(){ step('variations'); return varsTests() }).then(function(){ step('parallel'); return parTests() }).then(function(){ R.fast(false) });
   }
 
   function promptCard(){
@@ -705,7 +705,7 @@
     var s0=SENT, t0=R.takes('c1').length;
     R.ask(['c1']);
     ok(/Compose × 3/.test($('ask-rows').textContent)&&/\$0\.45/.test($('ask-total').textContent),'the sheet says Compose × 3 for $0.45 before anything is sent',$('ask-rows').textContent);
-    ok(/each take in turn/.test($('ask-note').textContent),'…one take after another',$('ask-note').textContent);
+    ok(/takes go in turn/.test($('ask-note').textContent),'…one take after another',$('ask-note').textContent);
     $('run-go').click();
     ok(/take 1 of 3/.test($('total').textContent),'the header says which take is rendering',$('total').textContent);
     ok(/take 1 of 3/.test(card('c1').querySelector('.st').textContent),'…and so does the card');
@@ -726,6 +726,54 @@
       vb('c1').click(); R.set('c1','prompt','two more'); var s1=SENT;
       R.ask(['c1']); $('run-go').click(); $('run-stop').click();
       return idle().then(function(){ eq(SENT-s1,1,'Stop after this: the take in flight lands, the next is not sent') });
+    });
+  }
+
+  function parTests(){
+    /* ---------- canvas v2: parallel branches ---------- */
+    function board(){ R.importBoard({v:1,name:'',nodes:[
+      {id:'i1',kind:'image',x:0,y:0,settings:{prompt:'a tiger',ar:'16:9',crea:'low'}},
+      {id:'d1',kind:'design',x:0,y:460,settings:{prompt:'a poster',quality:'low',res:'1K',ar:'3:4'}},
+      {id:'c1',kind:'compose',x:340,y:0,settings:{prompt:'both',res:'2K',ar:'auto'}},
+      {id:'l1',kind:'lite',x:680,y:0,settings:{prompt:'go',dur:'5',eng:'turbo'}}],
+      edges:[['i1:out','c1:images'],['d1:out','c1:images'],['c1:out','l1:image']]}) }
+    var running=function(){ return [].map.call(document.querySelectorAll('#world .card.running'),function(c){ return c.dataset.id }).sort() };
+    board(); var s0=SENT;
+    $('run-all').click();
+    ok(/render at the same time, 3 at most/.test($('ask-note').textContent),'the sheet says cards that do not need each other render together',$('ask-note').textContent);
+    $('run-go').click();
+    eq(running(),['d1','i1'],'Image and Design render at the same time; Compose waits for both');
+    ok(/2 at once/.test($('total').textContent)&&/next Compose, Video Lite/.test($('total').textContent),'the header says 2 at once, and what comes next',$('total').textContent);
+    return idle().then(function(){
+      eq(SENT-s0,4,'four submits');
+      var m=REQ.slice(-4).map(function(x){ return x.model });
+      ok(m.slice(0,2).indexOf('krea')>=0&&m.slice(0,2).indexOf('nbp')<0&&m[2]==='nbp'&&m[3]==='h3','…the two branches first (either order), then Compose, then Video Lite',m.join(','));
+      eq([st('i1'),st('d1'),st('c1'),st('l1')],['fresh','fresh','fresh','fresh'],'all four fresh');
+      // a failure in one branch: the other branch, already rendering, still lands; nothing downstream is sent
+      R.set('i1','prompt','a lion'); R.set('d1','prompt','a new poster'); FAILN.krea=true; var s1=SENT;
+      $('run-all').click(); $('run-go').click();
+      return idle().then(function(){
+        delete FAILN.krea;
+        eq(SENT-s1,2,'Image and Design were sent together; Compose and Video Lite were not');
+        eq([st('i1'),st('d1')],['failed','fresh'],'Image failed; Design, already rendering, landed and is fresh (a paid result is kept)');
+        ok(!R.busy()&&/Failed/.test($('chip').textContent),'the run ends, the chip says Failed, the board unlocks');
+      });
+    }).then(function(){
+      // Stop after the ones in flight
+      R.set('i1','prompt','a bear'); R.set('d1','prompt','another poster'); var s2=SENT;
+      $('run-all').click(); $('run-go').click(); $('run-stop').click();
+      ok(/ones in flight/.test($('run-stop').textContent),'Stop with two in flight: "stopping after the ones in flight"',$('run-stop').textContent);
+      return idle().then(function(){
+        eq(SENT-s2,2,'both branches land, Compose is not sent');
+        ok(/Stopped/.test($('chip').textContent),'…the chip says Stopped');
+      });
+    }).then(function(){
+      // never more than three at once
+      var nodes=[]; for(var k=1;k<=5;k++) nodes.push({id:'m'+k,kind:'image',x:0,y:(k-1)*460,settings:{prompt:'tiger '+k,ar:'1:1',crea:'low'}});
+      R.importBoard({v:1,name:'',nodes:nodes,edges:[]}); var s3=SENT;
+      $('run-all').click(); $('run-go').click();
+      eq(running().length,3,'five independent cards: three render at once');
+      return idle().then(function(){ eq(SENT-s3,5,'…and all five are sent'); eq(R.totals().run,[],'…all fresh') });
     });
   }
 
