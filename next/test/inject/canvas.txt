@@ -201,10 +201,13 @@
     R.set(d,'quality','medium'); eq(price(d),0.08,'Design 2K medium $0.08');
     R.connect(N.upload+':out',d+':images'); R.connect(N.image+':out',d+':images'); R.connect(N.gallery+':out',d+':images');
     eq(price(d),0.11,'Design 2K medium + 3 sources $0.11');
-    var cm=R.add('camera').id; eq(price(cm),0.4,'Camera 5 s 768P $0.40');
-    R.set(cm,'dur','10'); R.set(cm,'res','1080P'); eq(price(cm),1.6,'Camera 10 s 1080P $1.60');
-    R.set(cm,'dur','3'); R.set(cm,'res','480P'); eq(price(cm),0.15,'Camera 3 s 480P $0.15');
-    R.set(cm,'snd','mine'); ok(card(cm).querySelector('[data-k="snd_text"]'),'Camera "I\'ll describe it" asks for the sound');
+    var cm=R.add('camera').id; eq(price(cm),0.2,'Camera (PixVerse v4.5) 5 s 720p $0.20');
+    eq([].map.call(card(cm).querySelectorAll('button[data-k="move"]'),function(x){ return x.dataset.v }),['rotate','crane-up','push-in'],'Camera offers the three moves that held the scene');
+    ok(!card(cm).querySelector('[data-k="snd"]')&&!card(cm).querySelector('[data-k="snd_text"]'),'…and no sound controls (PixVerse makes no sound)');
+    R.set(cm,'dur','8'); eq(price(cm),0.4,'Camera 8 s 720p $0.40 (8 s costs double)');
+    R.set(cm,'res','1080p'); eq([price(cm),R.info(cm).f.duration],[0.4,'5'],'Camera 1080p: 5 s only, $0.40');
+    R.set(cm,'res','540p'); R.set(cm,'dur','5'); eq(price(cm),0.15,'Camera 5 s 540p $0.15');
+    eq(R.info(cm).f.cam_sound,undefined,'nothing about sound is sent');
 
     step('gallery');
     /* ---------- the gallery picker ---------- */

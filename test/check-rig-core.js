@@ -33,8 +33,8 @@ const CASES = [
   ['lite', { prompt: 'tape', dur: '5', vres: '768P', style: 'vhs', dmg: 'heavy', eng: 'max', sound: 'h3' }, { images: one }],
   ['lite', { prompt: 'blocks', dur: '5', vres: '768P', ar: '16:9', style: 'low-poly', eng: 'max', sound: 'h3', look: { format: '35mm' } }, {}],
   ['lite', { prompt: 'sing', dur: '5', vres: '768P', style: '', eng: 'max', sound: 'mine', end_idx: '0' }, { images: one, audioSecs: 6.2 }],
-  ['camera', { move: 'crane-up', dur: '8', res: '1080P', snd: 'silent' }, { images: one }],
-  ['camera', { move: 'orbit-right', dur: '5', res: '480P', snd: 'mine', snd_text: 'wind through the trees' }, { images: one }],
+  ['camera', { move: 'crane-up', dur: '8', res: '720p' }, { images: one }],
+  ['camera', { move: 'push-in', dur: '5', res: '1080p' }, { images: one }],
   ['talk', { res: '2K', tr: true }, { images: one, audioSecs: 7.3 }],
 ];
 let pass = 0, fail = 0;

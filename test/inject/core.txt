@@ -50,8 +50,8 @@
     {name:'video lite VHS heavy from a wide frame (the tape)',mode:'lite',src:1,set:function(){ val('prompt','tape'); seg('seg-h3style','vhs'); seg('seg-h3dmg','heavy'); val('dur','5') }},
     {name:'video lite low poly, look ignored',mode:'lite',set:function(){ val('prompt','blocks'); seg('seg-h3style','low-poly'); look('format','35mm') }},
     {name:'video lite my sound, ends on the frame',mode:'lite',src:1,aud:6.2,set:function(){ val('prompt','sing'); seg('seg-sound','mine'); val('end-img','0') }},
-    {name:'camera crane up 8s 1080P silent',mode:'camera',src:1,set:function(){ seg('seg-cam','crane-up'); val('cam-dur','8'); seg('seg-camres','1080P'); seg('seg-camsnd','silent') }},
-    {name:'camera orbit right 5s 480P, my sound words',mode:'camera',src:1,set:function(){ seg('seg-camsnd','mine'); val('cam-snd','wind through the trees'); seg('seg-camres','480P') }},
+    {name:'camera crane up 8s 720p (PixVerse)',mode:'camera',src:1,set:function(){ seg('seg-cam','crane-up'); seg('seg-camdur','8'); seg('seg-camres','720p') }},
+    {name:'camera push in 5s 1080p (PixVerse)',mode:'camera',src:1,set:function(){ seg('seg-cam','push-in'); seg('seg-camres','1080p') }},
     {name:'talk 2K, read my words first',mode:'talk',src:1,aud:7.3,set:function(){ seg('seg-talkres','2K'); chk('talk-tr',true) }}
   ];
   if(q.get('nocore')==='1'){   // the core script did not load: the lock screen says so and nothing pretends to work

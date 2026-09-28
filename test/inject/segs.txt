@@ -22,7 +22,7 @@
     var c=getComputedStyle(el); if(c.display==='none') return false;
     var r=el.getBoundingClientRect(); return r.width>0&&r.height>0; }
   var SEGS=['seg-type','seg-ar','seg-res','seg-crea','seg-shot','seg-subj',
-    'seg-vres','seg-h3style','seg-h3eng','seg-sound','seg-cam','seg-camres','seg-talkres'];   // + the H3 family, 2026-09-24
+    'seg-vres','seg-h3style','seg-h3eng','seg-sound','seg-cam','seg-camres','seg-camdur','seg-talkres'];   // + the H3 family, 2026-09-24
   function checkGroup(id,mode){
     var el=$(id); if(!el||!vis(el)) return 0;
     // a DISABLED option cannot be picked (Turbo while a Style is on): it is not a control to sweep

@@ -367,40 +367,39 @@
   }
  },
  {
-  "name": "camera crane up 8s 1080P silent",
-  "cost": "$1.28",
-  "det": "MiniMax H3 CameraCrane up, 8s, 1080P",
+  "name": "camera crane up 8s 720p (PixVerse)",
+  "cost": "$0.40",
+  "det": "PixVerse v4.5 CameraCrane up, 8s, 720p, no sound",
   "fields": {
    "action": "generate",
    "mode": "generate",
    "model": "h3cam",
+   "cam_move": "crane-up",
+   "duration": "8",
+   "resolution": "720p",
    "image_0": {
     "blob": 68576,
     "name": "src0.png",
     "type": "image/png"
-   },
-   "cam_move": "crane-up",
-   "duration": "8",
-   "resolution": "1080P"
+   }
   }
  },
  {
-  "name": "camera orbit right 5s 480P, my sound words",
-  "cost": "$0.25",
-  "det": "MiniMax H3 CameraOrbit right, 5s, 480P",
+  "name": "camera push in 5s 1080p (PixVerse)",
+  "cost": "$0.40",
+  "det": "PixVerse v4.5 CameraPush in, 5s, 1080p, no sound",
   "fields": {
    "action": "generate",
    "mode": "generate",
    "model": "h3cam",
+   "cam_move": "push-in",
+   "duration": "5",
+   "resolution": "1080p",
    "image_0": {
     "blob": 68576,
     "name": "src0.png",
     "type": "image/png"
-   },
-   "cam_move": "orbit-right",
-   "duration": "5",
-   "resolution": "480P",
-   "cam_sound": "wind through the trees"
+   }
   }
  },
  {

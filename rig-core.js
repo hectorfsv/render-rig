@@ -11,7 +11,7 @@
      upscale {factor, model, face, face_strength, subject, sharpen, denoise, fixc, up_prompt, up_crea, up_tex}
      video   {prompt, dur, audio, ar, neg, cfg, shot_type, shots, end_idx, elements, look}
      lite    {prompt, dur, vres, style, dmg, eng, ar, sound, end_idx, look}
-     camera  {move, dur, res, snd, snd_text}
+     camera  {move, dur, res}   (PixVerse v4.5 since 2026-09-27: no sound)
      talk    {res, tr}
    plus, from the console's seed lock: prompt_same (send the words as '' so the writer is skipped), prior_prompt.
    The context x: {images:[{w,h}], audioSecs, hasVoice, noRoll}. Proven byte for byte against the console's requests
@@ -19,20 +19,26 @@
 (function(root){
   'use strict';
   var C={};
-  C.VERSION='2026-09-27';
+  C.VERSION='2026-09-27b';
   C.N8N='https://hectorfsv.app.n8n.cloud';
   C.BASE=C.N8N+'/webhook/kling-form';
   C.DOWNLOAD=C.N8N+'/webhook/kling-download';
 
   /* ---------- the engines ---------- */
   C.ENGINE_NAME={video:'Kling 3.0 Pro',lite:'MiniMax H3 Max',image:'Krea 2 Large',compose:'Nano Banana Pro',design:'Grok Imagine 2.0',upscale:'Topaz',
-    camera:'MiniMax H3 Max Camera',talk:'MiniMax H3 Max Lip Sync'};
+    camera:'PixVerse v4.5 Camera',talk:'MiniMax H3 Max Lip Sync'};
   C.STYLE_NAME={'vhs':'VHS','retro-toon-70s':'Retro Toon 70s','low-poly':'Low Poly','hand-drawn':'Hand Drawn','16bit-pixel':'16-bit Pixel'};
   C.STYLES=[['','None'],['vhs','VHS'],['retro-toon-70s','70s Toon'],['low-poly','Low Poly'],['hand-drawn','Hand Drawn'],['16bit-pixel','16-bit Pixel']];
-  C.CAM_NAME={'orbit-left':'Orbit left','orbit-right':'Orbit right','orbit-360':'Full 360','crane-up':'Crane up','drop-down':'Drop down',
+  // CAMERA = PixVerse v4.5 (2026-09-27): the three moves that held the scene in the paid proofs (no sound at all). The
+  // H3 names stay readable for older jobs; n8n maps any of them onto a proven move.
+  C.CAM_NAME={'rotate':'Rotate','orbit-left':'Orbit left','orbit-right':'Orbit right','orbit-360':'Full 360','crane-up':'Crane up','drop-down':'Drop down',
     'push-in':'Push in','pull-out':'Pull out','top-down':'Top-down reveal','hero-arc':'Hero arc'};
-  C.MOVES=[['orbit-left','Orbit left'],['orbit-right','Orbit right'],['orbit-360','Full 360'],['crane-up','Crane up'],['drop-down','Drop down'],
-    ['push-in','Push in'],['pull-out','Pull out'],['top-down','Top-down reveal'],['hero-arc','Hero arc']];
+  C.MOVES=[['rotate','Rotate'],['crane-up','Crane up'],['push-in','Push in']];
+  C.CAM_RES=[['540p','540p'],['720p','720p'],['1080p','1080p']];
+  C.CAM_DURS=[['5','5 s'],['8','8 s']];
+  // a size and a length as n8n reads them: an old 480P / 768P lands on 540p / 720p; 5 or 8 s; 1080p is 5 s only (fal)
+  C.camRes=function(s){ var r=String((s&&s.res)||'720p').toLowerCase(); return {'540p':'540p','720p':'720p','1080p':'1080p','480p':'540p','768p':'720p'}[r]||'720p' };
+  C.camDur=function(s){ return ((parseInt(s&&s.dur,10)||5)>=7 && C.camRes(s)!=='1080p') ? '8' : '5' };
   C.UPMODELS=[['Standard V2','Standard: most photos'],['High Fidelity V2','High Fidelity: fine detail'],['Low Resolution V2','Low Resolution: small or soft'],
     ['CGI','CGI: renders, illustration'],['Text Refine','Text Refine: screenshots, type'],['Recovery V2','Recovery: damaged'],['Standard MAX','Standard MAX'],
     ['Redefine','Redefine: its own prompt'],['Wonder 3','Wonder 3'],['Wonder','Wonder']];
@@ -87,7 +93,8 @@
   // the price of one run: kind, its settings, and what it has (pictures with sizes, audio seconds, a character voice)
   C.price=function(kind,s,x){
     s=s||{}; x=x||{}; var imgs=x.images||[], n=imgs.length;
-    if(kind==='camera') return tf3(Math.min(15,Math.max(3,parseInt(s.dur,10)||5))*C.perSec(s.res));
+    // PixVerse v4.5 Camera, fal's page: 5 s $0.15 at 540p, $0.20 at 720p, $0.40 at 1080p; 8 s costs double
+    if(kind==='camera'){ var cr=C.camRes(s); return tf3((cr==='1080p'?0.40:cr==='540p'?0.15:0.20)*(C.camDur(s)==='8'?2:1)) }
     if(kind==='talk') return tf3(C.talkSecs(+x.audioSecs||0)*C.perSec(s.res));
     if(kind==='lite'){
       var ld=Math.min(15,Math.max(5,parseInt(s.dur,10)||5));
@@ -153,7 +160,7 @@
       for(var i=0;i<n;i++) pick.push(i);
     }else if(kind==='camera'||kind==='talk'){
       pick=n?[0]:[]; original=true;   // straight to fal: the still (or the face) and the settings, no words, no writer
-      if(kind==='camera'){ f.cam_move=s.move; f.duration=String(s.dur); f.resolution=s.res; if(s.snd==='mine'&&has(s.snd_text)) f.cam_sound=String(s.snd_text).trim() }
+      if(kind==='camera'){ f.cam_move=s.move; f.duration=C.camDur(s); f.resolution=C.camRes(s) }   // PixVerse makes no sound: nothing about sound is sent
       else{ if(x.audioSecs>0) f.audio_secs=(+x.audioSecs).toFixed(2); f.resolution=s.res; if(s.tr) f.talk_transcribe='on' }
     }else{
       // every image run carries a seed: fal rolls one when the box is empty and Nano Banana never reports it back,
@@ -188,7 +195,6 @@
     if(kind==='upscale'&&!n) return 'Add a source image to upscale.';
     if(kind==='camera'&&!n) return 'Add a still: Camera moves through your first source.';
     if(kind==='talk'&&!n) return 'Add a face: Talk animates your first source.';
-    if(kind==='camera'&&s.snd==='mine'&&!has(s.snd_text)) return 'Describe the sound you want, or set Sound to Silent.';
     if(kind==='talk'&&!(x.audioSecs>0)) return 'Add what they say: choose an audio file or record one.';
     if(kind==='lite'&&!s.style&&s.sound==='mine'&&!(x.audioSecs>0)) return 'Add your audio, or set Sound back to “H3 makes it”.';
     if(kind==='compose'&&!n&&!prompt) return 'Write a prompt, or add sources to combine.';
