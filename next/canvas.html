@@ -331,6 +331,12 @@ body.dio #dio-total{display:inline-block!important;white-space:nowrap}
 .card.dsrc .cap{padding:7px 12px 0;font-size:12px;color:var(--ink);line-height:1.35;word-wrap:break-word}
 .card.dsrc .cap small{display:block;font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:2px;line-height:1.4}
 .card.dsrc .pic{height:118px;cursor:zoom-in}
+.card.dsrc .pack{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:8px 12px 0}
+.card.dsrc .pack .pk{position:relative;height:96px;border-radius:6px;overflow:hidden;background:var(--stage);border:1px solid var(--rule);cursor:zoom-in}
+.card.dsrc .pack .pk:hover{border-color:var(--rule-hot)}
+.card.dsrc .pack .pk img{width:100%;height:100%;object-fit:cover;display:block}
+.card.dsrc .pack .pk span{position:absolute;left:4px;bottom:4px;max-width:calc(100% - 8px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:var(--mono);font-size:9.5px;color:var(--ink);background:rgba(10,10,12,.72);border-radius:3px;padding:1px 5px}
 .card.note.hec{background:#18130D;border-color:rgba(232,163,61,.36)}
 .card.note.dio{background:var(--dio-bg);border-color:var(--dio-rule)}
 .card.note.hec .top b{color:var(--hec)} .card.note.dio .top b{color:var(--dio)}
@@ -1196,7 +1202,7 @@ body.dio #dio-total{display:inline-block!important;white-space:nowrap}
     if(act){
       if(act.dataset.act==='strike'){ setSetting(n.id,'struck',!S(n).struck); return }
       if(act.dataset.act==='dtake'){ VIEWT[n.id]=+act.dataset.i; paintCard(n); paintWires(); return }
-      if(act.dataset.act==='dview'){ if(n.kind==='step') openStepView(n); else openSrcView(n); return }
+      if(act.dataset.act==='dview'){ if(n.kind==='step') openStepView(n); else openSrcView(n,+act.dataset.k||0); return }
       if(act.dataset.act==='edit-prompt'){ EDITING=n.id; paintCard(n); paintWires(); var ta=cardEl(n.id).querySelector('textarea[data-k="prompt"]'); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length) } return }
       if(act.dataset.act==='del'){ remove(n.id); return }
       if(act.dataset.act==='freeze'){ setFrozen(n.id,!n.frozen); return }
@@ -1803,6 +1809,7 @@ body.dio #dio-total{display:inline-block!important;white-space:nowrap}
     G.nodes.forEach(function(n){ if(n.kind!=='step') return; var st=n.step||{};
       (st.takes||[]).forEach(function(t){ spent+=(+t.price||0); runs++ });
       if(stepStatus(n)==='planned'&&st.price!=null&&st.price!=='') planned+=(+st.price||0) });
+    ((G.dio&&G.dio.gone)||[]).forEach(function(g){ spent+=(+g.spent||0); runs+=(+g.takes||0) });   // steps he took off the board still cost what they cost
     $('dio-total').innerHTML='planned <b>$'+money(planned)+'</b> · spent <b>$'+money(spent)+'</b> <span style="color:var(--ink-faint)">('+pl(runs,'run','runs')+')</span>';
     var dirty=dioDirty(), msg='', cls='warn';
     if(dirty) msg='your changes are not saved';
@@ -1856,15 +1863,20 @@ body.dio #dio-total{display:inline-block!important;white-space:nowrap}
     else if(st.why) h+='<div class="why">'+esc(st.why)+'</div>';
     el.innerHTML=h; measurePorts(n);
   }
+  // ONE PERSON'S PACK (10-19): a photo card holding a front and 1-3 angles, sent to Kling as one --element. It stays a
+  // dsrc so a page from before it shows its front photo and never drops it on Save.
+  function packOf(n){ var p=n.src&&n.src.pack; return (Array.isArray(p)&&p.length>1)?p:null }
   function paintDsrc(n,el){
-    var src=n.src||{}, vid=n.kind==='dclip', his=src.by!=='hector';
-    el.className='card src dsrc k-'+n.kind+(sel&&sel.node===n.id?' sel':'');
-    var h='<div class="top"><b>'+(vid?'Clip':src.tag==='frame'?'Frame':'Photo')+'</b><i>'+esc(his?(src.from||'for the job'):'yours')+'</i>'+
+    var src=n.src||{}, vid=n.kind==='dclip', his=src.by!=='hector', pk=packOf(n);
+    el.className='card src dsrc k-'+n.kind+(pk?' pack':'')+(sel&&sel.node===n.id?' sel':'');
+    var h='<div class="top"><b>'+(pk?'Pack':vid?'Clip':src.tag==='frame'?'Frame':'Photo')+'</b><i>'+esc(his?(src.from||'for the job'):'yours')+'</i>'+
       (his?'':'<button class="ic" type="button" data-act="del" aria-label="Delete this photo" title="Delete">'+ICON_X+'</button>')+'</div>';
-    h+=src.url ? '<div class="pic has" data-act="dview" title="See it big">'+(vid?'<video muted playsinline preload="metadata" src="'+esc(src.url)+'#t=0.1"></video>':'<img alt="" decoding="async" src="'+esc(src.url)+'">')+'</div>'
+    if(pk) h+='<div class="pack">'+pk.map(function(p,k){ return '<div class="pk" data-act="dview" data-k="'+k+'" title="See it big">'+
+        (p.url?'<img alt="" decoding="async" src="'+esc(p.url)+'">':'')+'<span>'+esc(p.label||(k?'angle '+k:'front'))+'</span></div>' }).join('')+'</div>';
+    else h+=src.url ? '<div class="pic has" data-act="dview" title="See it big">'+(vid?'<video muted playsinline preload="metadata" src="'+esc(src.url)+'#t=0.1"></video>':'<img alt="" decoding="async" src="'+esc(src.url)+'">')+'</div>'
                : '<div class="pic">no picture yet</div>';
     h+='<div class="cap">'+esc(src.label||'')+(src.note?'<small>'+esc(src.note)+'</small>':'')+'</div>';
-    h+='<div class="outrow"><span>'+(vid?'clip':'picture')+'</span><span class="port out '+(vid?'video':'image')+'" data-node="'+n.id+'" data-port="out" data-type="'+(vid?'video':'image')+'"></span></div><div style="height:10px"></div>';
+    h+='<div class="outrow"><span>'+(pk?'one person · '+pk.length+' photos':vid?'clip':'picture')+'</span><span class="port out '+(vid?'video':'image')+'" data-node="'+n.id+'" data-port="out" data-type="'+(vid?'video':'image')+'"></span></div><div style="height:10px"></div>';
     el.innerHTML=h; measurePorts(n);
   }
   function cardName(c){
@@ -1934,11 +1946,11 @@ body.dio #dio-total{display:inline-block!important;white-space:nowrap}
       '<a href="'+esc(t.url)+'" target="_blank" rel="noopener">Open</a>';
     $('view').hidden=false;
   }
-  function openSrcView(n){
-    var src=n.src||{}; if(!src.url) return; var vid=n.kind==='dclip';
-    $('view-title').textContent=src.label||KINDS[n.kind].name; $('view-sub').textContent=src.by==='hector'?'yours':(src.from||'');
-    $('view-media').innerHTML=vid?'<video src="'+esc(src.url)+'" controls autoplay playsinline loop></video>':'<img alt="" src="'+esc(src.url)+'">';
-    $('view-facts').innerHTML='<span>'+esc(src.note||'')+'</span><span class="sp"></span><a href="'+esc(src.url)+'" target="_blank" rel="noopener">Open</a>';
+  function openSrcView(n,k){
+    var src=n.src||{}, pk=packOf(n), one=pk?pk[Math.min(k||0,pk.length-1)]:null, url=one?one.url:src.url; if(!url) return; var vid=n.kind==='dclip';
+    $('view-title').textContent=(src.label||KINDS[n.kind].name)+(one?' · '+(one.label||(k?'angle '+k:'front')):''); $('view-sub').textContent=src.by==='hector'?'yours':(src.from||'');
+    $('view-media').innerHTML=vid?'<video src="'+esc(url)+'" controls autoplay playsinline loop></video>':'<img alt="" src="'+esc(url)+'">';
+    $('view-facts').innerHTML='<span>'+esc(src.note||'')+'</span><span class="sp"></span><a href="'+esc(url)+'" target="_blank" rel="noopener">Open</a>';
     $('view').hidden=false;
   }
   $('view-facts').addEventListener('click',function(e){

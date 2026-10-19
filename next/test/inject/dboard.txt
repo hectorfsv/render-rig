@@ -1,7 +1,8 @@
 <script>
 /* THE DIONYSUS BOARD HARNESS (2026-10-18). Appended to canvas.html by test/run.sh dboard. Nothing is sent: fetch answers
    the Rig's auth and plays the `Rig Boards` workflow from a table in memory (list, get, save with the rev check, photo).
-   ?shot=1 opens the sample board for a screenshot and asserts nothing. */
+   ?shot=1 opens the sample board for a screenshot and asserts nothing; ?shot=pack opens a board with a pack card
+   (window.PACK_SHOT, when a script before this one sets it, is the board to show). */
 (function(){
   var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search), $=function(i){ return document.getElementById(i) };
   var errs=[]; window.addEventListener('error',function(e){ errs.push(e.message) });
@@ -12,7 +13,7 @@
   function tick(ms){ return new Promise(function(r){ setTimeout(r,ms||0) }) }
   function png(w,h,c){ var cv=document.createElement('canvas'); cv.width=w; cv.height=h; var x=cv.getContext('2d'); x.fillStyle=c; x.fillRect(0,0,w,h); return cv.toDataURL('image/png') }
   function fileOf(u,name){ var p=u.split(','), bin=atob(p[1]), a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new File([a],name,{type:'image/png'}) }
-  var SHOT=q.get('shot')==='1';
+  var SHOT=q.get('shot')==='1'||q.get('shot')==='pack', SHOTP=q.get('shot')==='pack'?'atm':'roadster-wall';
   try{ window.confirm=function(){ return true } }catch(e){}
 
   // the sample: roadster-wall shot 1 as tools/board writes it
@@ -36,6 +37,18 @@
     {id:'dnote-1',kind:'note',x:1100,y:300,settings:{text:'v2 rejected: the cones fell. Unsure H3 keeps seven cones still.',by:'dionysus',on:'step-clip'}},
     {id:'n1',kind:'note',x:1100,y:0,settings:{text:'Shot 1 of 9. Deadpan like the reel.',by:'hector'}}],
     edges:[['src-front:out','step-frame:i1'],['src-top:out','step-frame:i2'],['src-look:out','step-frame:i3'],['src-front:out','step-clip:i1'],['src-top:out','step-clip:i2'],['step-frame:out','step-clip:i3']]} }
+
+  // a pack (10-19): one person's four photos on one card, into one Kling --element; one step already taken off the board
+  var PK={front:png(240,320,'#b89a80'),l:png(240,320,'#a88a70'),r:png(240,320,'#987a60'),back:png(240,320,'#5a4a40')};
+  function packBoard(){ return {v:1,name:'atm · storm',dio:{piece:'atm',title:'storm',gone:[{id:'step-clip2',label:'step 4 Clip 2',takes:1,spent:0.56,at:'2026-10-19T01:00:00'},{id:'step-drown',label:'step 5 Drown',takes:1,spent:0.15,at:'2026-10-19T01:00:00'}]},nodes:[
+    {id:'src-me',kind:'dsrc',x:0,y:0,settings:{},src:{url:PK.front,path:'generated/hector-avatar/front-v2.jpg',label:'Your pack',note:'front + three angles: you, as one person',from:'your pack',
+      pack:[{url:PK.front,path:'generated/hector-avatar/front-v2.jpg',label:'front'},{url:PK.l,path:'generated/hector-avatar/tq-left-v2.jpg',label:'3/4 left'},
+            {url:PK.r,path:'generated/hector-avatar/tq-right-v2.jpg',label:'3/4 right'},{url:PK.back,path:'generated/hector-avatar/back-v1.jpg',label:'back'}]}},
+    {id:'step-clip',kind:'step',x:380,y:0,settings:{prompt:'@Element1 presses the button.'},
+     step:{num:'3',title:'Clip 1',via:'fal',engine:'Kling 3.0 Pro',model:'kling',out:'video',price:0.56,status:'kept',orig:'@Element1 presses the button.',sent:['duration 5'],
+           ins:[{id:'i1',label:'Your pack',num:'1',flag:'--element'}],cmd:{model:'kling',args:['--seconds','5']},
+           takes:[{v:1,url:'data:video/mp4;base64,AAAA',thumb:PK.back,kind:'video',price:0.56,verdict:'kept',status:'done'}]}}],
+    edges:[['src-me:out','step-clip:i1']]} }
 
   // THE SERVER: the Rig Boards workflow, in memory
   var BOARDS='https://hectorfsv.app.n8n.cloud/webhook/rig-boards', SRV={}, CALLS=[], PHOTO=png(64,48,'#3b5f8a');
@@ -77,7 +90,8 @@
   $('pw').value='x'; $('unlock').click();
   tick(100).then(function(){
     R=window.RigCanvas;
-    if(SHOT) return R.dio.open('roadster-wall').then(function(){ R.fit(); return tick(100) });
+    if(SHOTP==='atm') SRV.atm={piece:'atm',rev:2,saved_by:'dionysus',saved_at:'2026-10-19T01:00:00Z',seen_rev:2,board:JSON.stringify(window.PACK_SHOT||packBoard())};
+    if(SHOT) return R.dio.open(SHOTP).then(function(){ R.fit(); return tick(300) });
     return run().catch(function(e){ ok(false,'the harness threw: '+e.message) }).then(function(){ ok(!errs.length,'no page errors',errs.join(' | ')); finish() });
   }).then(function(){ if(SHOT) document.title='READY' });
 
@@ -251,6 +265,30 @@
       ok(document.querySelectorAll('#add-list button[data-kind]').length>5,'and the Add menu is the Rig\'s again');
       ok(!$('board-name').disabled,'and the name is yours to edit');
       eq(R.dio.state(),null,'no server board held');
+      step('pack');
+      SRV.atm={piece:'atm',rev:2,saved_by:'dionysus',saved_at:'2026-10-19T01:00:00Z',seen_rev:2,board:JSON.stringify(packBoard())};
+      return R.dio.open('atm');
+    }).then(function(){
+      var c=card('src-me');
+      ok(c&&c.classList.contains('pack')&&/Pack/.test(c.querySelector('.top b').textContent),'your pack is one card, called Pack');
+      eq([].map.call(c.querySelectorAll('.pack .pk img'),function(i){ return i.getAttribute('src') }),[PK.front,PK.l,PK.r,PK.back],'with its four photos, front first');
+      eq([].map.call(c.querySelectorAll('.pack .pk span'),function(x){ return x.textContent }),['front','3/4 left','3/4 right','back'],'each says which side it is');
+      ok(!c.querySelector('.pic'),'and no single big picture');
+      eq(c.querySelectorAll('.port.out').length,1,'one output');
+      ok(/one person · 4 photos/.test(c.querySelector('.outrow span').textContent),'which says it is one person');
+      eq(document.querySelectorAll('#wires path[data-edge]:not(.hit)').length,1,'one wire into the clip');
+      eq(card('step-clip').querySelector('.row .num').textContent,'1','into element 1');
+      c.querySelectorAll('.pack .pk')[2].click();
+      ok(!$('view').hidden&&$('view-media').querySelector('img').getAttribute('src')===PK.r&&/Your pack · 3\/4 right/.test($('view-title').textContent),'a photo of the pack opens big on its own',$('view-title').textContent);
+      $('view-close').click();
+      ok(/spent \$1\.27/.test($('dio-total').textContent)&&/3 runs/.test($('dio-total').textContent),'spent counts the steps he took off the board ($0.56 here + $0.71 gone, 3 runs)',$('dio-total').textContent);
+      R.remove('src-me'); ok(!!card('src-me'),'his pack cannot be deleted from here');
+      var ex=R.exportBoard(), me=ex.nodes.filter(function(n){ return n.id==='src-me' })[0];
+      ok(me.src.pack.length===4&&ex.dio.gone.length===2,'the pack and what was taken off survive an export');
+      var cl=R.dio.merge(JSON.parse(SRV.atm.board),ex,JSON.parse(SRV.atm.board));
+      ok(cl.nodes.filter(function(n){ return n.id==='src-me' })[0].src.pack.length===4,'and a merge');
+      R.importBoard(ex,true);
+      ok(card('src-me').querySelectorAll('.pack .pk').length===4,'and a reload of the board');
     });
   }
 })();
