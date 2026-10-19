@@ -1,0 +1,257 @@
+<script>
+/* THE DIONYSUS BOARD HARNESS (2026-10-18). Appended to canvas.html by test/run.sh dboard. Nothing is sent: fetch answers
+   the Rig's auth and plays the `Rig Boards` workflow from a table in memory (list, get, save with the rev check, photo).
+   ?shot=1 opens the sample board for a screenshot and asserts nothing. */
+(function(){
+  var S=String.fromCharCode(167), out=[], q=new URLSearchParams(location.search), $=function(i){ return document.getElementById(i) };
+  var errs=[]; window.addEventListener('error',function(e){ errs.push(e.message) });
+  function ok(c,label,got){ out.push((c?'PASS':'FAIL')+'  '+label+(c||got===undefined?'':'  got '+got)) }
+  function eq(got,exp,label){ var g=JSON.stringify(got), x=JSON.stringify(exp); ok(g===x,label+(g===x?'':'  expected '+x),g) }
+  function step(n){ document.title=S+out.join(' ')+' [running: '+n+']'+S }
+  function finish(){ document.title=S+out.join(' ')+' [done]'+S }
+  function tick(ms){ return new Promise(function(r){ setTimeout(r,ms||0) }) }
+  function png(w,h,c){ var cv=document.createElement('canvas'); cv.width=w; cv.height=h; var x=cv.getContext('2d'); x.fillStyle=c; x.fillRect(0,0,w,h); return cv.toDataURL('image/png') }
+  function fileOf(u,name){ var p=u.split(','), bin=atob(p[1]), a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new File([a],name,{type:'image/png'}) }
+  var SHOT=q.get('shot')==='1';
+  try{ window.confirm=function(){ return true } }catch(e){}
+
+  // the sample: roadster-wall shot 1 as tools/board writes it
+  var IMG={front:png(320,240,'#c9c9c9'),top:png(320,240,'#a8a8a8'),look:png(320,240,'#7a5a3a'),v1:png(320,240,'#8a4a2a'),v2:png(320,240,'#9a5a2a'),v3:png(320,240,'#b06a30'),c1:png(320,240,'#603020'),c2:png(320,240,'#704030')};
+  function sample(){ return {v:1,name:'roadster-wall · shot 1 of 9',dio:{piece:'roadster-wall',title:'shot 1 of 9'},nodes:[
+    {id:'src-front',kind:'dsrc',x:0,y:0,settings:{},src:{url:IMG.front,label:'Tesla front, from above',note:'front-high.jpg, nose turned right',path:'edits/roadster-wall/elements/car-fronthigh-noseright.png',from:'Tesla'}},
+    {id:'src-top',kind:'dsrc',x:0,y:280,settings:{},src:{url:IMG.top,label:'Tesla roof, from above',path:'edits/roadster-wall/elements/car-top-noseright.png',from:'Tesla'}},
+    {id:'src-look',kind:'dsrc',x:0,y:560,settings:{},src:{url:IMG.look,label:'The reel\'s look',tag:'frame',path:'edits/roadster-wall/elements/look-reel-1625.png',from:'your reel'}},
+    {id:'step-frame',kind:'step',x:320,y:40,settings:{prompt:'Build one new photograph. The white car in images 1 and 2 keeps its exact shape.'},
+     step:{num:'1',title:'First frame',via:'fal',engine:'Nano Banana Pro',mode:'edit',model:'nbp',out:'image',price:0.15,status:'kept',
+           orig:'Build one new photograph. The white car in images 1 and 2 keeps its exact shape.',sent:['aspect_ratio 4:3','resolution 2K','seed 73'],
+           ins:[{id:'i1',label:'Tesla front',num:'1',flag:'--image'},{id:'i2',label:'Tesla roof',num:'2',flag:'--image'},{id:'i3',label:'the reel\'s look',num:'3',flag:'--image'}],
+           cmd:{model:'nbp',args:['--aspect','4:3','--res','2K','--seed','73']},
+           takes:[{v:1,url:IMG.v1,kind:'image',price:0.15,verdict:'rejected',status:'done'},{v:2,url:IMG.v2,kind:'image',price:0.15,verdict:'rejected',status:'done'},{v:3,url:IMG.v3,kind:'image',price:0.15,verdict:'kept',status:'done',file:'generated/roadster-wall/wall1-nbp-v3.jpg'}]}},
+    {id:'step-clip',kind:'step',x:720,y:0,settings:{prompt:'The car drives along the wall toward the camera. All seven cones stay standing.'},
+     step:{num:'2',title:'Clip',via:'fal',engine:'MiniMax H3 Max',mode:'reference',model:'h3-ref',out:'video',price:0.48,status:'planned',
+           orig:'The car drives along the wall toward the camera. All seven cones stay standing.',sent:['duration 3','resolution 1080P'],
+           ins:[{id:'i1',label:'Tesla front',num:'1',flag:'--ref'},{id:'i2',label:'Tesla roof',num:'2',flag:'--ref'},{id:'i3',label:'step 1, kept take',num:'opening',flag:'--image'}],
+           cmd:{model:'h3-ref',args:['--seconds','3','--res','1080P']},
+           takes:[{v:1,url:'data:video/mp4;base64,AAAA',thumb:IMG.c1,kind:'video',price:0.48,verdict:'rejected',status:'done'},{v:2,url:'data:video/mp4;base64,AAAB',thumb:IMG.c2,kind:'video',price:0.48,verdict:'rejected',status:'done'}]}},
+    {id:'dnote-1',kind:'note',x:1100,y:300,settings:{text:'v2 rejected: the cones fell. Unsure H3 keeps seven cones still.',by:'dionysus',on:'step-clip'}},
+    {id:'n1',kind:'note',x:1100,y:0,settings:{text:'Shot 1 of 9. Deadpan like the reel.',by:'hector'}}],
+    edges:[['src-front:out','step-frame:i1'],['src-top:out','step-frame:i2'],['src-look:out','step-frame:i3'],['src-front:out','step-clip:i1'],['src-top:out','step-clip:i2'],['step-frame:out','step-clip:i3']]} }
+
+  // THE SERVER: the Rig Boards workflow, in memory
+  var BOARDS='https://hectorfsv.app.n8n.cloud/webhook/rig-boards', SRV={}, CALLS=[], PHOTO=png(64,48,'#3b5f8a');
+  SRV['roadster-wall']={piece:'roadster-wall',rev:3,saved_by:'dionysus',saved_at:'2026-10-18T20:00:00Z',seen_rev:2,board:JSON.stringify(sample())};
+  SRV['old-piece']={piece:'old-piece',rev:2,saved_by:'hector',saved_at:'2026-10-17T20:00:00Z',seen_rev:1,board:JSON.stringify({v:1,name:'old',nodes:[],edges:[],dio:{piece:'old-piece',title:'an older one',hector_rev:2}})};
+  function reply(code,obj){ return Promise.resolve({ok:code>=200&&code<300,status:code,json:function(){ return Promise.resolve(obj) }}) }
+  var realFetch=window.fetch;
+  window.fetch=function(u,o){
+    if(typeof u==='string'&&/^(data:|blob:)/.test(u)) return realFetch(u,o);
+    var b=o&&o.body, a=(b&&b.get)?b.get('action'):'';
+    if(u===BOARDS){
+      var rec={action:a}; if(b&&b.forEach) b.forEach(function(v,k){ rec[k]=(v instanceof Blob)?{blob:true,size:v.size,type:v.type}:v }); CALLS.push(rec);
+      if(b.get('password')!=='x') return reply(401,{error:'not allowed'});
+      if(a==='list') return reply(200,{boards:Object.keys(SRV).map(function(k){ var r=SRV[k], j=JSON.parse(r.board); return {piece:r.piece,title:j.dio.title,hector_rev:j.dio.hector_rev||0,cards:j.nodes.length,steps:j.nodes.filter(function(n){ return n.kind==='step' }).length,rev:r.rev,saved_by:r.saved_by,saved_at:r.saved_at,seen_rev:r.seen_rev} })});
+      if(a==='get'){ var g=SRV[b.get('piece')]; return g ? reply(200,{found:true,piece:g.piece,rev:g.rev,saved_by:g.saved_by,saved_at:g.saved_at,seen_rev:g.seen_rev,board:g.board}) : reply(404,{found:false,error:'no board'}) }
+      if(a==='save'){ var p=b.get('piece'), cur=SRV[p], base=+b.get('base_rev');
+        if((cur?cur.rev:0)!==base) return reply(409,{conflict:true,rev:cur.rev,saved_by:cur.saved_by,saved_at:cur.saved_at});
+        var bj=JSON.parse(b.get('board')); if(!bj.dio||bj.dio.piece!==p) return reply(400,{error:'the board says another piece'});
+        bj.dio.hector_rev=base+1;   // the workflow stamps his saves inside the board
+        SRV[p]={piece:p,rev:base+1,saved_by:'hector',saved_at:new Date().toISOString(),seen_rev:cur?cur.seen_rev:0,board:JSON.stringify(bj)}; return reply(200,{ok:true,rev:base+1}) }
+      if(a==='photo') return reply(200,{url:PHOTO});
+      return reply(400,{error:'unknown action'});
+    }
+    if(a==='auth') return reply(200,{guest:false,user:'hector'});
+    if(a==='gallery') return reply(200,{items:[]});
+    return Promise.reject(new Error('harness: no network'));
+  };
+  // Dionysus saves from his side (as tools/board does): a new board on the current rev
+  function dioSaves(p,f,unread){ var r=SRV[p], j=JSON.parse(r.board); f(j); SRV[p]={piece:p,rev:r.rev+1,saved_by:'dionysus',saved_at:new Date().toISOString(),seen_rev:unread?r.seen_rev:r.rev,board:JSON.stringify(j)} }
+  ['rig_board_cur:hector','rig_boards:hector','rig_dio:hector'].forEach(function(k){ try{ localStorage.removeItem(k) }catch(e){} });
+  try{ localStorage.setItem('rig_boards:hector',JSON.stringify({mine:{v:1,name:'mine',nodes:[{id:'n1',kind:'note',x:0,y:0,settings:{text:'a plain board'}}],edges:[]}})) }catch(e){}
+  try{ sessionStorage.removeItem('rig_pw') }catch(e){}
+
+  var R, card=function(id){ return document.querySelector('#world .card[data-id="'+id+'"]') };
+  function nodeOf(id){ return R.exportBoard().nodes.filter(function(n){ return n.id===id })[0] }
+  function shown(el){ return !!el && getComputedStyle(el).display!=='none' }
+  function key(k){ document.dispatchEvent(new KeyboardEvent('keydown',{key:k,bubbles:true})) }
+
+  $('pw').value='x'; $('unlock').click();
+  tick(100).then(function(){
+    R=window.RigCanvas;
+    if(SHOT) return R.dio.open('roadster-wall').then(function(){ R.fit(); return tick(100) });
+    return run().catch(function(e){ ok(false,'the harness threw: '+e.message) }).then(function(){ ok(!errs.length,'no page errors',errs.join(' | ')); finish() });
+  }).then(function(){ if(SHOT) document.title='READY' });
+
+  function run(){
+    step('mode');
+    ok(!document.body.classList.contains('dio'),'a plain board is not a Dionysus board');
+    ok(shown($('run-all')),'on a plain board Run all is there');
+    // the Load menu lists his boards from the server
+    $('load-btn').click();
+    return tick(60).then(function(){
+      var items=[].map.call(document.querySelectorAll('#load-list button[data-dio]'),function(b){ return b.dataset.dio });
+      eq(items.sort(),['old-piece','roadster-wall'],'Load lists his boards from the server');
+      var old=document.querySelector('#load-list button[data-dio="old-piece"] small');
+      ok(old&&/hasn't read/.test(old.textContent)&&old.classList.contains('unread'),'a board you saved that he has not read says so',old&&old.textContent);
+      ok(!/hasn't read/.test(document.querySelector('#load-list button[data-dio="roadster-wall"] small').textContent),'his own latest board is not marked unread');
+      ok(!!document.querySelector('#load-list button[data-name="mine"]'),'your own boards are still listed under it');
+      eq(CALLS.filter(function(c){ return c.action==='list' }).length,1,'one list call');
+      document.querySelector('#load-list button[data-dio="roadster-wall"]').click();
+      return tick(80);
+    }).then(function(){
+      step('open');
+      ok(document.body.classList.contains('dio'),'his board turns the page into a Dionysus board');
+      ok(!shown($('run-all'))&&!shown($('total')),'Run all and the Rig total are gone');
+      ok(shown($('dio-badge'))&&shown($('dio-total')),'the badge and his totals are there');
+      ok(/planned \$0\.48/.test($('dio-total').textContent)&&/spent \$1\.41/.test($('dio-total').textContent)&&/5 runs/.test($('dio-total').textContent),'planned $0.48, spent $1.41 over 5 runs',$('dio-total').textContent);
+      ok($('board-name').disabled,'the piece name is not editable');
+      eq([].map.call(document.querySelectorAll('#add-list button[data-kind]'),function(b){ return b.dataset.kind }),['note','dphoto'],'Add offers only a note and a photo');
+      ok(!R.dio.dirty(),'just opened: nothing to save');
+      ok(/his latest/.test($('dio-state').textContent),'the chip says it is his latest',$('dio-state').textContent);
+      eq(R.dio.state().rev,3,'the page holds rev 3');
+      // his cards
+      var steps=document.querySelectorAll('#world .card.step');
+      eq(steps.length,2,'two step cards');
+      ok(!document.querySelector('#world .card.step button.run'),'no Run button on any step');
+      ok(/kept/i.test(card('step-frame').querySelector('.pill').textContent),'step 1 says kept');
+      ok(/planned · v3/i.test(card('step-clip').querySelector('.pill').textContent),'step 2 says planned, v3 next',card('step-clip').querySelector('.pill').textContent);
+      eq([].map.call(card('step-frame').querySelectorAll('.row .num'),function(x){ return x.textContent }),['1','2','3'],'step 1 inputs numbered as his prompt names them');
+      eq(card('step-clip').querySelector('.row:last-child .num').textContent,'opening','the clip\'s opening frame is named');
+      eq([].map.call(card('step-frame').querySelectorAll('.sent span'),function(x){ return x.textContent }),['aspect_ratio 4:3','resolution 2K','seed 73'],'what is sent with it');
+      ok(/exactly what is sent/.test(card('step-frame').querySelector('.lab span').textContent),'an untouched prompt is "exactly what is sent"');
+      ok(card('step-frame').querySelector('.pic img').getAttribute('src')===IMG.v3,'step 1 shows its kept take');
+      eq([].map.call(card('step-frame').querySelectorAll('.tk'),function(t){ return t.classList.contains('y')?'y':t.classList.contains('n')?'n':'-' }),['n','n','y'],'the takes carry their verdicts');
+      ok(card('step-clip').querySelector('.pic .next')&&card('step-clip').querySelector('.pic.dim'),'a planned step shows its last take dimmed and what is next');
+      ok(card('dnote-1').classList.contains('dio')&&!card('dnote-1').querySelector('textarea')&&!card('dnote-1').querySelector('[data-act="del"]'),'his note is his: purple, read-only, no delete');
+      ok(card('n1').classList.contains('hec')&&card('n1').querySelector('textarea')&&card('n1').querySelector('.port.link'),'your note is yours: gold, editable, with a dot to tie it');
+      ok(document.querySelectorAll('#wires path.nd').length===1,'his note is tied to step 2 by a line');
+      eq(document.querySelectorAll('#wires path[data-edge]:not(.hit)').length,6,'the six wires are drawn');
+      // nothing on it can spend
+      eq(R.totals().run,[],'nothing on his board counts as a Rig run');
+      ok(!!R.runList(['step-clip']).list&&R.runList(['step-clip']).list.length===0,'a step can never enter a Rig run');
+      // his cards cannot be deleted
+      R.select({node:'step-clip'}); key('Delete');
+      ok(!!card('step-clip'),'Delete on his step does nothing');
+      R.remove('src-front'); ok(!!card('src-front'),'his picture cannot be removed');
+      ok(/Dionysus's/.test($('toast').textContent),'and the page says why',$('toast').textContent);
+      // the wires: his cards only
+      ok(/right-hand port/.test(R.connect('n1:out','step-clip:i1')||''),'a note has no output to wire');
+      step('edit');
+      card('step-clip').querySelector('.ptxt').click();
+      var ta=card('step-clip').querySelector('textarea[data-k="prompt"]');
+      ok(!!ta,'clicking his prompt opens it for editing');
+      ta.value=ta.value+' Nothing on the wall moves except the car.'; ta.dispatchEvent(new Event('input',{bubbles:true}));
+      ok(R.dio.dirty(),'an edit makes the board unsaved');
+      ok(/not saved/.test($('dio-state').textContent),'the chip says so',$('dio-state').textContent);
+      ta.blur(); ta.dispatchEvent(new FocusEvent('focusout',{bubbles:true}));
+      return tick(30);
+    }).then(function(){
+      var px=card('step-clip').querySelector('.ptxt');
+      ok(px&&px.querySelector('ins')&&/Nothing on the wall moves/.test(px.querySelector('ins').textContent),'your added words show in gold',px&&px.innerHTML);
+      ok(/edited by you · not saved/.test(card('step-clip').querySelector('.lab span').textContent),'and the label says not saved yet');
+      // strike, tie, a new note
+      card('step-frame').querySelector('[data-act="strike"]').click();
+      ok(card('step-frame').classList.contains('struck')&&/struck/i.test(card('step-frame').querySelector('.pill').textContent),'striking a step marks it struck');
+      card('step-frame').querySelector('[data-act="strike"]').click();
+      ok(!card('step-frame').classList.contains('struck'),'and a second click brings it back');
+      ok(R.dio.tie('n1','step-clip'),'your note ties to a card');
+      ok(document.querySelectorAll('#wires path.nh').length===1&&/on step 2/.test(card('n1').querySelector('.top i').textContent),'your note now says what it is about');
+      $('add-btn').click(); document.querySelector('#add-list button[data-kind="note"]').click();
+      var nn=R.exportBoard().nodes.filter(function(n){ return n.kind==='note'&&n.id!=='n1'&&n.id!=='dnote-1' })[0];
+      ok(nn&&nn.settings.by==='hector','a note added here is yours');
+      R.remove(nn.id); ok(!card(nn.id),'and you can delete your own note');
+      step('save');
+      $('save-btn').click();
+      return tick(60);
+    }).then(function(){
+      var sv=CALLS.filter(function(c){ return c.action==='save' }).pop();
+      ok(sv&&sv.piece==='roadster-wall'&&sv.base_rev==='3','Save sends the piece and the rev it was made on',sv&&JSON.stringify({p:sv.piece,b:sv.base_rev}));
+      var j=JSON.parse(sv.board), clip=j.nodes.filter(function(n){ return n.id==='step-clip' })[0], n1=j.nodes.filter(function(n){ return n.id==='n1' })[0];
+      ok(/Nothing on the wall moves/.test(clip.settings.prompt)&&clip.step.orig.indexOf('Nothing')<0,'the saved board carries your edit beside his original');
+      eq(n1.settings.on,'step-clip','and your tied note');
+      eq(R.dio.state().rev,4,'the page now holds rev 4');
+      ok(!R.dio.dirty(),'saved: nothing left to save');
+      ok(/hasn't read/.test($('dio-state').textContent),'the chip says he has not read it yet',$('dio-state').textContent);
+      ok(/not read yet/.test(card('step-clip').querySelector('.lab span').textContent),'the prompt label says not read yet');
+      step('conflict');
+      // he saves while you keep working: a new take on step 2 and a new note of his
+      dioSaves('roadster-wall',function(j){ var c=j.nodes.filter(function(n){ return n.id==='step-clip' })[0];
+        c.step.takes.push({v:3,url:'data:video/mp4;base64,AAAC',thumb:IMG.c1,kind:'video',price:0.48,status:'done'}); c.step.status='done';
+        j.nodes.push({id:'dnote-2',kind:'note',x:1100,y:520,settings:{text:'v3 is in: look at it.',by:'dionysus',on:'step-clip'}}) });
+      var b0=nodeOf('step-frame'); R.dio.state();
+      var ex=R.exportBoard(); ex.nodes.forEach(function(n){ if(n.id==='step-frame'){ n.x=b0.x+50 } if(n.id==='n1'){ n.settings.text='Shot 1 of 9. Deadpan. No cones fall.' } });
+      R.importBoard(ex,true);
+      ok(R.dio.dirty(),'your move and note edit are unsaved');
+      $('save-btn').click();
+      return tick(120);
+    }).then(function(){
+      var saves=CALLS.filter(function(c){ return c.action==='save' });
+      eq(saves.slice(-2).map(function(c){ return c.base_rev }),['4','5'],'the first save hit his newer rev 5, the merged one went on it');
+      eq(SRV['roadster-wall'].rev,6,'the server holds rev 6');
+      var j=JSON.parse(SRV['roadster-wall'].board), clip=j.nodes.filter(function(n){ return n.id==='step-clip' })[0], fr=j.nodes.filter(function(n){ return n.id==='step-frame' })[0], n1=j.nodes.filter(function(n){ return n.id==='n1' })[0];
+      eq(clip.step.takes.length,3,'his new take survived the merge');
+      ok(j.nodes.some(function(n){ return n.id==='dnote-2' }),'his new note survived');
+      eq(fr.x,370,'your move survived');
+      eq(n1.settings.text,'Shot 1 of 9. Deadpan. No cones fall.','your note edit survived');
+      ok(/Nothing on the wall moves/.test(clip.settings.prompt),'your earlier prompt edit is still there');
+      ok(!!card('dnote-2'),'his new note is on screen');
+      step('prompt clash');
+      var base={nodes:[{id:'s',kind:'step',x:0,y:0,settings:{prompt:'A'}}],edges:[]};
+      var mine={nodes:[{id:'s',kind:'step',x:0,y:0,settings:{prompt:'A mine'}}],edges:[]};
+      var theirs={nodes:[{id:'s',kind:'step',x:0,y:0,settings:{prompt:'A his'}}],edges:[]};
+      var m=R.dio.merge(base,mine,theirs), extra=m.nodes.filter(function(n){ return n.kind==='note' })[0];
+      ok(m.nodes[0].settings.prompt==='A his'&&extra&&/A mine/.test(extra.settings.text)&&extra.settings.on==='s'&&extra.settings.by==='hector','both changed one prompt: his stays, yours becomes a note on the card');
+      var mw=R.dio.merge({nodes:[{id:'a',kind:'dsrc',settings:{}},{id:'b',kind:'dsrc',settings:{}},{id:'s',kind:'step',settings:{},step:{ins:[{id:'i1'}]}}],edges:[['a:out','s:i1']]},
+                         {nodes:[{id:'a',kind:'dsrc',settings:{}},{id:'b',kind:'dsrc',settings:{}},{id:'s',kind:'step',settings:{},step:{ins:[{id:'i1'}]}}],edges:[['b:out','s:i1']]},
+                         {nodes:[{id:'a',kind:'dsrc',settings:{}},{id:'b',kind:'dsrc',settings:{}},{id:'s',kind:'step',settings:{},step:{ins:[{id:'i1'}]}}],edges:[['a:out','s:i1']]});
+      eq(mw.edges,[['b:out','s:i1']],'your rewired input survives a merge');
+      step('refresh');
+      dioSaves('roadster-wall',function(j){ var c=j.nodes.filter(function(n){ return n.id==='step-clip' })[0]; c.step.takes[2].verdict='rejected'; c.step.status='planned' });
+      return R.dio.pull(false);
+    }).then(function(changed){
+      ok(changed===true,'a newer save of his is picked up');
+      eq(R.dio.state().rev,7,'the page holds rev 7');
+      ok(!R.dio.dirty(),'and nothing of yours is pending');
+      ok(/Dionysus updated/.test($('chip').textContent),'the chip says he updated it',$('chip').textContent);
+      ok(/his latest/.test($('dio-state').textContent),'he had read your save: the chip says his latest',$('dio-state').textContent);
+      return R.dio.pull(false);
+    }).then(function(changed){
+      ok(changed===false,'the same rev again changes nothing');
+      dioSaves('roadster-wall',function(j){ j.dio.hector_rev=8 },true); SRV['roadster-wall'].seen_rev=6;
+      return R.dio.pull(false);
+    }).then(function(){
+      ok(/hasn't read/.test($('dio-state').textContent),'a save of yours he has not read stays flagged under a newer save of his',$('dio-state').textContent);
+      step('photo');
+      return R.dio.photo(fileOf(png(200,150,'#3b5f8a'),'my-car.png'),40,900);
+    }).then(function(n){
+      var c=CALLS.filter(function(x){ return x.action==='photo' }).pop();
+      ok(c&&c.photo&&c.photo.blob&&c.photo.type==='image/png','the photo goes up as the file itself');
+      ok(n&&n.kind==='dsrc'&&n.src.by==='hector'&&n.src.url===PHOTO&&n.src.label==='my-car','it lands as your photo card');
+      ok(card(n.id).querySelector('[data-act="del"]')&&/yours/.test(card(n.id).querySelector('.top i').textContent),'yours: it can be deleted');
+      ok(!R.connect(n.id+':out','step-clip:i2'),'you can wire your photo into his step');
+      ok(R.dio.dirty(),'and that waits for Save');
+      step('verdict');
+      R.dio.view(R.exportBoard().nodes.filter(function(x){ return x.id==='step-frame' })[0]);
+      ok(!$('view').hidden&&document.querySelector('#view-facts button[data-verdict="kept"]'),'the viewer offers Keep and Reject');
+      document.querySelector('#view-facts button[data-verdict="rejected"]').click();
+      eq(nodeOf('step-frame').settings.verdict,{'3':'rejected'},'Reject records your verdict on that take');
+      ok(card('step-frame').querySelector('.tk[data-i="2"]').classList.contains('n'),'and the take strip shows it');
+      $('view-close').click();
+      step('diff');
+      eq(R.dio.diff('a b c','a b c'),'a b c','no change, no marks');
+      ok(/<ins>x <\/ins>/.test(R.dio.diff('a b c','a x b c')),'an added word is marked',R.dio.diff('a b c','a x b c'));
+      ok(/<del>b <\/del>/.test(R.dio.diff('a b c','a c')),'a cut word is struck',R.dio.diff('a b c','a c'));
+      ok(R.dio.diff('<i>','<b>').indexOf('<i>')<0,'his words are escaped');
+      step('undo');
+      ok(R.undo()&&document.body.classList.contains('dio'),'undo keeps it a Dionysus board');
+      step('leave');
+      $('new-btn').click();
+      return tick(30);
+    }).then(function(){
+      ok(!document.body.classList.contains('dio')&&shown($('run-all')),'New leaves his board: Run all is back');
+      ok(document.querySelectorAll('#add-list button[data-kind]').length>5,'and the Add menu is the Rig\'s again');
+      ok(!$('board-name').disabled,'and the name is yours to edit');
+      eq(R.dio.state(),null,'no server board held');
+    });
+  }
+})();
+</script>

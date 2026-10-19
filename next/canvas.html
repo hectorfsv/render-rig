@@ -278,6 +278,71 @@ body.running .card .top .ic{visibility:hidden}
 .foot-bar .sp{flex:1}
 .foot-bar button{padding:4px 9px;font-size:12px}
 .foot-bar #hint{text-align:right;line-height:1.4}
+/* ---------- DIONYSUS BOARDS (2026-10-18): his job laid out for Hector to note, move and edit. Nothing on such a board
+   can spend: his steps run from his own terminal, after Hector's yes. Plan: Jarvis/research/dionysus-board-plan-20261018.md ---------- */
+:root{ --dio:#C774B6; --dio-bg:#1A1018; --dio-rule:rgba(199,116,182,.34); --hec:#E8A33D }
+.dio-only{display:none!important}
+body.dio .dio-only{display:inline-flex!important}
+body.dio .chip.none{display:none!important}
+body.dio .rig-only{display:none!important}
+.badge{align-items:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dio);border:1px solid var(--dio-rule);background:rgba(199,116,182,.08);padding:4px 9px;border-radius:99px;white-space:nowrap}
+.chip.warn::before{background:var(--amber)} .chip.warn{color:var(--amber);border-color:rgba(232,163,61,.35)}
+body.dio .chip.warn,body.dio #dio-state{max-width:none;flex:0 0 auto}
+body.dio #board-name{width:180px;flex:0 1 180px;min-width:0}
+body.dio .head button{white-space:nowrap}
+body.dio #dio-total{display:inline-block!important;white-space:nowrap}
+.card .top .sp{flex:1}
+.card.step{width:312px}
+.card.step.struck{opacity:.6}
+.card.step.struck .top b{text-decoration:line-through}
+.card.step .top b em{font-style:normal;display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 4px;margin-right:7px;border-radius:5px;background:var(--panel-hi);border:1px solid var(--rule);font-family:var(--mono);font-size:11px;letter-spacing:0;color:var(--ink-dim)}
+.card.step .top b em:empty{display:none}
+.pill{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:99px;border:1px solid var(--rule);white-space:nowrap;color:var(--ink-dim)}
+.pill.kept{color:var(--go);border-color:rgba(63,208,122,.4);background:rgba(63,208,122,.08)}
+.pill.planned{color:var(--ink);border-color:rgba(242,234,232,.25)}
+.pill.done{color:var(--amber);border-color:rgba(232,163,61,.4)}
+.pill.running{color:var(--ice);border-color:rgba(142,197,224,.4)}
+.pill.rejected,.pill.failed,.pill.refused,.pill.struck{color:var(--red-hot);border-color:rgba(255,59,48,.4)}
+.card.step .via{padding:7px 12px 0;font-family:var(--mono);font-size:10.5px;color:var(--ink-dim)}
+.card.step .via b{color:var(--ink);font-weight:500}
+.card.step .pic{height:164px;position:relative;cursor:zoom-in}
+.card.step .pic:not(.has){cursor:default}
+.card.step .pic .tag{position:absolute;left:7px;top:7px;font-family:var(--mono);font-size:10px;color:#fff;background:rgba(10,7,8,.72);padding:2px 7px;border-radius:4px}
+.card.step .pic .tag.no{color:var(--red-hot)}
+.card.step .pic.dim img,.card.step .pic.dim video{opacity:.42;filter:saturate(.6)}
+.card.step .pic .next{position:absolute;inset:auto 8px 8px 8px;font-family:var(--mono);font-size:10.5px;color:var(--ink);background:rgba(10,7,8,.8);border:1px solid rgba(242,234,232,.18);padding:5px 8px;border-radius:5px;text-align:left;line-height:1.4}
+.card.step .tk,.card.dsrc .tk{opacity:.8}
+.card .tk::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px}
+.card .tk.y::after{background:var(--go)} .card .tk.n::after{background:var(--red-hot)}
+.card .row .num{flex:0 0 auto;min-width:18px;height:18px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;border:1px solid rgba(232,163,61,.45);color:var(--amber);font-family:var(--mono);font-size:10.5px}
+.card .row .num.fr{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase}
+.port.any{background:var(--amber);box-shadow:0 0 0 1.5px var(--amber)}
+.ptxt{font-size:12.3px;line-height:1.45;color:var(--ink);background:var(--panel-lo);border:1px solid var(--rule);border-radius:6px;padding:7px 9px;max-height:150px;overflow:hidden;position:relative;cursor:text;white-space:pre-wrap;word-wrap:break-word}
+.ptxt::after{content:'';position:absolute;left:0;right:0;bottom:0;height:22px;background:linear-gradient(transparent,var(--panel-lo));pointer-events:none}
+.ptxt:hover{border-color:var(--rule-hot)}
+.ptxt.edited{border-color:rgba(232,163,61,.55)}
+.ptxt ins{text-decoration:none;color:#1b1206;background:var(--hec);border-radius:3px;padding:0 2px}
+.ptxt del{color:var(--red-hot);text-decoration:line-through}
+.lab .ed{color:var(--amber)!important}
+.sent{display:flex;flex-wrap:wrap;gap:4px}
+.sent span{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);border:1px solid var(--rule);border-radius:4px;padding:2px 6px;background:var(--panel-lo);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .foot .dprice{color:var(--ink)}
+.card .foot .who{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint)}
+.card.dsrc .cap{padding:7px 12px 0;font-size:12px;color:var(--ink);line-height:1.35;word-wrap:break-word}
+.card.dsrc .cap small{display:block;font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:2px;line-height:1.4}
+.card.dsrc .pic{height:118px;cursor:zoom-in}
+.card.note.hec{background:#18130D;border-color:rgba(232,163,61,.36)}
+.card.note.dio{background:var(--dio-bg);border-color:var(--dio-rule)}
+.card.note.hec .top b{color:var(--hec)} .card.note.dio .top b{color:var(--dio)}
+.card.note .body{padding:9px 12px 12px;font-size:12.6px;line-height:1.45;color:var(--ink);word-wrap:break-word}
+.card.note.hec .set{padding-bottom:12px}
+.port.link{left:-7px;top:22px;transform:none;width:11px;height:11px;background:var(--hec);box-shadow:0 0 0 1.5px var(--hec);cursor:crosshair}
+.wires path.nh{stroke:var(--hec);stroke-width:1.6;stroke-dasharray:5 5;opacity:.85}
+.wires path.nd{stroke:var(--dio);stroke-width:1.6;stroke-dasharray:5 5;opacity:.9}
+.wires.focus path.nh,.wires.focus path.nd{opacity:.85}
+.wires circle.nh{fill:var(--hec)} .wires circle.nd{fill:var(--dio)}
+.menu li button small.unread{color:var(--amber)}
+.view .vf button.on{color:var(--ink);border-color:var(--go)}
 </style>
 </head>
 <body>
@@ -301,16 +366,19 @@ body.running .card .top .ic{visibility:hidden}
 <div class="screen" id="scr-board">
   <div class="head">
     <h1>Render Rig<span>Canvas</span></h1>
+    <span class="badge dio-only" id="dio-badge">Dionysus board</span>
     <div class="menu" id="add-menu">
       <button id="add-btn" type="button">+ Add</button>
       <ul id="add-list"></ul>
     </div>
     <button class="ibtn" id="undo" type="button" disabled title="Undo (⌘Z)" aria-label="Undo"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
     <button class="ibtn" id="redo" type="button" disabled title="Redo (⇧⌘Z)" aria-label="Redo"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
-    <button id="run-all" type="button" title="Runs every engine that is not fresh, upstream first. You see the list and the total before anything is sent.">Run all</button>
-    <button id="run-stop" type="button" hidden title="Finish the node that is rendering, then stop">Stop after this</button>
-    <span class="total" id="total">nothing to pay</span>
+    <button id="run-all" class="rig-only" type="button" title="Runs every engine that is not fresh, upstream first. You see the list and the total before anything is sent.">Run all</button>
+    <button id="run-stop" class="rig-only" type="button" hidden title="Finish the node that is rendering, then stop">Stop after this</button>
+    <span class="total rig-only" id="total">nothing to pay</span>
+    <span class="total dio-only" id="dio-total"></span>
     <span class="sp"></span>
+    <span class="chip dio-only none" id="dio-state"></span>
     <input type="text" id="board-name" placeholder="board name" spellcheck="false" maxlength="60">
     <button id="save-btn" type="button">Save</button>
     <div class="menu right" id="load-menu">
@@ -380,6 +448,8 @@ body.running .card .top .ic{visibility:hidden}
   var DOWNLOAD=RigCore.DOWNLOAD;
   var SUBMIT_CAP=RigCore.SUBMIT_CAP;
   var JOB_TTL_MS=60*60*1000;               // a job older than this is not picked back up after a reload
+  var BOARDS=N8N+'/webhook/rig-boards';    // Dionysus's boards (workflow `Rig Boards`): list, get, save, photo
+  var K_DIO='rig_dio';                     // the server board on screen: its rev and the version it was loaded as
 
   /* ---------- the lists: the core's ---------- */
   var AR_VID=RigCore.AR.video, AR_KREA=RigCore.AR.krea, AR_NBP=RigCore.AR.nbp, AR_DESIGN=RigCore.AR.design, AR_LITE=RigCore.AR.lite;
@@ -403,8 +473,13 @@ body.running .card .top .ic{visibility:hidden}
     lite:   {name:'Video Lite',eng:'MiniMax H3 Max',      group:'engines', ins:[{id:'prompt',type:'text',max:1,label:'prompt'},{id:'image',type:'image',max:1,label:'opening frame'},{id:'end',type:'image',max:1,label:'end frame'},{id:'audio',type:'audio',max:1,label:'your sound'}], out:'video'},
     camera: {name:'Camera',    eng:'PixVerse v4.5',       group:'engines', ins:[{id:'image',type:'image',max:1,req:true,label:'still'}], out:'video'},
     talk:   {name:'Talk',      eng:'H3 Lip Sync',         group:'engines', ins:[{id:'image',type:'image',max:1,req:true,label:'face'},{id:'audio',type:'audio',max:1,req:true,label:'voice'}], out:'video'},
-    note:   {name:'Note',      eng:'words for you',       group:'notes',   ins:[], out:null}
+    note:   {name:'Note',      eng:'words for you',       group:'notes',   ins:[], out:null},
+    // DIONYSUS BOARDS (2026-10-18): his pictures, clips and steps. A step runs from his terminal, never from here.
+    dsrc:   {name:'Photo',     eng:'a picture of the job', group:'sources', ins:[], out:'image'},
+    dclip:  {name:'Clip',      eng:'a clip of the job',    group:'sources', ins:[], out:'video'},
+    step:   {name:'Step',      eng:'Dionysus runs it',     group:'steps',   ins:[], out:'image'}
   };
+  var DIOK={dsrc:1,dclip:1,step:1};
   var ORDER=['upload','gallery','audio','prompt','image','compose','design','upscale','video','lite','camera','talk','note'];
   var FROM={image:'$0.06',compose:'$0.15',design:'$0.04',upscale:'$0.08',video:'$0.336',lite:'$0.20',camera:'$0.15',talk:'$0.25'};
   var VARY={image:1,compose:1,design:1,video:1,lite:1,camera:1}, MAX_VARS=4;   // the kinds whose runs differ run to run
@@ -480,7 +555,7 @@ body.running .card .top .ic{visibility:hidden}
   var opened=false;
   function openBoard(){
     show('scr-board'); chip('Unlocked','ok');
-    if(!opened){ opened=true; loadCurrent(); resetHistory() }
+    if(!opened){ opened=true; loadCurrent(); loadDioState(); resetHistory(); if(isDio()) setTimeout(dioCheck,300) }
     resumeJobs(); paintAll();
     if(document.fonts&&document.fonts.ready) document.fonts.ready.then(remeasure);   // the webfont moves every port a little
   }
@@ -499,6 +574,10 @@ body.running .card .top .ic{visibility:hidden}
   function to(e){ return e[1].split(':')[0] }
   function into(nid,pid){ var r=[]; G.edges.forEach(function(e){ if(e[1]===nid+':'+pid){ var u=node(from(e)); if(u) r.push(u) } }); return r }
   function portDef(kind,pid){ var r=null; KINDS[kind].ins.forEach(function(p){ if(p.id===pid) r=p }); return r }
+  // HIS STEPS carry their own inputs, numbered as his prompt names them ("image 1", "opening")
+  function insOf(n){ return n.kind==='step' ? ((n.step&&n.step.ins)||[]).map(function(p){ return {id:String(p.id),type:'any',max:1,label:String(p.label||''),num:String(p.num||'')} }) : KINDS[n.kind].ins }
+  function portOf(n,pid){ var r=null; insOf(n).forEach(function(p){ if(p.id===pid) r=p }); return r }
+  function outType(n){ return n.kind==='step' ? ((n.step&&n.step.out)||'image') : KINDS[n.kind].out }
   function nVars(n){ return VARY[n.kind] ? Math.max(1,Math.min(MAX_VARS,parseInt((n.settings||{}).vars,10)||1)) : 1 }
   function S(n){ var d=DEF[n.kind]||{}, s={}, k; for(k in d) s[k]=d[k]; for(k in (n.settings||{})) s[k]=n.settings[k]; return s }
   // an input the current settings do not use: its wire stays, dimmed, and is not sent
@@ -613,6 +692,7 @@ body.running .card .top .ic{visibility:hidden}
     order().forEach(function(n){
       var K=KINDS[n.kind], e={p:null,sig:'',st:''}; PL[n.id]=e;
       if(K.group==='notes'){ e.st='note'; return }
+      if(K.group==='steps'){ e.st='step'; e.p={price:0,known:true,why:'',f:{},img:[],det:''}; return }   // his: never in a Rig run or total
       if(K.group==='sources'){
         e.st=n.kind==='prompt' ? (String(S(n).text||'').trim()?'ready':'empty')
           : !n.src ? 'empty' : ((n.kind==='upload'&&!UP[n.src.id])||(n.kind==='audio'&&!AUD[n.src.id])) ? 'readd' : 'ready';
@@ -647,6 +727,7 @@ body.running .card .top .ic{visibility:hidden}
     $('total').innerHTML=h;
     $('total').title=n ? 'Would run: '+t.run.concat(t.unknown).map(function(x){ return KINDS[x.kind].name+(PL[x.id].p.known?' $'+money(PL[x.id].p.price):'') }).join(', ') : 'Every engine on the board is fresh, frozen or waiting on something.';
     $('empty-hint').hidden=G.nodes.length>0;
+    paintDioHead();
   }
 
   /* ---------- geometry ---------- */
@@ -775,6 +856,8 @@ body.running .card .top .ic{visibility:hidden}
     if(!el){ el=document.createElement('div'); el.dataset.id=n.id; $('world').appendChild(el) }
     el.className='card k-'+n.kind+(K.group==='sources'?' src':'')+(K.group==='notes'?' note':'')+(n.frozen?' frozen':'')+(n.job?' running':'')+(sel&&sel.node===n.id?' sel':'');
     el.style.left=n.x+'px'; el.style.top=n.y+'px';
+    if(DIOK[n.kind]){ if(n.kind==='step') paintStep(n,el,s); else paintDsrc(n,el); return }
+    if(K.group==='notes'&&isDio()){ paintDioNote(n,el,s); return }
     var h='<div class="top"><b>'+K.name+'</b><i>'+K.eng+'</i>';
     if(K.group==='engines') h+='<button class="ic" type="button" data-act="freeze" aria-pressed="'+!!n.frozen+'" aria-label="Freeze" title="'+(n.frozen?'Frozen: it keeps its result and never reruns. Click to unfreeze.':'Freeze: keep this result and never rerun it')+'">'+ICON_FRZ+'</button>';
     h+='<button class="ic" type="button" data-act="del" aria-label="Delete this card" title="Delete">'+ICON_X+'</button></div>';
@@ -843,7 +926,7 @@ body.running .card .top .ic{visibility:hidden}
   function remeasure(){ G.nodes.forEach(measurePorts); paintWires() }
   function paintAll(){
     [].forEach.call($('world').querySelectorAll('.card'),function(c){ c.parentNode.removeChild(c) });
-    PORTS={}; evaluate(); G.nodes.forEach(paintCard); paintWires(); applyView(); paintTotal(); $('board-name').value=G.name||''; paintUndo();
+    PORTS={}; evaluate(); paintMode(); G.nodes.forEach(paintCard); paintWires(); applyView(); paintTotal(); $('board-name').value=G.name||''; paintUndo();
   }
 
   /* ---------- wires ---------- */
@@ -860,10 +943,11 @@ body.running .card .top .ic{visibility:hidden}
     var html='', sparks=[];
     G.edges.forEach(function(e,i){
       var f=e[0].split(':'), t=e[1].split(':'), a=pt(f[0],f[1]), b=pt(t[0],t[1]); if(!a||!b) return;
-      var type=KINDS[node(f[0]).kind].out, off=portOff(node(t[0]),t[1])?' off':'', s=(sel&&sel.edge===i)?' sel':'', live=node(t[0]).job?' live':'';
+      var type=outType(node(f[0])), off=portOff(node(t[0]),t[1])?' off':'', s=(sel&&sel.edge===i)?' sel':'', live=node(t[0]).job?' live':'';
       html+='<path class="hit" data-edge="'+i+'" d="'+bez(a,b)+'"></path><path class="'+type+off+s+live+'" data-edge="'+i+'" data-f="'+f[0]+'" data-t="'+t[0]+'" d="'+bez(a,b)+'"></path>';
       if(live) sparks.push(sparkOf(a,b,i));
     });
+    html+=noteLinks();
     $('wires').innerHTML=html; focusWires();
     // the sparks live beside the SVG, under the cards
     [].forEach.call($('world').querySelectorAll('.spark'),function(e){ e.parentNode.removeChild(e) });
@@ -890,11 +974,12 @@ body.running .card .top .ic{visibility:hidden}
   function why2wire(fromP,toP){   // '' when this wire may be drawn, else the one sentence that says why not
     var f=fromP.split(':'), t=toP.split(':'), fn=node(f[0]), tn=node(t[0]);
     if(!fn||!tn) return 'That node is gone.';
-    if(f[1]!=='out'||!KINDS[fn.kind].out) return 'Wires start at a right-hand port.';
-    var port=portDef(tn.kind,t[1]);
+    if(f[1]!=='out'||!outType(fn)) return 'Wires start at a right-hand port.';
+    var port=portOf(tn,t[1]);
     if(!port) return KINDS[tn.kind].name+' has no such input.';
-    var type=KINDS[fn.kind].out;
-    if(type!==port.type) return KINDS[tn.kind].name+' takes '+WORD[port.type]+' there, not '+WORD[type]+'.';
+    var type=outType(fn);
+    if((tn.kind==='step')!==(DIOK[fn.kind]===1)) return 'His steps take only his pictures, clips and steps, and feed only his steps.';
+    if(port.type!=='any'&&type!==port.type) return KINDS[tn.kind].name+' takes '+WORD[port.type]+' there, not '+WORD[type]+'.';
     if(fn.id===tn.id) return 'A node cannot feed itself.';
     if(reaches(tn.id,fn.id)) return 'That would make a loop: '+KINDS[tn.kind].name+' already feeds '+KINDS[fn.kind].name+'.';
     var off=portOff(tn,t[1]); if(off) return KINDS[tn.kind].name+' takes no '+port.label+' with a style on.';
@@ -904,7 +989,7 @@ body.running .card .top .ic{visibility:hidden}
     var why=why2wire(fromP,toP); if(why) return why;
     if(busy()) return LOCK_MSG;
     if(G.edges.some(function(e){ return e[0]===fromP&&e[1]===toP })) return '';
-    var port=portDef(node(toP.split(':')[0]).kind,toP.split(':')[1]), have=G.edges.filter(function(e){ return e[1]===toP });
+    var port=portOf(node(toP.split(':')[0]),toP.split(':')[1]), have=G.edges.filter(function(e){ return e[1]===toP });
     if(port.max===1 && have.length) G.edges=G.edges.filter(function(e){ return e[1]!==toP });   // one wire in: the new one replaces it
     else if(have.length>=port.max) return KINDS[node(toP.split(':')[0]).kind].name+' takes at most '+port.max+' '+port.label+'.';
     G.edges.push([fromP,toP]); changed({repaint:[toP.split(':')[0]]}); return '';
@@ -920,6 +1005,7 @@ body.running .card .top .ic{visibility:hidden}
     var id='n'+(seq++); while(node(id)) id='n'+(seq++);
     var placed=x==null; if(placed){ var sp=freeSpot(kind); x=sp.x; y=sp.y }
     var n={id:id,kind:kind,x:Math.round(x),y:Math.round(y),settings:copy(DEF[kind]||{})};
+    if(kind==='note'&&isDio()) n.settings.by='hector';
     G.nodes.push(n); sel={node:id}; [].forEach.call($('world').querySelectorAll('.card.sel'),function(c){ c.classList.remove('sel') });
     changed({repaint:[id]});
     if(placed){ var el=cardEl(id); if(el&&el.offsetHeight>EST[KINDS[kind].group]){   // taller than guessed: place it again by its real size
@@ -927,9 +1013,9 @@ body.running .card .top .ic{visibility:hidden}
     return n;
   }
   // a new card goes in the free space nearest the middle of the view, never on top of another
-  var SPIRAL=null, EST={sources:250,engines:470,notes:190};
+  var SPIRAL=null, EST={sources:250,engines:470,notes:190,steps:560};
   function freeSpot(kind,w,h,skip){
-    var K=KINDS[kind]; w=w||(kind==='prompt'?264:K.group==='sources'?224:K.group==='notes'?240:264); h=h||EST[K.group];
+    var K=KINDS[kind]; w=w||(kind==='prompt'?264:kind==='step'?312:K.group==='sources'?224:K.group==='notes'?240:264); h=h||EST[K.group];
     var r=$('board').getBoundingClientRect(),
         c=toWorld(r.left+r.width/2,r.top+r.height/2), x0=Math.round(c.x-w/2), y0=Math.round(c.y-h/2), gap=28;
     var rects=G.nodes.filter(function(n){ return n.id!==skip }).map(function(n){ var el=cardEl(n.id); return {x:n.x,y:n.y,w:el?el.offsetWidth:264,h:el?el.offsetHeight:EST[KINDS[n.kind].group]} });
@@ -940,6 +1026,7 @@ body.running .card .top .ic{visibility:hidden}
   }
   function remove(id){
     if(guard()) return;
+    var rn=node(id); if(rn&&isDio()&&!hectors(rn)){ toast('That card is Dionysus\'s: strike a step, or write him a note.'); return }
     var hit=[]; G.edges.forEach(function(e){ if(from(e)===id) hit.push(to(e)) });
     G.nodes=G.nodes.filter(function(n){ return n.id!==id });
     G.edges=G.edges.filter(function(e){ return from(e)!==id && to(e)!==id });
@@ -981,7 +1068,7 @@ body.running .card .top .ic{visibility:hidden}
 
   /* ---------- undo / redo: whole-board snapshots, never the view, never the bytes ---------- */
   var UNDO=[], REDO=[], LAST='';
-  function snap(){ return JSON.stringify({name:G.name,nodes:G.nodes,edges:G.edges}) }
+  function snap(){ return JSON.stringify({name:G.name,nodes:G.nodes,edges:G.edges,dio:G.dio||null}) }
   function commit(){ typeT=null; var s=snap(); if(s!==LAST){ UNDO.push(LAST); if(UNDO.length>100) UNDO.shift(); REDO=[]; LAST=s; paintUndo() } saveCurrent() }
   // a run's own changes (a job starting, a result landing) are not steps: ⌘Z never "un-spends"
   function commitQuiet(){ typeT=null; LAST=snap(); saveCurrent() }
@@ -997,7 +1084,7 @@ body.running .card .top .ic{visibility:hidden}
       if(o.takes&&o.takes.length){ var m={}, all=[]; (n.takes||[]).concat(o.takes).forEach(function(t){ if(t&&t.url&&!m[t.url]){ m[t.url]=1; all.push(t) } });
         all.sort(function(a,b){ return (a.at||0)-(b.at||0) }); n.takes=all.slice(-MAX_TAKES) }
       if(o.err && !n.err) n.err=o.err; delete n.job });
-    G={v:1,name:j.name||'',nodes:j.nodes,edges:j.edges}; reseq(); sel=null; paintAll(); LAST=snap(); saveCurrent();
+    G={v:1,name:j.name||'',nodes:j.nodes,edges:j.edges}; if(j.dio) G.dio=j.dio; reseq(); sel=null; paintAll(); LAST=snap(); saveCurrent();
   }
   function undo(){ if(guard()) return false; flushTyping(); if(!UNDO.length) return false; REDO.push(LAST); LAST=UNDO.pop(); restore(LAST); return true }
   function redo(){ if(guard()) return false; if(!REDO.length) return false; UNDO.push(LAST); LAST=REDO.pop(); restore(LAST); return true }
@@ -1033,6 +1120,9 @@ body.running .card .top .ic{visibility:hidden}
     var card=e.target.closest('.card');
     var port=e.target.closest('.port');
     if(port){
+      if(port.classList.contains('link')){ var ln=node(port.dataset.node); if(!ln||busy()) return;   // a note's dot: tie it to a card
+        var lp=document.createElementNS('http://www.w3.org/2000/svg','path'); lp.setAttribute('class','temp'); $('wires').appendChild(lp);
+        drag={kind:'link',from:ln.id,path:lp,a:pt(ln.id,'link')}; $('board').setPointerCapture(e.pointerId); e.preventDefault(); return }
       if(!port.classList.contains('out')) return;        // wires are drawn from outputs
       var path=document.createElementNS('http://www.w3.org/2000/svg','path'); path.setAttribute('class','temp'); $('wires').appendChild(path);
       drag={kind:'wire',from:port.dataset.node+':out',type:port.dataset.type,path:path,a:pt(port.dataset.node,'out')};
@@ -1058,6 +1148,7 @@ body.running .card .top .ic{visibility:hidden}
     if(drag.kind==='pan'){ pan.x=e.clientX-drag.x; pan.y=e.clientY-drag.y; applyView(); return }
     if(drag.kind==='card'){ var w=toWorld(e.clientX,e.clientY), n=node(drag.id); n.x=Math.round(w.x-drag.dx); n.y=Math.round(w.y-drag.dy); drag.moved=true;
       var el=cardEl(n.id); el.style.left=n.x+'px'; el.style.top=n.y+'px'; paintWires(); return }
+    if(drag.kind==='link'){ var b2=toWorld(e.clientX,e.clientY); if(drag.a) drag.path.setAttribute('d','M'+drag.a.x+','+drag.a.y+' L'+b2.x+','+b2.y); return }
     if(drag.kind==='wire'){ var b=toWorld(e.clientX,e.clientY); if(drag.a) drag.path.setAttribute('d',bez(drag.a,b));
       [].forEach.call($('world').querySelectorAll('.port.can'),function(p){ p.classList.remove('can') });
       var over=document.elementFromPoint(e.clientX,e.clientY), p=over&&over.closest&&over.closest('.port.in');
@@ -1068,6 +1159,8 @@ body.running .card .top .ic{visibility:hidden}
     var d=drag; drag=null;
     if(d.kind==='pan') $('board').classList.remove('panning');
     if(d.kind==='card'&&d.moved) commit();
+    if(d.kind==='link'){ if(d.path.parentNode) d.path.parentNode.removeChild(d.path);
+      var ov=document.elementFromPoint(e.clientX,e.clientY), oc=ov&&ov.closest&&ov.closest('.card'); tieNote(d.from,oc?oc.dataset.id:null) }
     if(d.kind==='wire'){
       if(d.path.parentNode) d.path.parentNode.removeChild(d.path);
       [].forEach.call($('world').querySelectorAll('.port.can'),function(p){ p.classList.remove('can') });
@@ -1101,6 +1194,10 @@ body.running .card .top .ic{visibility:hidden}
     var card=e.target.closest('.card'); if(!card) return; var n=node(card.dataset.id); if(!n) return;
     var act=e.target.closest('[data-act]');
     if(act){
+      if(act.dataset.act==='strike'){ setSetting(n.id,'struck',!S(n).struck); return }
+      if(act.dataset.act==='dtake'){ VIEWT[n.id]=+act.dataset.i; paintCard(n); paintWires(); return }
+      if(act.dataset.act==='dview'){ if(n.kind==='step') openStepView(n); else openSrcView(n); return }
+      if(act.dataset.act==='edit-prompt'){ EDITING=n.id; paintCard(n); paintWires(); var ta=cardEl(n.id).querySelector('textarea[data-k="prompt"]'); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length) } return }
       if(act.dataset.act==='del'){ remove(n.id); return }
       if(act.dataset.act==='freeze'){ setFrozen(n.id,!n.frozen); return }
       if(act.dataset.act==='pick'){ if(!e.target.closest('audio')) pick(n); return }
@@ -1127,6 +1224,9 @@ body.running .card .top .ic{visibility:hidden}
     else if(t.tagName==='SELECT') setSetting(n.id,k,t.value);
     else flushTyping();
   });
+  // his prompt goes back to the marked-up view when Hector leaves the box
+  world.addEventListener('focusout',function(e){ var t=e.target; if(!t||t.dataset.k!=='prompt') return; var card=t.closest('.card.step'), n=card&&node(card.dataset.id); if(!n) return;
+    flushTyping(); EDITING=null; paintCard(n); paintWires() });
   world.addEventListener('toggle',function(e){   // the "More" fold changes a card's height, so its ports move
     var d=e.target; if(!d.classList||!d.classList.contains('more')) return;
     var card=d.closest('.card'), n=card&&node(card.dataset.id); if(!n) return;
@@ -1139,7 +1239,9 @@ body.running .card .top .ic{visibility:hidden}
     if(n.kind==='gallery') return openGallery(n.id);
     PICK=n.id; $(n.kind==='audio'?'aud-file':'up-file').click();
   }
-  $('up-file').addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0], n=node(PICK); e.target.value=''; if(f&&n) intake(n,f).catch(function(err){ toast(err.message) }) });
+  $('up-file').addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0]; e.target.value='';
+    if(PICK==='__dphoto'){ PICK=null; if(f) uploadPhoto(f); return }
+    var n=node(PICK); if(f&&n) intake(n,f).catch(function(err){ toast(err.message) }) });
   $('aud-file').addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0], n=node(PICK); e.target.value=''; if(f&&n) intake(n,f).catch(function(err){ toast(err.message) }) });
   function readImage(file){
     return new Promise(function(res,rej){
@@ -1196,6 +1298,7 @@ body.running .card .top .ic{visibility:hidden}
     if(!hasFiles(e)) return; e.preventDefault(); $('board').classList.remove('drop');
     if(guard()) return;
     var files=[].slice.call(e.dataTransfer.files), w=toWorld(e.clientX,e.clientY), card=e.target.closest&&e.target.closest('.card'), onto=card&&node(card.dataset.id);
+    if(isDio()){ files.forEach(function(f,i){ if(/^image\//.test(f.type)||/\.(heic|heif)$/i.test(f.name)) uploadPhoto(f,w.x+i*30,w.y+i*30); else toast('Only pictures go on his board.') }); return }
     files.forEach(function(f,i){
       var img=/^image\//.test(f.type)||/\.(heic|heif)$/i.test(f.name), aud=/^audio\//.test(f.type)||/\.(m4a|mp3|wav|aac)$/i.test(f.name), n=null;
       if(i===0&&onto&&((onto.kind==='upload'&&img)||(onto.kind==='audio'&&aud))) n=onto;
@@ -1264,43 +1367,49 @@ body.running .card .top .ic{visibility:hidden}
   $('gal-pick').addEventListener('click',function(e){ if(e.target===$('gal-pick')) closeGallery() });
 
   /* ---------- add menu ---------- */
-  (function(){
+  var ADD_MODE='';
+  function paintAddMenu(){
+    var mode=isDio()?'dio':'rig'; if(mode===ADD_MODE) return; ADD_MODE=mode;
+    if(mode==='dio'){ $('add-list').innerHTML='<li class="h">for Dionysus</li><li><button type="button" data-kind="note">Note<small>words for him, tied to a card</small></button></li>'+
+      '<li><button type="button" data-kind="dphoto">Photo<small>a picture for the job · free</small></button></li>'; return }
     var html='', last='', GROUP={sources:'sources',engines:'engines',notes:'for you'};
     ORDER.forEach(function(k){ var K=KINDS[k]; if(K.group!==last){ html+='<li class="h">'+GROUP[K.group]+'</li>'; last=K.group }
       html+='<li><button type="button" data-kind="'+k+'">'+K.name+'<small>'+K.eng+(FROM[k]?' · from '+FROM[k]:'')+'</small></button></li>' });
     $('add-list').innerHTML=html;
-  })();
+  }
+  paintAddMenu();
   function closeMenus(){ $('add-menu').classList.remove('open'); $('load-menu').classList.remove('open') }
   $('add-btn').addEventListener('click',function(e){ e.stopPropagation(); $('load-menu').classList.remove('open'); $('add-menu').classList.toggle('open') });
   $('add-list').addEventListener('click',function(e){ var b=e.target.closest('button[data-kind]'); if(!b) return; closeMenus();
-    var n=add(b.dataset.kind); if(n.kind==='gallery') openGallery(n.id) });
+    if(b.dataset.kind==='dphoto'){ PICK='__dphoto'; $('up-file').click(); return }
+    var n=add(b.dataset.kind); if(n&&n.kind==='gallery') openGallery(n.id) });
   document.addEventListener('click',function(e){ if(!e.target.closest('.menu')) closeMenus() });
 
   /* ---------- save, load, new: JSON only, never pixels ---------- */
   function userKey(k){ return k+':'+String((who&&who.user)||'') }
-  function exportBoard(){ return copy({v:1,name:G.name,nodes:G.nodes,edges:G.edges,view:{pan:pan,zoom:zoom}}) }
+  function exportBoard(){ return copy({v:1,name:G.name,nodes:G.nodes,edges:G.edges,dio:G.dio||undefined,view:{pan:pan,zoom:zoom}}) }
   function clean(j){   // a board from storage or a file: keep what makes sense, drop the rest
     if(!j||j.v!==1||!Array.isArray(j.nodes)||!Array.isArray(j.edges)) throw new Error('That is not a board.');
     var nodes=[], ids={};
     j.nodes.forEach(function(n){ if(!n||!KINDS[n.kind]||ids[n.id]) return; var id=String(n.id); ids[id]=true;
       var o={id:id,kind:n.kind,x:+n.x||0,y:+n.y||0,settings:(n.settings&&typeof n.settings==='object')?n.settings:copy(DEF[n.kind]||{})};
-      if(n.src&&typeof n.src==='object') o.src=n.src; if(n.ran&&typeof n.ran==='object') o.ran=n.ran;
+      if(n.src&&typeof n.src==='object') o.src=n.src; if(n.ran&&typeof n.ran==='object') o.ran=n.ran; if(n.step&&typeof n.step==='object') o.step=n.step;
       if(Array.isArray(n.takes)) o.takes=n.takes.filter(function(t){ return t&&typeof t==='object'&&t.url }).slice(-12); if(n.frozen&&KINDS[n.kind].group==='engines') o.frozen=true;
       if(n.job&&typeof n.job==='object'&&n.job.id) o.job=n.job; if(n.err&&typeof n.err==='object') o.err=n.err;
       nodes.push(o) });
     var old=G; G={v:1,name:'',nodes:nodes,edges:[]}; var edges=[];
     j.edges.forEach(function(e){ if(!Array.isArray(e)||e.length!==2) return; var f=String(e[0]), t=String(e[1]);
       var why=why2wire(f,t); if(why&&why.indexOf('with a style')<0) return;
-      var port=portDef(node(t.split(':')[0]).kind,t.split(':')[1]);
+      var port=portOf(node(t.split(':')[0]),t.split(':')[1]);
       if(edges.some(function(x){ return x[0]===f&&x[1]===t })) return;
       if(edges.filter(function(x){ return x[1]===t }).length>=port.max) return;
       edges.push([f,t]); G.edges=edges });
     G=old;
-    return {name:String(j.name||''),nodes:nodes,edges:edges};
+    return {name:String(j.name||''),nodes:nodes,edges:edges,dio:(j.dio&&typeof j.dio==='object'&&j.dio.piece)?copy(j.dio):null};
   }
   function importBoard(j,keepView){
     var c=clean(j);
-    G={v:1,name:c.name,nodes:c.nodes,edges:c.edges}; reseq(); sel=null;
+    G={v:1,name:c.name,nodes:c.nodes,edges:c.edges}; if(c.dio) G.dio=c.dio; reseq(); sel=null; EDITING=null;
     if(!keepView&&j.view&&j.view.pan){ pan={x:+j.view.pan.x||0,y:+j.view.pan.y||0}; zoom=Math.min(2,Math.max(.25,+j.view.zoom||1)) }
     paintAll();
   }
@@ -1309,30 +1418,39 @@ body.running .card .top .ic{visibility:hidden}
   function boards(){ try{ return JSON.parse(localStorage.getItem(userKey(K_BOARDS))||'{}')||{} }catch(e){ return {} } }
   $('board-name').addEventListener('input',function(){ G.name=$('board-name').value.trim(); clearTimeout(typeT); typeT=setTimeout(commit,700) });
   $('save-btn').addEventListener('click',function(){
+    if(isDio()){ saveDio(); return }
     var name=$('board-name').value.trim(); if(!name){ toast('Give the board a name first.'); $('board-name').focus(); return }
     G.name=name; flushTyping(); var all=boards(); all[name]=exportBoard();
     try{ localStorage.setItem(userKey(K_BOARDS),JSON.stringify(all)); chip('Saved "'+name+'"','ok'); toast('Saved. Boards live in this browser for now.') }
     catch(e){ toast('Could not save: '+e.message) }
   });
   function paintLoad(){
-    var all=boards(), names=Object.keys(all).sort(), html='';
-    if(!names.length) html='<li class="h">no saved boards</li>';
+    var all=boards(), names=Object.keys(all).sort(), html='<li class="h">Dionysus boards</li>';
+    if(DIOLIST===null) html+='<li class="h">'+(DIOLIST_ERR?'the list did not load':'loading…')+'</li>';
+    else if(!DIOLIST.length) html+='<li class="h">none yet</li>';
+    else DIOLIST.forEach(function(b){ var unread=(b.hector_rev||0)>(b.seen_rev||0);
+      html+='<li><button type="button" data-dio="'+esc(b.piece)+'">'+esc(b.title?b.piece+' · '+b.title:b.piece)+'<small'+(unread?' class="unread"':'')+'>'+pl(b.steps||0,'step','steps')+' · '+(unread?'he hasn\'t read your save':b.saved_by==='hector'?'you saved':'he saved')+'</small></button></li>' });
+    html+='<li class="h">your boards</li>';
+    if(!names.length) html+='<li class="h">no saved boards</li>';
     names.forEach(function(n){ var q=esc(n); html+='<li><button type="button" data-name="'+q+'">'+q+'<small>'+((all[n].nodes||[]).length)+' cards</small></button>'+
       '<button type="button" class="x" data-drop="'+q+'" aria-label="Delete the saved board '+q+'" title="Delete this saved board">'+ICON_X+'</button></li>' });
     $('load-list').innerHTML=html;
   }
-  $('load-btn').addEventListener('click',function(e){ e.stopPropagation(); $('add-menu').classList.remove('open'); paintLoad(); $('load-menu').classList.toggle('open') });
+  $('load-btn').addEventListener('click',function(e){ e.stopPropagation(); $('add-menu').classList.remove('open'); paintLoad(); $('load-menu').classList.toggle('open');
+    if($('load-menu').classList.contains('open')) fetchDioList().then(paintLoad,function(){ DIOLIST_ERR=true; paintLoad() }) });
   $('load-list').addEventListener('click',function(e){
     e.stopPropagation();
     var d=e.target.closest('button[data-drop]');
     if(d){ var nm=d.dataset.drop; if(!confirm('Delete the saved board "'+nm+'"? The board on screen stays.')) return;
       var all=boards(); delete all[nm]; try{ localStorage.setItem(userKey(K_BOARDS),JSON.stringify(all)) }catch(err){} paintLoad(); return }
+    var db=e.target.closest('button[data-dio]'); if(db){ closeMenus(); openDio(db.dataset.dio); return }
     var b=e.target.closest('button[data-name]'); if(!b) return; closeMenus();
     if(guard()) return;
+    if(!leaveDio()) return;
     try{ flushTyping(); importBoard(boards()[b.dataset.name]); commit(); chip('Loaded "'+b.dataset.name+'"','ok'); resumeJobs() }catch(err){ toast(err.message) }
   });
   // New is one undo step: ⌘Z brings the old board back
-  $('new-btn').addEventListener('click',function(){ if(guard()) return; flushTyping(); G={v:1,name:'',nodes:[],edges:[]}; sel=null; seq=1; pan={x:80,y:60}; zoom=1; paintAll(); commit(); chip('New board') });
+  $('new-btn').addEventListener('click',function(){ if(guard()) return; if(!leaveDio()) return; flushTyping(); G={v:1,name:'',nodes:[],edges:[]}; DIO=null; saveDioState(); sel=null; seq=1; pan={x:80,y:60}; zoom=1; paintAll(); commit(); chip('New board') });
 
   /* ---------- RUNNING (day 3, 2026-09-27) ----------
      Upstream first, through the classic view's own webhook: the same FormData, the same poll, the
@@ -1645,6 +1763,320 @@ body.running .card .top .ic{visibility:hidden}
   $('view-close').addEventListener('click',closeView);
   $('view').addEventListener('click',function(e){ if(e.target===$('view')) closeView() });
 
+  /* ---------- DIONYSUS BOARDS (2026-10-18) ----------
+     Hector, 2026-10-18: "i want to tell him what i want, at the start of a new project, then he opens the canvas and lay
+     down notes and a structure of how the work goes, then there together we finish the job." Dionysus lays the job out
+     (his pictures, his steps with the exact prompt and settings he will send, his notes) through `tools/board`; Hector
+     moves cards, writes notes tied to a card, edits a prompt's words, strikes a step, keeps or rejects a take, adds a
+     photo, and Saves. Nothing here can spend: a step runs from Dionysus's terminal (`tools/fal run --board --card`)
+     after Hector's yes, and its result comes back to the card as a take. The board lives in n8n (`Rig Boards`, table
+     rig_boards); every save names the version it was made on, and a save over a newer one merges instead of losing it. */
+  var DIO=null;          // {piece, rev, base (the board as last loaded or saved, as this page writes it), savedBy, savedAt, seenRev, checkedAt}
+  var DIOLIST=null, DIOLIST_AT=0, DIOLIST_ERR=false;
+  var VIEWT={};          // which take a step card shows (this browser only, not a change)
+  var EDITING=null;      // the step whose prompt box is open
+  var RIG_HINT=null;
+  var DIO_HINT='Dionysus lays the job out · move cards, write notes, drag a note\'s dot onto the card it is about, click a prompt to edit his words · Save sends him your changes · every paid run is his card in the terminal and your yes · nothing on this board can spend';
+  var ICON_STRIKE='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/></svg>';
+  var STATUS_WORD={planned:'planned',running:'running',done:'waiting on a verdict',kept:'kept',rejected:'rejected',failed:'failed',refused:'refused',struck:'struck'};
+
+  function isDio(){ return !!(G.dio&&G.dio.piece) }
+  // what Hector may delete on his board: his own notes and photos; the rest is Dionysus's
+  function ownerOf(n){
+    if(n.kind==='note') return (n.settings&&n.settings.by==='dionysus')?'dionysus':'hector';
+    if(n.kind==='dsrc'||n.kind==='dclip') return (n.src&&n.src.by==='hector')?'hector':'dionysus';
+    return DIOK[n.kind]?'dionysus':'hector';
+  }
+  function hectors(n){ return ownerOf(n)==='hector' }
+  function paintMode(){
+    var d=isDio(); document.body.classList.toggle('dio',d);
+    if(RIG_HINT==null) RIG_HINT=$('hint').textContent;
+    $('hint').textContent=d?DIO_HINT:RIG_HINT;
+    $('board-name').disabled=d; $('save-btn').textContent=d?'Save for him':'Save';
+    paintAddMenu(); paintDioHead();
+  }
+  // the last save of Hector's (the server stamps it inside the board), or the one this page just made
+  function hectorRev(){ var r=(G.dio&&+G.dio.hector_rev)||0; if(DIO&&DIO.savedBy==='hector') r=Math.max(r,+DIO.rev||0); return r }
+  function paintDioHead(){
+    if(!isDio()){ $('save-btn').classList.remove('go'); return }
+    var planned=0, spent=0, runs=0;
+    G.nodes.forEach(function(n){ if(n.kind!=='step') return; var st=n.step||{};
+      (st.takes||[]).forEach(function(t){ spent+=(+t.price||0); runs++ });
+      if(stepStatus(n)==='planned'&&st.price!=null&&st.price!=='') planned+=(+st.price||0) });
+    $('dio-total').innerHTML='planned <b>$'+money(planned)+'</b> · spent <b>$'+money(spent)+'</b> <span style="color:var(--ink-faint)">('+pl(runs,'run','runs')+')</span>';
+    var dirty=dioDirty(), msg='', cls='warn';
+    if(dirty) msg='your changes are not saved';
+    else if(DIO&&hectorRev()>(DIO.seenRev||0)) msg='he hasn\'t read your last save';
+    else if(DIO&&DIO.savedBy==='dionysus'){ msg='his latest · rev '+DIO.rev; cls='ok' }
+    var c=$('dio-state'); c.textContent=msg; c.title=msg; c.className='chip dio-only '+cls+(msg?'':' none');
+    $('save-btn').classList.toggle('go',dirty);
+  }
+
+  /* ---------- his cards ---------- */
+  function stepStatus(n){ if(S(n).struck) return 'struck'; return (n.step&&n.step.status)||'planned' }
+  function verdictOf(n,t){ var v=(S(n).verdict||{})[String(t.v)]; return v||t.verdict||'' }
+  function takeShown(n){
+    var t=(n.step&&n.step.takes)||[]; if(!t.length) return -1;
+    var i=VIEWT[n.id]; if(i!=null&&t[i]) return i;
+    for(var k=t.length-1;k>=0;k--) if(verdictOf(n,t[k])==='kept') return k;
+    return t.length-1;
+  }
+  function isVid(n,t){ return (t&&t.kind==='video')||outType(n)==='video' }
+  function paintStep(n,el,s){
+    var st=n.step||{}, takes=st.takes||[], i=takeShown(n), t=i>=0?takes[i]:null, status=stepStatus(n), out=outType(n);
+    el.className='card step k-step'+(status==='struck'?' struck':'')+(sel&&sel.node===n.id?' sel':'');
+    var pill=status==='planned'?'planned'+(takes.length?' · v'+(takes.length+1):''):status==='done'?'look at v'+(t?t.v:''):status;
+    var h='<div class="top"><b><em>'+esc(st.num||'')+'</em>'+esc(st.title||'Step')+'</b><span class="sp"></span><span class="pill '+esc(status)+'">'+esc(pill)+'</span>'+
+      '<button class="ic" type="button" data-act="strike" aria-pressed="'+(status==='struck')+'" aria-label="Strike this step" title="'+(status==='struck'?'Struck: he will not run it. Click to bring it back.':'Strike: tell him not to run this step')+'">'+ICON_STRIKE+'</button></div>';
+    h+='<div class="via">'+esc(st.via||'fal')+' · <b>'+esc(st.engine||st.model||'')+'</b>'+(st.mode?' · '+esc(st.mode):'')+'</div>';
+    if(t&&t.url){ var v=verdictOf(n,t), bad=v==='rejected'||t.status==='failed'||t.status==='refused', dim=status==='planned'||status==='struck';
+      h+='<div class="pic has'+(dim?' dim':'')+'" data-act="dview" title="See it big">'+(isVid(n,t)?'<video muted playsinline preload="metadata" src="'+esc(t.url)+'#t=0.1"></video>':'<img alt="" decoding="async" src="'+esc(t.url)+'">')+
+        '<span class="tag'+(bad?' no':'')+'">v'+esc(t.v)+(v?' · '+esc(v):(t.status&&t.status!=='done')?' · '+esc(t.status):'')+'</span>'+
+        (status==='planned'?'<div class="next">v'+(takes.length+1)+' not run yet: his card in the terminal, then your yes</div>':'')+'</div>';
+    } else h+='<div class="pic">'+(status==='struck'?'struck: he will not run it':(t&&t.status)?'v'+esc(t.v)+' '+esc(t.status)+(t.error?': '+esc(String(t.error).slice(0,90)):''):'not run yet · his card in the terminal, then your yes')+'</div>';
+    if(takes.length) h+='<div class="takes"><span>Takes</span>'+takes.map(function(x,k){
+      var v=verdictOf(n,x), c=v==='kept'?' y':(v==='rejected'||x.status==='failed'||x.status==='refused')?' n':'', vid=isVid(n,x);
+      var tip='v'+x.v+(x.price!=null?' · $'+money(+x.price):'')+(v?' · '+v:'')+(x.status&&x.status!=='done'?' · '+x.status:'');
+      return '<button type="button" class="tk'+c+(vid?' vid':'')+'" data-act="dtake" data-i="'+k+'" aria-pressed="'+(k===i)+'" title="'+esc(tip)+'" aria-label="'+esc(tip)+'">'+
+        (vid?(x.thumb?'<img alt="" decoding="async" src="'+esc(x.thumb)+'">':''):(x.url?'<img alt="" decoding="async" src="'+esc(x.url)+'">':''))+'<b>'+esc(x.v)+'</b></button>' }).join('')+'</div>';
+    var ins=insOf(n);
+    if(ins.length) h+='<div class="ports">'+ins.map(function(p){
+      return '<div class="row in" data-port="'+esc(p.id)+'"><span class="port in any" data-node="'+n.id+'" data-port="'+esc(p.id)+'" data-type="any"></span>'+
+        (p.num?'<span class="num'+(p.num.length>2?' fr':'')+'">'+esc(p.num)+'</span>':'')+'<span>'+esc(p.label)+'</span></div>' }).join('')+'</div>';
+    var edited=String(s.prompt||'')!==String(st.orig||''), unsaved=edited&&promptUnsaved(n);
+    h+='<div class="set"><div class="ctl"><div class="lab">Prompt<span'+(edited?' class="ed"':'')+'>'+(edited?(unsaved?'edited by you · not saved':'edited by you · not read yet'):'exactly what is sent')+'</span></div>';
+    h+=EDITING===n.id ? '<textarea data-k="prompt" rows="10" aria-label="His prompt">'+esc(s.prompt||'')+'</textarea>'
+                      : '<div class="ptxt'+(edited?' edited':'')+'" data-act="edit-prompt" title="Click to edit his words">'+(diffWords(st.orig||'',s.prompt||'')||'<i>no prompt</i>')+'</div>';
+    h+='</div>'+((st.sent&&st.sent.length)?'<div class="ctl"><div class="lab">Sent with</div><div class="sent">'+st.sent.map(function(x){ return '<span title="'+esc(x)+'">'+esc(x)+'</span>' }).join('')+'</div></div>':'')+'</div>';
+    h+='<div class="outrow"><span>'+esc(OUTWORD[out]||out)+'</span><span class="port out '+esc(out)+'" data-node="'+n.id+'" data-port="out" data-type="'+esc(out)+'"></span></div>';
+    var runs=takes.length, spent=takes.reduce(function(a,x){ return a+(+x.price||0) },0);
+    h+='<div class="foot"><span class="dprice">'+((st.price!=null&&st.price!=='')?'$'+money(+st.price):'priced later')+'</span><span class="who">'+(runs?pl(runs,'run','runs')+' here · $'+money(spent):'not run yet')+'</span>'+
+      '<span class="st '+(status==='kept'?'fresh':status==='planned'||status==='done'?'new':status==='running'?'running':'failed')+'">'+esc(STATUS_WORD[status]||status)+'</span></div>';
+    if(s.struck) h+='<div class="why">You struck this step: he will not run it.</div>';
+    else if(st.why) h+='<div class="why">'+esc(st.why)+'</div>';
+    el.innerHTML=h; measurePorts(n);
+  }
+  function paintDsrc(n,el){
+    var src=n.src||{}, vid=n.kind==='dclip', his=src.by!=='hector';
+    el.className='card src dsrc k-'+n.kind+(sel&&sel.node===n.id?' sel':'');
+    var h='<div class="top"><b>'+(vid?'Clip':src.tag==='frame'?'Frame':'Photo')+'</b><i>'+esc(his?(src.from||'for the job'):'yours')+'</i>'+
+      (his?'':'<button class="ic" type="button" data-act="del" aria-label="Delete this photo" title="Delete">'+ICON_X+'</button>')+'</div>';
+    h+=src.url ? '<div class="pic has" data-act="dview" title="See it big">'+(vid?'<video muted playsinline preload="metadata" src="'+esc(src.url)+'#t=0.1"></video>':'<img alt="" decoding="async" src="'+esc(src.url)+'">')+'</div>'
+               : '<div class="pic">no picture yet</div>';
+    h+='<div class="cap">'+esc(src.label||'')+(src.note?'<small>'+esc(src.note)+'</small>':'')+'</div>';
+    h+='<div class="outrow"><span>'+(vid?'clip':'picture')+'</span><span class="port out '+(vid?'video':'image')+'" data-node="'+n.id+'" data-port="out" data-type="'+(vid?'video':'image')+'"></span></div><div style="height:10px"></div>';
+    el.innerHTML=h; measurePorts(n);
+  }
+  function cardName(c){
+    if(c.kind==='step') return 'step '+((c.step&&c.step.num)||'')+' '+((c.step&&c.step.title)||'');
+    if(c.kind==='note') return 'a note';
+    return (c.src&&c.src.label)||KINDS[c.kind].name;
+  }
+  function paintDioNote(n,el,s){
+    var his=s.by==='dionysus', on=s.on&&node(s.on);
+    el.className='card note '+(his?'dio':'hec')+(sel&&sel.node===n.id?' sel':'');
+    var h='<div class="top"><b>'+(his?'Dionysus':'Hector')+'</b><i>'+(on?'on '+esc(cardName(on)):'the whole board')+'</i>'+
+      (his?'':'<button class="ic" type="button" data-act="del" aria-label="Delete this note" title="Delete">'+ICON_X+'</button>')+'</div>';
+    h+=his ? '<div class="body">'+esc(s.text||'').replace(/\n/g,'<br>')+'</div>'
+           : '<div class="set"><textarea data-k="text" rows="4" placeholder="A note for Dionysus. Drag the dot on its edge onto the card it is about." aria-label="Note for Dionysus">'+esc(s.text||'')+'</textarea></div>';
+    if(!his) h+='<span class="port link" data-node="'+n.id+'" data-port="link" title="Drag onto the card this note is about; drop it on the empty board to untie it"></span>';
+    el.innerHTML=h; measurePorts(n);
+  }
+  // a note tied to a card: a dashed line from the note's near edge to the card's (static SVG: nothing moves, nothing repaints)
+  function noteLinks(){
+    var h='';
+    G.nodes.forEach(function(n){
+      if(n.kind!=='note') return; var s=S(n), t=s.on&&node(s.on); if(!t) return;
+      var a=cardEl(n.id), b=cardEl(t.id); if(!a||!b) return;
+      var aw=a.offsetWidth, ah=a.offsetHeight, bw=b.offsetWidth, bh=b.offsetHeight, x1, y1, x2, y2;
+      if(n.x>=t.x+bw){ x1=n.x; y1=n.y+22; x2=t.x+bw; y2=Math.max(t.y+24,Math.min(t.y+bh-24,y1)) }
+      else if(n.x+aw<=t.x){ x1=n.x+aw; y1=n.y+22; x2=t.x; y2=Math.max(t.y+24,Math.min(t.y+bh-24,y1)) }
+      else if(n.y>=t.y+bh){ x1=n.x+aw/2; y1=n.y; x2=Math.max(t.x+20,Math.min(t.x+bw-20,x1)); y2=t.y+bh }
+      else { x1=n.x+aw/2; y1=n.y+ah; x2=Math.max(t.x+20,Math.min(t.x+bw-20,x1)); y2=t.y }
+      var c=s.by==='dionysus'?'nd':'nh';
+      h+='<path class="'+c+'" data-note="'+n.id+'" d="M'+x1+','+y1+' L'+x2+','+y2+'"></path><circle class="'+c+'" cx="'+x2+'" cy="'+y2+'" r="3.5"></circle>';
+    });
+    return h;
+  }
+  function tieNote(noteId,cardId){
+    var n=node(noteId); if(!n||n.kind!=='note'||!hectors(n)) return false;
+    if(cardId===noteId) return false;
+    var t=cardId?node(cardId):null;
+    if(t&&t.kind==='note'){ toast('Tie a note to a card, not to another note.'); return false }
+    if(t) n.settings.on=t.id; else delete n.settings.on;
+    changed({repaint:[noteId]}); return true;
+  }
+  // his prompt with Hector's edits marked: added words in gold, cut words struck (an LCS over words)
+  function diffWords(a,b){
+    a=String(a||''); b=String(b||''); if(a===b) return esc(b);
+    var A=a.match(/\S+\s*/g)||[], B=b.match(/\S+\s*/g)||[], n=A.length, m=B.length;
+    if(n*m>600000) return '<ins>'+esc(b)+'</ins>';
+    var L=[], i, j; for(i=0;i<=n;i++){ L.push(new Uint16Array(m+1)) }
+    for(i=n-1;i>=0;i--) for(j=m-1;j>=0;j--) L[i][j]=A[i].trim()===B[j].trim() ? L[i+1][j+1]+1 : Math.max(L[i+1][j],L[i][j+1]);
+    var out='', ins='', del='';
+    function flush(){ if(del){ out+='<del>'+esc(del)+'</del>'; del='' } if(ins){ out+='<ins>'+esc(ins)+'</ins>'; ins='' } }
+    i=0; j=0;
+    while(i<n&&j<m){ if(A[i].trim()===B[j].trim()){ flush(); out+=esc(B[j]); i++; j++ } else if(L[i+1][j]>=L[i][j+1]){ del+=A[i]; i++ } else { ins+=B[j]; j++ } }
+    while(i<n){ del+=A[i++] } while(j<m){ ins+=B[j++] } flush();
+    return out;
+  }
+
+  /* ---------- the viewer for his takes and pictures: Hector's keep / reject ---------- */
+  function openStepView(n){
+    var st=n.step||{}, takes=st.takes||[], i=takeShown(n), t=takes[i]; if(!t||!t.url) return;
+    var vid=isVid(n,t), v=verdictOf(n,t), facts=[];
+    $('view-title').textContent=(st.num?st.num+' · ':'')+(st.title||'Step')+' · v'+t.v; $('view-sub').textContent=st.engine||'';
+    $('view-media').innerHTML=vid?'<video src="'+esc(t.url)+'" controls autoplay playsinline loop></video>':'<img alt="" src="'+esc(t.url)+'">';
+    if(t.price!=null) facts.push('$'+money(+t.price)); if(t.file) facts.push(t.file); if(t.job) facts.push('job '+t.job); if(v) facts.push(v);
+    $('view-facts').innerHTML='<span>'+facts.map(esc).join(' · ')+'</span><span class="sp"></span>'+
+      '<button type="button" data-verdict="kept" data-node="'+n.id+'" data-v="'+esc(t.v)+'"'+(v==='kept'?' class="on"':'')+'>Keep v'+esc(t.v)+'</button> '+
+      '<button type="button" data-verdict="rejected" data-node="'+n.id+'" data-v="'+esc(t.v)+'"'+(v==='rejected'?' class="on"':'')+'>Reject</button> '+
+      '<a href="'+esc(t.url)+'" target="_blank" rel="noopener">Open</a>';
+    $('view').hidden=false;
+  }
+  function openSrcView(n){
+    var src=n.src||{}; if(!src.url) return; var vid=n.kind==='dclip';
+    $('view-title').textContent=src.label||KINDS[n.kind].name; $('view-sub').textContent=src.by==='hector'?'yours':(src.from||'');
+    $('view-media').innerHTML=vid?'<video src="'+esc(src.url)+'" controls autoplay playsinline loop></video>':'<img alt="" src="'+esc(src.url)+'">';
+    $('view-facts').innerHTML='<span>'+esc(src.note||'')+'</span><span class="sp"></span><a href="'+esc(src.url)+'" target="_blank" rel="noopener">Open</a>';
+    $('view').hidden=false;
+  }
+  $('view-facts').addEventListener('click',function(e){
+    var b=e.target.closest('button[data-verdict]'); if(!b) return; var n=node(b.dataset.node); if(!n) return;
+    var m=copy(S(n).verdict||{}), k=b.dataset.v;
+    if(m[k]===b.dataset.verdict) delete m[k]; else m[k]=b.dataset.verdict;
+    setSetting(n.id,'verdict',m); openStepView(n);
+  });
+
+  /* ---------- a photo Hector adds: up to fal's storage through the boards workflow (free), then a card ---------- */
+  function bigJpeg(im){ var w=im.naturalWidth,h=im.naturalHeight,s=Math.min(1,4096/Math.max(w,h)),c=document.createElement('canvas');
+    c.width=Math.max(1,Math.round(w*s)); c.height=Math.max(1,Math.round(h*s)); c.getContext('2d').drawImage(im,0,0,c.width,c.height); return c.toDataURL('image/jpeg',0.92) }
+  function uploadPhoto(file,x,y){
+    if(!isDio()) return Promise.reject(new Error('Photos go on Dionysus boards.'));
+    chip('Sending the photo','busy');
+    return readImage(file).then(function(im){
+      var asIs=/^image\/(jpeg|png|webp)$/.test(file.type)&&file.size<=12e6;   // the original when fal can read it; else a full-size JPEG
+      var f=new FormData(); f.append('action','photo'); f.append('password',pw);
+      f.append('photo',asIs?file:dataUrlToBlob(bigJpeg(im)),asIs?(file.name||'photo.jpg'):'photo.jpg');
+      return fetch(BOARDS,{method:'POST',body:f}).then(function(r){
+        if(r.status===401){ lockOut(); throw new Error('locked') }
+        return r.json().catch(function(){ return {} }).then(function(d){ if(!r.ok||!d.url) throw new Error(d.error||('HTTP '+r.status)); return d });
+      }).then(function(d){
+        var n=add('dsrc',x,y); if(!n) return null;
+        n.src={url:d.url,w:im.naturalWidth,h:im.naturalHeight,label:String(file.name||'your photo').replace(/\.[a-z0-9]+$/i,''),by:'hector'};
+        changed({repaint:[n.id]}); chip('Photo added: Save sends it to him','ok'); return n;
+      });
+    }).catch(function(e){ if(e.message!=='locked'){ chip('Photo not sent','err'); toast('The photo did not go up: '+e.message) } return null });
+  }
+
+  /* ---------- the server copy: what was loaded, what changed, saving and merging ---------- */
+  function dioBody(){ return JSON.stringify({v:1,name:G.name,nodes:G.nodes,edges:G.edges,dio:G.dio}) }
+  function dioDirty(){ return isDio() && (!DIO || DIO.piece!==G.dio.piece || dioBody()!==DIO.base) }
+  function baseObj(){ if(!DIO||!DIO.base) return null; if(!DIO._obj) try{ DIO._obj=JSON.parse(DIO.base) }catch(e){ DIO._obj={nodes:[],edges:[]} } return DIO._obj }
+  function promptUnsaved(n){ var b=baseObj(); if(!b) return true; var o=null; (b.nodes||[]).forEach(function(x){ if(x.id===n.id) o=x });
+    return !o || String((o.settings||{}).prompt||'')!==String(S(n).prompt||'') }
+  function dioKey(){ return K_DIO+':'+String((who&&who.user)||'') }
+  function saveDioState(){ try{ if(DIO){ var c={}; for(var k in DIO) if(k!=='_obj') c[k]=DIO[k]; localStorage.setItem(dioKey(),JSON.stringify(c)) } else localStorage.removeItem(dioKey()) }catch(e){} }
+  function loadDioState(){ try{ var d=JSON.parse(localStorage.getItem(dioKey())||'null'); DIO=(d&&isDio()&&d.piece===G.dio.piece)?d:null }catch(e){ DIO=null } }
+  function setDioState(d){ DIO={piece:d.piece,rev:+d.rev||0,savedBy:d.saved_by||'',savedAt:d.saved_at||'',seenRev:+d.seen_rev||0,checkedAt:Date.now(),base:dioBody()}; saveDioState(); paintMode() }
+  function boardsCall(fields){
+    var f=new FormData(); f.append('password',pw); for(var k in fields) f.append(k,fields[k]);
+    return fetch(BOARDS,{method:'POST',body:f}).then(function(r){
+      if(r.status===401){ lockOut(); throw new Error('locked') }
+      return r.json().catch(function(){ return {} }).then(function(d){ return {code:r.status,d:d} });
+    });
+  }
+  function fetchDioList(force){
+    if(!pw) return Promise.resolve([]);
+    if(!force&&DIOLIST&&Date.now()-DIOLIST_AT<60000) return Promise.resolve(DIOLIST);   // one execution a minute at most
+    return boardsCall({action:'list'}).then(function(x){ if(x.code!==200) throw new Error('HTTP '+x.code); DIOLIST=x.d.boards||[]; DIOLIST_AT=Date.now(); DIOLIST_ERR=false; return DIOLIST });
+  }
+  function dioGet(piece){
+    return boardsCall({action:'get',piece:piece}).then(function(x){ if(x.code!==200||!x.d.found) throw new Error(x.d.error||('HTTP '+x.code)); return x.d });
+  }
+  function leaveDio(){ return !(isDio()&&dioDirty()) || confirm('Your changes to '+G.dio.piece+' are not saved for Dionysus. Leave them?') }
+  function openDio(piece){
+    if(busy()){ toast(LOCK_MSG); return Promise.resolve(false) }
+    if(!leaveDio()) return Promise.resolve(false);
+    chip('Opening '+piece,'busy');
+    return dioGet(piece).then(function(d){
+      var j=JSON.parse(d.board); flushTyping(); VIEWT={}; importBoard(j); setDioState(d); resetHistory(); saveCurrent(); fit();
+      chip('Opened '+piece+' · rev '+d.rev,'ok'); return true;
+    }).catch(function(e){ if(e.message!=='locked'){ chip('Not opened','err'); toast('That board did not open: '+e.message) } return false });
+  }
+  function saveDio(again){
+    if(!isDio()) return Promise.resolve(false);
+    flushTyping();
+    var body=dioBody();
+    chip('Saving for Dionysus','busy');
+    return boardsCall({action:'save',piece:G.dio.piece,board:body,base_rev:String((DIO&&DIO.piece===G.dio.piece&&DIO.rev)||0)}).then(function(x){
+      if(x.code===200&&x.d.ok){
+        DIO={piece:G.dio.piece,rev:x.d.rev,savedBy:'hector',savedAt:new Date().toISOString(),seenRev:(DIO&&DIO.seenRev)||0,checkedAt:Date.now(),base:body};
+        saveDioState(); paintMode(); G.nodes.forEach(function(n){ if(n.kind==='step') paintCard(n) }); paintWires();
+        chip('Saved for Dionysus · rev '+x.d.rev,'ok'); return true;
+      }
+      if(x.code===409&&!again) return pullDio(true).then(function(){ return saveDio(true) });
+      throw new Error(x.d.error||(x.code===409?'he saved again while this was merging: Save once more':'HTTP '+x.code));
+    }).catch(function(e){ if(e.message!=='locked'){ chip('Not saved','err'); toast('Not saved: '+e.message) } return false });
+  }
+  // his newer version: taken as it is when Hector changed nothing, merged with Hector's changes when he did
+  function pullDio(force){
+    if(!isDio()) return Promise.resolve(false);
+    return dioGet(G.dio.piece).then(function(d){
+      var same=DIO&&d.rev===DIO.rev;
+      if(DIO){ DIO.seenRev=+d.seen_rev||0; DIO.savedBy=d.saved_by||DIO.savedBy; DIO.checkedAt=Date.now() }
+      if(same&&!force){ saveDioState(); paintDioHead(); return false }
+      var dirty=dioDirty(), theirs=JSON.parse(d.board), base=baseObj()||{nodes:[],edges:[]}, mine=JSON.parse(dioBody());
+      importBoard(theirs,true); var theirBody=dioBody();
+      if(dirty) importBoard(mergeBoards(base,mine,JSON.parse(theirBody)),true);
+      DIO={piece:d.piece,rev:+d.rev||0,savedBy:d.saved_by||'',savedAt:d.saved_at||'',seenRev:+d.seen_rev||0,checkedAt:Date.now(),base:theirBody};
+      saveDioState(); resetHistory(); saveCurrent(); paintMode();
+      chip(dirty?'He saved too: his changes are in, yours are kept':'Dionysus updated the board · rev '+d.rev,'ok');
+      return true;
+    });
+  }
+  function dioCheck(){
+    if(!isDio()||!pw||busy()||!$('scr-board').classList.contains('on')) return;
+    if(DIO&&Date.now()-(DIO.checkedAt||0)<60000) return;   // one look a minute at most: each is an execution
+    if(DIO) DIO.checkedAt=Date.now();
+    pullDio(false).catch(function(){});
+  }
+  window.addEventListener('focus',dioCheck);
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) dioCheck() });
+  // THE MERGE: start from his version; put back what Hector changed since the version he started from (moves, his
+  // notes, his photos, his prompt edits, strikes, verdicts, his wires). If both changed the same prompt, his stays on
+  // the card and Hector's words become a note on it: nothing typed is ever lost.
+  var HFIELDS={step:['prompt','struck','verdict'],note:['text','on'],dsrc:[],dclip:[]};
+  function mergeBoards(base,mine,theirs){
+    var out=copy(theirs), extra=[];
+    function byId(a){ var m={}; (a.nodes||[]).forEach(function(n){ m[n.id]=n }); return m }
+    var B=byId(base), M=byId(mine), T=byId(out);
+    (mine.nodes||[]).forEach(function(m){
+      var b=B[m.id], t=T[m.id];
+      if(!b){ if(!t&&ownerOf(m)==='hector') out.nodes.push(copy(m)); return }   // his new note or photo
+      if(!t) return;                                                            // Dionysus took it away
+      if(m.x!==b.x||m.y!==b.y){ t.x=m.x; t.y=m.y }
+      var ms=m.settings||{}, bs=b.settings||{}, ts=t.settings=t.settings||{};
+      (HFIELDS[m.kind]||[]).forEach(function(k){
+        if(m.kind==='note'&&ownerOf(m)!=='hector') return;
+        var mv=JSON.stringify(ms[k]), bv=JSON.stringify(bs[k]), tv=JSON.stringify(ts[k]);
+        if(mv===bv) return;
+        if(k==='prompt'&&tv!==bv&&tv!==mv){ extra.push({on:m.id,text:'My edit of this prompt (you changed it at the same time):\n'+(ms[k]||'')}); return }
+        if(ms[k]===undefined) delete ts[k]; else ts[k]=copy(ms[k]);
+      });
+    });
+    (base.nodes||[]).forEach(function(b){ if(!M[b.id]&&ownerOf(b)==='hector') out.nodes=out.nodes.filter(function(n){ return n.id!==b.id }) });
+    var ids={}; out.nodes.forEach(function(n){ ids[n.id]=1 });
+    function key(e){ return e[0]+'>'+e[1] }
+    var bk={}, mk={}; (base.edges||[]).forEach(function(e){ bk[key(e)]=1 }); (mine.edges||[]).forEach(function(e){ mk[key(e)]=1 });
+    (base.edges||[]).forEach(function(e){ if(!mk[key(e)]) out.edges=out.edges.filter(function(x){ return key(x)!==key(e) }) });
+    (mine.edges||[]).forEach(function(e){ if(bk[key(e)]) return; out.edges=out.edges.filter(function(x){ return x[1]!==e[1] }); out.edges.push(copy(e)) });
+    out.edges=out.edges.filter(function(e){ return ids[e[0].split(':')[0]]&&ids[e[1].split(':')[0]] });
+    extra.forEach(function(x){ var k=1, id; do{ id='n'+(9000+k++) }while(ids[id]); ids[id]=1; var t=T[x.on];
+      out.nodes.push({id:id,kind:'note',x:t?t.x+340:0,y:t?t.y:0,settings:{text:x.text,by:'hector',on:x.on}}) });
+    return out;
+  }
+
   /* ---------- test hooks: the harness drives the board through these, never through fake events ---------- */
   window.RigCanvas={add:add,remove:remove,connect:connect,disconnect:disconnect,select:select,fit:fit,zoomAt:zoomAt,
     set:setSetting,freeze:setFrozen,setRan:setRan,pickTake:pickTake,takes:function(id){ var n=node(id); return n?takesOf(n).map(function(t){ return t.url }):[] },intake:function(id,f){ return intake(node(id),f) },undo:undo,redo:redo,
@@ -1657,7 +2089,9 @@ body.running .card .top .ic{visibility:hidden}
       return {st:e.st,sig:e.sig,price:p.price,known:p.known,from:p.from,why:p.why,f:p.f,img:(p.img||[]).map(function(n){ return n.id }),aud:p.aud?p.aud.id:null} },
     totals:function(){ var t=totals(), ids=function(a){ return a.map(function(n){ return n.id }) }; return {sum:t.sum,run:ids(t.run),unknown:ids(t.unknown),needs:ids(t.needs)} },
     state:function(){ return {nodes:G.nodes.map(function(n){ return {id:n.id,kind:n.kind,x:n.x,y:n.y} }),edges:G.edges.slice(),pan:{x:pan.x,y:pan.y},zoom:zoom,sel:sel,undo:UNDO.length,redo:REDO.length} },
-    kinds:KINDS};
+    kinds:KINDS,
+    dio:{merge:mergeBoards,isDio:isDio,dirty:dioDirty,body:dioBody,open:openDio,save:saveDio,pull:pullDio,check:dioCheck,photo:uploadPhoto,tie:tieNote,
+         diff:diffWords,state:function(){ return DIO },list:fetchDioList,view:openStepView,setState:function(d){ setDioState(d) }}};
 
   /* ---------- resume: the classic page's unlock serves this tab too ---------- */
   var saved=readPw();

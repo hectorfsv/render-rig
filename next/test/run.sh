@@ -21,6 +21,8 @@
 #   ./test/run.sh tape       the rail marquee: pitch, seam, direction, speed
 #   ./test/run.sh canvas     the Canvas (canvas.html): Chromium, real WebKit at 1440/1920/2560, a guest, the phone
 #   ./test/run.sh canvas-shot  a sample board to test/build/canvas-*.png (after canvas)
+#   ./test/run.sh dboard     Dionysus boards on the canvas (2026-10-18): his steps, edits, save/merge, photo
+#   ./test/run.sh dboard-shot  his sample board to test/build/dboard-*.png
 #   ./test/run.sh shots      write previews to test/build/*.png
 #
 # Every harness is REGENERATED from the current index.html on every run. Never
@@ -436,6 +438,27 @@ if [ "$WHAT" = all ] || [ "$WHAT" = canvas ]; then
   for v in "1440 900" "1920 1080" "2560 1400"; do set -- $v; cvcount "$(node "$ROOT/test/webkit.js" "$B/cv.html" "$1" "$2" 2)" "webkit ${1}x${2} @2x"; done
   cvcount "$(node "$ROOT/test/webkit.js" "$B/cv.html" 440 956 3)" "webkit iPhone 440x956"
   echo "  -> $cp pass / $cf fail"; PASS=$((PASS+cp)); FAIL=$((FAIL+cf))
+fi
+
+if [ "$WHAT" = all ] || [ "$WHAT" = dboard ] || [ "$WHAT" = dboard-shot ]; then
+  # DIONYSUS BOARDS (2026-10-18): his job on the canvas, the boards workflow played from memory. Chromium, then real WebKit.
+  python3 -c "import sys; s=open('canvas.html').read().replace('src=\"../rig-core.js','src=\"../../../rig-core.js'); assert s.count('</body>')==1; open(sys.argv[2],'w').write(s.replace('</body>', open(sys.argv[1]).read()+'\n</body>'))" "$INJ/dboard.txt" "$B/db.html"
+  if [ "$WHAT" = dboard-shot ]; then
+    for v in "1440 900" "2026 1037"; do set -- $v
+      "$CHR" --headless --disable-gpu --hide-scrollbars --virtual-time-budget=8000 --force-device-scale-factor=2 \
+        --window-size="$1","$2" --screenshot="$B/dboard-$1.png" "file://$B/db.html?shot=1" >/dev/null 2>&1; echo "  dboard-$1.png"; done
+    exit 0
+  fi
+  line; echo "DIONYSUS BOARDS  (his steps, notes, edits, save with the rev check, merge, photo, verdicts, leaving)"
+  dbp=0; dbf=0
+  dbcount(){ R="$1"; p=$(printf '%s' "$R" | grep -o PASS | wc -l | tr -d ' '); f=$(printf '%s' "$R" | grep -o FAIL | wc -l | tr -d ' ')
+    [ "$p" = 0 ] && { f=$((f+1)); R="${R}FAIL  no assertions ran"; }
+    printf '%s' "$R" | grep -q '\[done\]' || { f=$((f+1)); R="${R} FAIL  the harness never finished"; }
+    dbp=$((dbp+p)); dbf=$((dbf+f)); printf '  %-26s %3s pass / %s fail\n' "$2" "$p" "$f"
+    [ "$f" != 0 ] && printf '%s' "$R" | sed 's/FAIL/\nFAIL/g' | grep FAIL | sed 's/^/     /'; }
+  for v in "2026 1037" "1440 900"; do set -- $v; dbcount "$(title "$1" "$2" "file://$B/db.html" 20000)" "chromium ${1}x${2}"; done
+  for v in "1440 900" "1920 1080"; do set -- $v; dbcount "$(node "$ROOT/test/webkit.js" "$B/db.html" "$1" "$2" 2)" "webkit ${1}x${2} @2x"; done
+  echo "  -> $dbp pass / $dbf fail"; PASS=$((PASS+dbp)); FAIL=$((FAIL+dbf))
 fi
 
 if [ "$WHAT" = canvas-shot ]; then
